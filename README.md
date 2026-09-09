@@ -32,7 +32,7 @@ bauen darauf.
 ## Was der Ablauf zusagt
 
 ```
-START → guardrail → orchestrator ⇄ {bearbeiter, ablage}
+START → guardrail → orchestrator ⇄ {bearbeiter, pruefer, ablage}
                          ⛔ HÄLT AN vor human_approval
                          → (NUR bei ausdrücklicher Freigabe) zusteller → END
 ```

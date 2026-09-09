@@ -9,7 +9,7 @@
 // DIESE DOMÄNE IST DAS GERÜST, NICHT DAS PRODUKT. Sie ist so klein wie möglich
 // gehalten und fährt trotzdem jeden Mechanismus einmal durch:
 //
-//   guardrail → orchestrator ⇄ {bearbeiter, ablage}
+//   guardrail → orchestrator ⇄ {bearbeiter, pruefer, ablage}
 //                   ⛔ hält bei human_approval
 //                   → (nur bei Freigabe) zusteller → END
 //
@@ -28,6 +28,7 @@ import { modelFor } from "../../kernel/config/env.js";
 
 import { prompts } from "./prompts.js";
 import { bearbeiterNode } from "./agents/bearbeiter.js";
+import { prueferNode } from "./agents/pruefer.js";
 import { ablageNode } from "./agents/ablage.js";
 import { zustellerNode } from "./agents/zusteller.js";
 
@@ -40,6 +41,16 @@ const MAX_TASK_LENGTH = 3000;
 // nicht die Syntax, sondern die Logik.
 const stateFields = {
   ergebnis: Annotation({ reducer: keepIfFilled, default: () => "" }),
+
+  // Das Urteil des QA-Tors. `lastWins`, NICHT `keepIfFilled`: `null` heißt hier
+  // „ungeprüft" und ist eine Aussage, kein fehlender Wert. Der Bearbeiter muss
+  // dieses `null` zurückschreiben dürfen — sonst dreht die Revision durch.
+  istFreigegeben: Annotation({ reducer: lastWins, default: () => null }),
+
+  // Die Rückmeldung des Prüfers. Sie geht in den Prompt des Bearbeiters — eine
+  // Revisionsschleife, deren Produzent die Kritik nie sieht, dreht sich nur.
+  gruende: Annotation({ reducer: lastWins, default: () => "" }),
+
   abgelegt: Annotation({ reducer: lastWins, default: () => false }),
   zugestellt: Annotation({ reducer: lastWins, default: () => false }),
 };
@@ -66,7 +77,8 @@ const brakes = [
       : null,
 
   // 3: Zu viele Durchgänge → hart abbrechen und an den Menschen geben.
-  //    Der Schutzschalter. Er greift, weil `bearbeiter` den Zähler erhöht.
+  //    Der Schutzschalter. Er greift, weil `bearbeiter` den Zähler erhöht —
+  //    und seit dem QA-Tor kann er im Live-Pfad wirklich auslösen.
   (s) =>
     s.revisionCount >= MAX_REVISIONS
       ? {
@@ -86,21 +98,50 @@ const brakes = [
         }
       : null,
 
-  // 5: Ergebnis da, aber noch nicht abgelegt → ablegen.
-  //    HIER WÄCHST DIE DOMÄNE: Zwischen 4 und 5 gehört ein QA-Tor. Achte auf
-  //    die Unterscheidung null gegen false — `null` heißt „ungeprüft", `false`
-  //    heißt „abgelehnt". Beides gleich zu behandeln ist der klassische Fehler:
-  //    der Prüfer ruft sich endlos selbst auf, bis das Rekursionslimit greift.
+  // 5: Ergebnis da, aber UNGEPRÜFT → QA-Tor.
+  //    `== null` fängt null UND undefined. Der Unterschied zu Bremse 6 ist die
+  //    ganze Pointe: `null` heißt „ungeprüft", `false` heißt „abgelehnt".
+  //    Behandelt man beide gleich, routet der Prüfer sich endlos selbst an,
+  //    bis das Rekursionslimit greift — der klassische Fehler an dieser Stelle.
   (s) =>
-    s.ergebnis && !s.abgelegt
-      ? { nextAgent: "ablage", log: ["🧠 BREMSE5: Ergebnis da → ablage"] }
+    s.ergebnis && s.istFreigegeben == null
+      ? {
+          nextAgent: "pruefer",
+          log: ["🧠 BREMSE5: Ergebnis ungeprüft → pruefer"],
+        }
+      : null,
+
+  // 6: Abgelehnt → zurück an den Bearbeiter, eine Revision.
+  //    HIER wächst `revisionCount` im Live-Pfad wirklich. Damit wird Bremse 3
+  //    vom Papier zum Schutzschalter: sie kann jetzt auslösen.
+  (s) =>
+    s.ergebnis && s.istFreigegeben === false
+      ? {
+          nextAgent: "bearbeiter",
+          log: ["🧠 BREMSE6: Prüfung abgelehnt → bearbeiter (Revision)"],
+        }
+      : null,
+
+  // 7: Freigegeben und noch nicht abgelegt → ablegen.
+  //    Die Freigabe steht ausdrücklich in der Bedingung, nicht nur implizit
+  //    dadurch, dass 5 und 6 vorher greifen: so bleibt diese Bremse auch für
+  //    sich gelesen richtig.
+  (s) =>
+    s.ergebnis && s.istFreigegeben === true && !s.abgelegt
+      ? { nextAgent: "ablage", log: ["🧠 BREMSE7: freigegeben → ablage"] }
       : null,
 ];
 
-const validAgents = ["bearbeiter", "ablage", "human_approval", "END"];
+const validAgents = [
+  "bearbeiter",
+  "pruefer",
+  "ablage",
+  "human_approval",
+  "END",
+];
 
 const routingSchema = z.object({
-  nextAgent: z.enum(["bearbeiter", "ablage", "END"]),
+  nextAgent: z.enum(["bearbeiter", "pruefer", "ablage", "END"]),
   reason: z.string(),
 });
 
@@ -168,12 +209,13 @@ export const beispielDomain = registerDomain({
     }),
     orchestrator: createRouter({ brakes, validAgents, llmRouter }),
     bearbeiter: bearbeiterNode,
+    pruefer: prueferNode,
     ablage: ablageNode,
     zusteller: zustellerNode,
   },
   entry: "guardrail",
   hub: "orchestrator",
-  spokes: ["bearbeiter", "ablage"],
+  spokes: ["bearbeiter", "pruefer", "ablage"],
   terminal: "zusteller",
 });
 

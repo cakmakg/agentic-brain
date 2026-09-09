@@ -58,7 +58,7 @@ agentic-brain/
 │   │   └── registry.js               alan kaydı
 │   ├── domains/beispiel/             ANLAM — örnek alan
 │   │   ├── domain.js                 dikişin dört noktası
-│   │   ├── agents/                   bearbeiter · ablage · zusteller
+│   │   ├── agents/                   bearbeiter · pruefer · ablage · zusteller
 │   │   ├── prompts.js                tüm promptlar tek dosyada
 │   │   └── actions.js                beyaz liste
 │   ├── adapters/http/server.js       dış temas

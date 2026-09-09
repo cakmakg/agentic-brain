@@ -11,10 +11,9 @@
 // ist der Schutzschalter gegen eine endlose Schleife — er ist auch dann live,
 // wenn diese Domäne noch keine Revisionsschleife fährt.
 //
-// HIER WÄCHST DIE DOMÄNE: Ein QA-Tor („prüfer") wird ein zweiter Spoke, der
-// `istFreigegeben` (Reducer `lastWins`) und eine Rückmeldung schreibt. Trenn
-// Produzent und Prüfer strikt — sagst du demselben Modell „schreib und
-// kritisiere dich selbst", findet es seine eigene Arbeit gut.
+// Seit dem QA-Tor (`pruefer`) ist dieser Knoten der Produzent EINER
+// Revisionsschleife: er läuft erneut, wenn der Prüfer abgelehnt hat, und
+// bekommt dessen Rückmeldung über `state.gruende` in den Prompt.
 
 import { llmText } from "../../../kernel/llm/adapter.js";
 import { modelFor } from "../../../kernel/config/env.js";
@@ -29,6 +28,12 @@ export async function bearbeiterNode(state) {
 
   return {
     ergebnis: String(ergebnis),
+    // Eine NEUE Fassung ist ungeprüft. Ohne dieses Zurücksetzen bliebe
+    // `istFreigegeben` auf `false` stehen, BREMSE 6 griffe sofort wieder, und
+    // der Bearbeiter riefe sich selbst auf, bis der Schutzschalter kommt.
+    // Das ist die Stelle, an der `lastWins` gebraucht wird: `keepIfFilled`
+    // könnte dieses `null` nicht schreiben.
+    istFreigegeben: null,
     revisionCount: 1, // der Akkumulator-Reducer addiert +1 → Schutzschalter
     nextAgent: "orchestrator", // jeder Agent kehrt zum Hub zurück
     log: [

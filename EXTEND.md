@@ -45,7 +45,12 @@ grep -rn "<deine-domäne>" src/kernel/    # muss leer sein
 
 ## Schritt 2 — Ein QA-Tor (Revisionsschleife)
 
-Die Domäne `beispiel` hat bewusst keins. Es ist die erste Erweiterung, die sich lohnt.
+> **Seit Etappe 1 ist dieser Schritt in `beispiel` vollzogen** (2026-09-09). Er steht hier
+> weiter als Anleitung — aber nicht mehr als Aufgabe, sondern als das Muster, das du in
+> `src/domains/beispiel/agents/pruefer.js` fertig nachlesen kannst. Für deine eigene Domäne
+> baust du dasselbe; die Fallen unten sind die, die dabei wirklich zuschlagen.
+
+So sieht es aus:
 
 - Ein **zweiter Spoke** `pruefer`, mit strukturierter Ausgabe: `{ istFreigegeben, gruende }`.
 - Ein State-Feld `istFreigegeben` mit `lastWins` — **nicht** mit Leer-Schutz.
@@ -62,6 +67,16 @@ selbst", findet es seine eigene Arbeit gut.
 
 Der Zähler `revisionCount` wächst dadurch wirklich, und der Schutzschalter (Bremse 3) wird
 scharf. Prüf das mit einem Fall im Datensatz, dessen Erwartung `bearbeiterAufrufe: 2` lautet.
+
+**Und noch eine Falle, die erst beim Bauen auffiel:** der Bearbeiter muss `istFreigegeben`
+bei jeder neuen Fassung auf `null` **zurücksetzen**. Sonst bleibt das Feld auf `false`, die
+Ablehnungs-Bremse greift sofort wieder, und der Bearbeiter ruft sich selbst auf, bis der
+Schutzschalter kommt — dieselbe Endlosschleife wie oben, nur eine Bremse weiter. Genau
+dafür braucht das Feld `lastWins`: `keepIfFilled` könnte dieses `null` nicht schreiben.
+
+In `beispiel` belegt: `RV-1` (`bearbeiterAufrufe: 2`) und `SS-1` (Dauerablehnung läuft bis
+`MAX_REVISIONS` und wird abgefangen) im Golden-Datensatz, dazu
+`tests/revisionsschleife.test.js`.
 
 ---
 

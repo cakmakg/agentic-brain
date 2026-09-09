@@ -64,6 +64,18 @@ test("Entscheidungsfeld: humanApproval startet als null (weder ja noch nein)", (
   assert.equal(standard("zugestellt"), false);
 });
 
+test("QA-Tor: istFreigegeben startet ungeprüft und lässt sich auf null ZURÜCKsetzen", () => {
+  // Der Bearbeiter schreibt bei jeder neuen Fassung `null` — „ungeprüft".
+  // Trüge dieses Feld `keepIfFilled`, käme das null nie an: `istFreigegeben`
+  // bliebe auf `false`, BREMSE 6 griffe erneut und der Bearbeiter riefe sich
+  // selbst auf, bis der Schutzschalter kommt. Genau dafür steht dieser Test.
+  assert.equal(standard("istFreigegeben"), null);
+  assert.equal(reduziere("istFreigegeben", false, null), null);
+  assert.equal(reduziere("istFreigegeben", true, false), false);
+  assert.equal(reduziere("istFreigegeben", false, true), true);
+  assert.equal(reduziere("istFreigegeben", true, undefined), true);
+});
+
 test("Log: wird angehängt, nie ersetzt", () => {
   assert.deepEqual(reduziere("log", ["a"], ["b"]), ["a", "b"]);
   assert.deepEqual(reduziere("log", ["a"], undefined), ["a"]);

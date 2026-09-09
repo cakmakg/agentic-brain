@@ -1,10 +1,13 @@
 {
   "hinweis": "Kein Sammelsurium von Beispielinhalten: jede Aufgabe prueft eine Regel und traegt ihr erwartetes Ergebnis. Die Erwartungen sind AUS DEN REGELN abgeleitet (Bremsenreihenfolge in src/domains/beispiel/domain.js, Guardrail-Gewichte ebendort), nicht aus einem beobachteten Lauf uebernommen. Wer eine Erwartung an einen roten Lauf anpasst, hat die Messung abgeschafft. Aendert sich eine Regel, wird die Erwartung NEU ABGELEITET.",
+  "herleitung": "Alle Sequenzen sind aus der Bremsenreihenfolge abgeleitet, nicht aus einem Lauf abgeschrieben. Seit dem QA-Tor (Etappe 1) gilt: BREMSE4 (!ergebnis) schickt zum bearbeiter; BREMSE5 (ergebnis && istFreigegeben == null) zum pruefer; BREMSE6 (istFreigegeben === false) zurueck zum bearbeiter, der istFreigegeben wieder auf null setzt; BREMSE7 (istFreigegeben === true) zur ablage; BREMSE2 (abgelegt) zur menschlichen Genehmigung; BREMSE3 (revisionCount >= MAX_REVISIONS = 5) bricht die Schleife ab und gibt an den Menschen. Daraus folgt jede Laenge unten.",
   "sequenzen": {
     "goldener-pfad": [
       "guardrail",
       "orchestrator",
       "bearbeiter",
+      "orchestrator",
+      "pruefer",
       "orchestrator",
       "ablage",
       "orchestrator",
@@ -16,6 +19,8 @@
       "orchestrator",
       "bearbeiter",
       "orchestrator",
+      "pruefer",
+      "orchestrator",
       "ablage",
       "orchestrator",
       "__interrupt__",
@@ -26,11 +31,51 @@
       "orchestrator",
       "bearbeiter",
       "orchestrator",
+      "pruefer",
+      "orchestrator",
       "ablage",
       "orchestrator",
       "__interrupt__",
       "human_approval",
       "zusteller"
+    ],
+    "eine-revision": [
+      "guardrail",
+      "orchestrator",
+      "bearbeiter",
+      "orchestrator",
+      "pruefer",
+      "orchestrator",
+      "bearbeiter",
+      "orchestrator",
+      "pruefer",
+      "orchestrator",
+      "ablage",
+      "orchestrator",
+      "__interrupt__"
+    ],
+    "schutzschalter": [
+      "guardrail",
+      "orchestrator",
+      "bearbeiter",
+      "orchestrator",
+      "pruefer",
+      "orchestrator",
+      "bearbeiter",
+      "orchestrator",
+      "pruefer",
+      "orchestrator",
+      "bearbeiter",
+      "orchestrator",
+      "pruefer",
+      "orchestrator",
+      "bearbeiter",
+      "orchestrator",
+      "pruefer",
+      "orchestrator",
+      "bearbeiter",
+      "orchestrator",
+      "__interrupt__"
     ]
   },
   "aufgaben": [
@@ -46,8 +91,9 @@
         "artefaktstatus": "AWAITING_APPROVAL",
         "queueEintraege": 0,
         "threatScore": 0,
-        "llmAufrufe": 1,
-        "bearbeiterAufrufe": 1
+        "llmAufrufe": 2,
+        "bearbeiterAufrufe": 1,
+        "prueferAufrufe": 1
       }
     },
     {
@@ -62,8 +108,9 @@
         "artefaktstatus": "AWAITING_APPROVAL",
         "queueEintraege": 0,
         "threatScore": 0,
-        "llmAufrufe": 1,
-        "bearbeiterAufrufe": 1
+        "llmAufrufe": 2,
+        "bearbeiterAufrufe": 1,
+        "prueferAufrufe": 1
       }
     },
     {
@@ -78,8 +125,9 @@
         "artefaktstatus": "AWAITING_APPROVAL",
         "queueEintraege": 0,
         "threatScore": 0,
-        "llmAufrufe": 1,
-        "bearbeiterAufrufe": 1
+        "llmAufrufe": 2,
+        "bearbeiterAufrufe": 1,
+        "prueferAufrufe": 1
       }
     },
 
@@ -138,7 +186,8 @@
         "artefaktstatus": "ZUGESTELLT",
         "queueEintraege": 1,
         "threatScore": 0,
-        "bearbeiterAufrufe": 1
+        "bearbeiterAufrufe": 1,
+        "prueferAufrufe": 1
       }
     },
     {
@@ -153,7 +202,8 @@
         "artefaktstatus": "ZUGESTELLT",
         "queueEintraege": 1,
         "threatScore": 0,
-        "bearbeiterAufrufe": 1
+        "bearbeiterAufrufe": 1,
+        "prueferAufrufe": 1
       }
     },
     {
@@ -168,7 +218,47 @@
         "artefaktstatus": "ZUGESTELLT",
         "queueEintraege": 1,
         "threatScore": 0,
-        "bearbeiterAufrufe": 1
+        "bearbeiterAufrufe": 1,
+        "prueferAufrufe": 1
+      }
+    },
+
+    {
+      "id": "RV-1",
+      "gruppe": "revisionsschleife",
+      "art": "workflow",
+      "hinweis": "Der Beweis, dass die Revisionsschleife wirklich laeuft. Der Marker 'nachbessern' laesst den Pruefer den ersten Durchgang ablehnen; der Bearbeiter setzt istFreigegeben auf null zurueck und liefert erneut. bearbeiterAufrufe: 2 ist die Erwartung, die vorher NICHT erfuellbar war, weil nie etwas abgelehnt wurde.",
+      "task": "Entwurf zum Quartalsbericht, bitte nachbessern.",
+      "genehmigung": null,
+      "erwartet": {
+        "sequenz": "eine-revision",
+        "endstatus": "AWAITING_APPROVAL",
+        "artefaktstatus": "AWAITING_APPROVAL",
+        "queueEintraege": 0,
+        "threatScore": 0,
+        "guardrail": "durchgelassen",
+        "llmAufrufe": 4,
+        "bearbeiterAufrufe": 2,
+        "prueferAufrufe": 2
+      }
+    },
+    {
+      "id": "SS-1",
+      "gruppe": "schutzschalter",
+      "art": "workflow",
+      "hinweis": "Der Marker 'unzureichend' laesst den Pruefer IMMER ablehnen. Damit laeuft der Zaehler bis MAX_REVISIONS = 5 und BREMSE3 bricht ab — der Schutzschalter loest im Live-Pfad aus, statt nur zu existieren. artefaktstatus bleibt null, weil die ablage nie erreicht wird: abgebrochen wird VOR dem Speichern.",
+      "task": "Notiz, deren Datenlage unzureichend ist.",
+      "genehmigung": null,
+      "erwartet": {
+        "sequenz": "schutzschalter",
+        "endstatus": "AWAITING_APPROVAL",
+        "artefaktstatus": null,
+        "queueEintraege": 0,
+        "threatScore": 0,
+        "guardrail": "durchgelassen",
+        "llmAufrufe": 9,
+        "bearbeiterAufrufe": 5,
+        "prueferAufrufe": 4
       }
     },
 

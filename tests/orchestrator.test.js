@@ -23,6 +23,8 @@ frischerZustand();
 const zustand = (over = {}) => ({
   task: "Aufgabe",
   ergebnis: "",
+  istFreigegeben: null, // „ungeprüft" — nicht „abgelehnt"
+  gruende: "",
   revisionCount: 0,
   abgelegt: false,
   humanApproval: null,
@@ -70,15 +72,63 @@ test("BREMSE 4: kein Ergebnis → bearbeiter", async () => {
   assert.equal(r.nextAgent, "bearbeiter");
 });
 
-test("BREMSE 5: Ergebnis da, noch nicht abgelegt → ablage", async () => {
+test("BREMSE 5: Ergebnis da, aber ungeprüft → pruefer (QA-Tor)", async () => {
   const r = await orchestratorNode(zustand({ ergebnis: "da" }));
+  assert.equal(r.nextAgent, "pruefer");
+});
+
+test("BREMSE 6: Prüfung abgelehnt → zurück an den bearbeiter", async () => {
+  const r = await orchestratorNode(
+    zustand({ ergebnis: "da", istFreigegeben: false }),
+  );
+  assert.equal(r.nextAgent, "bearbeiter");
+  assert.match(r.log[0], /BREMSE6/);
+});
+
+test("BREMSE 7: freigegeben, noch nicht abgelegt → ablage", async () => {
+  const r = await orchestratorNode(
+    zustand({ ergebnis: "da", istFreigegeben: true }),
+  );
   assert.equal(r.nextAgent, "ablage");
 });
 
-test("SCHICHT 2: greift keine Bremse, entscheidet das LLM — im Mock sicher END", async () => {
-  // Alle Bremsen umgangen: abgelegt, menschlich entschieden, noch nicht zugestellt.
+test("null ist NICHT false: der dokumentierte Fehler an dieser Stelle", async () => {
+  // Der klassische Fehler ist, beide Werte gleich zu behandeln. Dann routet
+  // ein abgelehntes Ergebnis wieder zum Prüfer statt zum Bearbeiter — der
+  // Prüfer ruft sich endlos selbst an, bis das Rekursionslimit greift.
+  // `null` heißt „ungeprüft", `false` heißt „abgelehnt": zwei Zustände.
+  const ungeprueft = await orchestratorNode(zustand({ ergebnis: "da" }));
+  const abgelehnt = await orchestratorNode(
+    zustand({ ergebnis: "da", istFreigegeben: false }),
+  );
+  assert.equal(ungeprueft.nextAgent, "pruefer");
+  assert.equal(abgelehnt.nextAgent, "bearbeiter");
+  assert.notEqual(
+    ungeprueft.nextAgent,
+    abgelehnt.nextAgent,
+    "Behandelt eine Änderung null und false wieder gleich, wird genau hier rot",
+  );
+});
+
+test("BREMSE 2 geht dem QA-Tor VOR: abgelegt und ungeprüft → trotzdem Mensch", async () => {
+  // Sonst könnte ein späteres Urteil des Prüfers die HITL-Entscheidung
+  // überholen. Die Reihenfolge ist die Zusage.
   const r = await orchestratorNode(
-    zustand({ ergebnis: "da", abgelegt: true, humanApproval: true }),
+    zustand({ ergebnis: "da", abgelegt: true, istFreigegeben: null }),
+  );
+  assert.equal(r.nextAgent, "human_approval");
+});
+
+test("SCHICHT 2: greift keine Bremse, entscheidet das LLM — im Mock sicher END", async () => {
+  // Alle Bremsen umgangen: abgelegt, geprüft UND freigegeben, menschlich
+  // entschieden, noch nicht zugestellt.
+  const r = await orchestratorNode(
+    zustand({
+      ergebnis: "da",
+      istFreigegeben: true,
+      abgelegt: true,
+      humanApproval: true,
+    }),
   );
   assert.equal(r.nextAgent, "END");
   assert.match(r.log[0], /LLM-Routing/);

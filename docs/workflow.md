@@ -13,7 +13,8 @@ guardrail ──(Bedrohung / Budget)──▶ END
   ▼
 orchestrator ◀────────────┐
   │  ├── bearbeiter ──────┤   jeder Spoke kehrt zum Hub zurück
-  │  └── ablage ──────────┘
+  │  ├── pruefer ─────────┤   das QA-Tor; lehnt es ab, geht es zurück zum
+  │  └── ablage ──────────┘   bearbeiter — die Revisionsschleife
   │
   ├──▶ END
   │
@@ -29,19 +30,26 @@ Die letzte Verzweigung ist die zentrale Zusage. Sie ist **fail-closed**: nur ein
 
 ## Der goldene Pfad, Schritt für Schritt
 
-| # | Knoten | Was passiert | LLM? |
-| --- | --- | --- | --- |
-| 1 | `guardrail` | Kill-Switch prüfen, Muster bewerten, drei Wege | nein |
-| 2 | `orchestrator` | BREMSE 4 greift: kein Ergebnis | nein |
-| 3 | `bearbeiter` | erzeugt `ergebnis`, erhöht `revisionCount` | **ja** |
-| 4 | `orchestrator` | BREMSE 5 greift: Ergebnis da, nicht abgelegt | nein |
-| 5 | `ablage` | schreibt das Artefakt, setzt `abgelegt` | nein |
-| 6 | `orchestrator` | BREMSE 2 greift: abgelegt, keine Entscheidung | nein |
-| 7 | `human_approval` | **Der Graph hält an.** | — |
-| 8 | `zusteller` | nur bei `true`: reiht eine Aktion ein | nein |
+| #   | Knoten           | Was passiert                                                                  | LLM?   |
+| --- | ---------------- | ----------------------------------------------------------------------------- | ------ |
+| 1   | `guardrail`      | Kill-Switch prüfen, Muster bewerten, drei Wege                                | nein   |
+| 2   | `orchestrator`   | BREMSE 4 greift: kein Ergebnis                                                | nein   |
+| 3   | `bearbeiter`     | erzeugt `ergebnis`, erhöht `revisionCount`, setzt `istFreigegeben` auf `null` | **ja** |
+| 4   | `orchestrator`   | BREMSE 5 greift: Ergebnis da, aber ungeprüft                                  | nein   |
+| 5   | `pruefer`        | urteilt `{ istFreigegeben, gruende }`                                         | **ja** |
+| 6   | `orchestrator`   | BREMSE 7 greift: freigegeben, nicht abgelegt                                  | nein   |
+| 7   | `ablage`         | schreibt das Artefakt, setzt `abgelegt`                                       | nein   |
+| 8   | `orchestrator`   | BREMSE 2 greift: abgelegt, keine Entscheidung                                 | nein   |
+| 9   | `human_approval` | **Der Graph hält an.**                                                        | —      |
+| 10  | `zusteller`      | nur bei `true`: reiht eine Aktion ein                                         | nein   |
 
-Ein LLM-Aufruf für den ganzen Lauf. Das ist kein Zufall: die Bremsen lösen den Grossteil
-der Routing-Entscheidungen mit null Kosten.
+Zwei LLM-Aufrufe für den ganzen Lauf — einer je produzierendem Spoke. Alle sechs
+Routing-Entscheidungen dazwischen kosten nichts: das ist die Aussage der Bremsen.
+
+**Lehnt der Prüfer ab**, tritt zwischen 5 und 6 eine Runde dazu: BREMSE 6 schickt zurück
+zum `bearbeiter`, der eine neue Fassung liefert und `istFreigegeben` wieder auf `null`
+setzt. Erst dadurch wächst `revisionCount` im Live-Pfad — und erst dadurch kann BREMSE 3
+überhaupt auslösen.
 
 ## Die HITL-Mechanik
 
@@ -66,17 +74,27 @@ etwas zurückgibt, entscheidet — alles danach läuft nicht mehr.
 
 **Die Reihenfolge ist die Aussage der Domäne.** Für `beispiel`:
 
-| # | Bedingung | Ziel | Warum an dieser Stelle |
-| --- | --- | --- | --- |
-| 1 | `zugestellt` | `END` | nach der Zustellung nicht erneut in die Schleife |
-| 2 | `abgelegt && humanApproval == null` | `human_approval` | **vor jeder Datenlogik** |
-| 3 | `revisionCount >= 5` | `human_approval` | Schutzschalter |
-| 4 | `!ergebnis` | `bearbeiter` | |
-| 5 | `ergebnis && !abgelegt` | `ablage` | |
+| #   | Bedingung                                          | Ziel             | Warum an dieser Stelle                           |
+| --- | -------------------------------------------------- | ---------------- | ------------------------------------------------ |
+| 1   | `zugestellt`                                       | `END`            | nach der Zustellung nicht erneut in die Schleife |
+| 2   | `abgelegt && humanApproval == null`                | `human_approval` | **vor jeder Datenlogik**                         |
+| 3   | `revisionCount >= 5`                               | `human_approval` | Schutzschalter                                   |
+| 4   | `!ergebnis`                                        | `bearbeiter`     |                                                  |
+| 5   | `ergebnis && istFreigegeben == null`               | `pruefer`        | **ungeprüft**                                    |
+| 6   | `ergebnis && istFreigegeben === false`             | `bearbeiter`     | **abgelehnt** — Revision                         |
+| 7   | `ergebnis && istFreigegeben === true && !abgelegt` | `ablage`         |                                                  |
 
 Bremse 2 steht bewusst so weit oben: die HITL-Entscheidung darf niemals von einer späteren
 Regel überholt und niemals einem Modell überlassen werden. Der Test
 „BREMSE 2 geht der Datenlogik VOR" hält genau das fest.
+
+**Bremse 5 und 6 sind zwei Bremsen, nicht eine.** `null` heißt „ungeprüft", `false` heißt
+„abgelehnt" — das sind verschiedene Zustände. Behandelt man sie gleich, routet ein
+abgelehntes Ergebnis wieder zum Prüfer, der sich damit endlos selbst anruft, bis das
+Rekursionslimit greift. Der Test „null ist NICHT false" hält den Unterschied fest.
+
+Dass Bremse 3 im Live-Pfad wirklich auslöst, ist kein Argument, sondern ein Lauf: der Fall
+`SS-1` im Golden-Datensatz und der Test „Dauerablehnung löst BREMSE 3 aus".
 
 ## Schicht 2 und 3
 
@@ -90,13 +108,13 @@ nirgendwohin.
 
 ## Was der Lauf hinterlässt
 
-| Ort | Inhalt | Lebensdauer |
-| --- | --- | --- |
-| Event-Bus | Live-Anzeige (SSE) | flüchtig, Puffer 5 Minuten |
-| `evals/traces/<threadId>.jsonl` | eine Zeile je Knoten | bleibt, ist die Messquelle |
-| `.zustand/checkpoints-<domäne>.jsonl` | Graph-Checkpoints | bleibt, überlebt Neustart |
-| `.zustand/artefakte-<domäne>.jsonl` | das Artefakt | bleibt |
-| `.zustand/aktionen-<domäne>.jsonl` | Queue und Dedup-Index | bleibt |
+| Ort                                   | Inhalt                | Lebensdauer                |
+| ------------------------------------- | --------------------- | -------------------------- |
+| Event-Bus                             | Live-Anzeige (SSE)    | flüchtig, Puffer 5 Minuten |
+| `evals/traces/<threadId>.jsonl`       | eine Zeile je Knoten  | bleibt, ist die Messquelle |
+| `.zustand/checkpoints-<domäne>.jsonl` | Graph-Checkpoints     | bleibt, überlebt Neustart  |
+| `.zustand/artefakte-<domäne>.jsonl`   | das Artefakt          | bleibt                     |
+| `.zustand/aktionen-<domäne>.jsonl`    | Queue und Dedup-Index | bleibt                     |
 
 Der Ort ist über `STATE_DIR` und `TRACE_DIR` überschreibbar. Tests und Harness zeigen auf
 ein Temp-Verzeichnis — sonst schleppt der zweite Lauf den ersten mit, und der
