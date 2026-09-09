@@ -1,0 +1,26 @@
+{
+  "name": "agentic-brain",
+  "version": "0.1.0",
+  "description": "Domaenenunabhaengiges Startgeruest fuer menschlich genehmigte Multi-Agenten-Systeme.",
+  "private": true,
+  "type": "module",
+  "main": "src/bin/serve.js",
+  "scripts": {
+    "start": "node src/bin/serve.js",
+    "dev": "node --watch src/bin/serve.js",
+    "demo": "node src/bin/demo.js",
+    "test": "node --test --test-force-exit --experimental-test-coverage --test-coverage-lines=80 --test-coverage-exclude=\"tests/**\" --test-coverage-exclude=src/adapters/http/server.js --test-coverage-exclude=src/bin/*.js \"tests/**/*.test.js\"",
+    "evals": "node evals/runners/policy.js"
+  },
+  "dependencies": {
+    "@langchain/anthropic": "0.3.24",
+    "@langchain/core": "0.3.66",
+    "@langchain/langgraph": "0.2.74",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "zod": "3.23.8"
+  },
+  "overrides": {
+    "@langchain/core": "0.3.66"
+  }
+}

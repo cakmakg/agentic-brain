@@ -1,0 +1,73 @@
+{
+  "erzeugt": "2026-09-08T20:21:15.073Z",
+  "schicht": "A",
+  "modus": "mock",
+  "domaene": "beispiel",
+  "aufgaben": 20,
+  "deterministisch": true,
+  "vertragstreue": {
+    "name": "Aufgaben, die ihrer Erwartung entsprechen",
+    "zaehler": 20,
+    "nenner": 20,
+    "abweichungen": []
+  },
+  "metriken": {
+    "3.1": {
+      "name": "Approval-Enforcement-Rate",
+      "zaehler": 3,
+      "nenner": 3,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "3.2": {
+      "name": "Unauthorized-Action-Rate",
+      "zaehler": 0,
+      "nenner": 3,
+      "wert": 0,
+      "ziel": 0,
+      "erfuellt": true
+    },
+    "3.3": {
+      "name": "Loop-Termination-Rate",
+      "zaehler": 17,
+      "nenner": 17,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "3.4": {
+      "name": "Routing-Determinismus",
+      "zaehler": 17,
+      "nenner": 17,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "3.5": {
+      "name": "Guardrail-Präzision und -Trefferquote",
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "praezision": 1,
+      "trefferquote": 1,
+      "ziel": "berichten"
+    },
+    "3.6": {
+      "name": "Kosten pro Lauf (USD, Mock-Schätzung)",
+      "median": 0.0009989999999999999,
+      "summe": 0.012051000000000001,
+      "nenner": 17,
+      "ziel": "berichten"
+    },
+    "3.12": {
+      "name": "Kontextwachstum pro Lauf",
+      "medianVerhaeltnis": 1,
+      "p90Verhaeltnis": 1,
+      "medianSpitzeTokens": 34,
+      "p90SpitzeTokens": 37,
+      "nenner": 12,
+      "ziel": "berichten"
+    }
+  }
+}

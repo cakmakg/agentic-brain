@@ -1,0 +1,44 @@
+# Abhängigkeiten
+node_modules/
+
+# Umgebung & Geheimnisse
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# Betriebssystem / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Build-Ausgabe
+dist/
+build/
+
+# Claude Code — lokale Berechtigungen. Nicht auf die globale Ignore-Regel verlassen:
+# das Repo muss für sich allein ausreichen, sonst leckt die Datei bei jedem Klon.
+.claude/settings.local.json
+
+# Projektgedächtnis — die Sitzungsbrücke bleibt lokal,
+# die Entscheidungs- und Regelschicht wird committet.
+.gehirn/letzte-sitzung.md
+
+# Traces — je Lauf eine JSONL-Datei. Lokal das Werkzeug zur Ursachensuche,
+# im Repo Ballast. Committet wird nur, was als Beispiel dient.
+evals/traces/*
+!evals/traces/samples/
+
+# Messberichte entstehen aus einem datierten Lauf. Welche davon als Beleg ins
+# Repo gehören, ist eine bewusste Entscheidung — nicht ein Nebenprodukt.
+evals/reports/*
+!evals/reports/.gitkeep
+
+# Dauerhafter Zustand: Checkpoints, Artefakte, Aktionsqueue. Laufzeitdaten eines
+# konkreten Rechners — im Repo hätten sie nichts zu suchen. Der Ort ist über
+# STATE_DIR überschreibbar; Tests und Harness zeigen auf ein Temp-Verzeichnis.
+.zustand/
