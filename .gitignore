@@ -42,3 +42,13 @@ evals/reports/*
 # konkreten Rechners — im Repo hätten sie nichts zu suchen. Der Ort ist über
 # STATE_DIR überschreibbar; Tests und Harness zeigen auf ein Temp-Verzeichnis.
 .zustand/
+
+# Wissensgraph (graphify). Erzeugte Ausgabe eines Laufs, kein Vertrag: Graph,
+# HTML und Bericht entstehen jederzeit neu aus dem Korpus. Im Repo würden sie
+# bei jeder Änderung als Diff-Lärm auftauchen, ohne eine Zusage zu tragen.
+graphify-out/
+
+# Fremde Planungstexte und Arbeitsmaterial. Vorschlag, keine Quelle: was daraus
+# uebernommen wurde, steht in docs/roadmap.md §8 — mit Begruendung, wo dieser
+# Plan abweicht. Der Ausgangstext selbst ist nicht Teil dieses Repos.
+data/
