@@ -1,0 +1,21 @@
+# lefthook.yml — Etappe E0-A aus docs/engineering-discipline.md
+#
+# Der Hook liefert aus, er prueft nicht. In E0-A ist jede ESLint-Regel
+# `warn`, also endet `eslint` mit Status 0 und blockiert nichts. Das ist
+# Absicht: erst der Bestand, dann die Schranke.
+#
+# Prettier laeuft mit --write und legt die Datei zurueck in den Index.
+# Deshalb werden die 27 bestehenden Dateien NICHT in einem Zug formatiert:
+# jede Datei wird bei ihrer naechsten Bearbeitung mitgenommen. So bleibt
+# der Vergleich zur Baseline unbeschaedigt.
+
+pre-commit:
+  parallel: true
+  commands:
+    prettier:
+      glob: "*.{js,json,md,yml,yaml}"
+      run: npx prettier --write {staged_files}
+      stage_fixed: true
+    eslint:
+      glob: "*.js"
+      run: npx eslint {staged_files}

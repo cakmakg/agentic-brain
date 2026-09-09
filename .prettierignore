@@ -1,0 +1,10 @@
+node_modules/
+coverage/
+dist/
+build/
+.zustand/
+evals/traces/
+evals/reports/
+graphify-out/
+package-lock.json
+data/
