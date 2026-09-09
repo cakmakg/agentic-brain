@@ -21,6 +21,10 @@ const PFLICHTFELDER = [
   "artefaktstatus",
   "aktionen",
   "datensatz",
+  // Seit Etappe 2 Pflicht. Eine Domäne ohne Retrieval trägt eine leere
+  // Fallliste — das ist eine Aussage, kein Versehen. Optional wäre schlimmer:
+  // dann fiele 3.13 still weg und der Bericht meldete weiter grün.
+  "retrieval",
 ];
 
 export async function ladeAdapter(name) {

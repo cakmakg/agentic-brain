@@ -46,6 +46,27 @@ Ticket · Ticket-Triage · Kunden-Onboarding.
 
 ## Abgeschlossene Themen
 
+### Thema: Etappe 2 — messbare Autorisierung
+
+**Status:** 🟢 Abgeschlossen 2026-09-09. `npm test` 138/138, Schicht A 28/28, **3.13 = 0 %** bei Nenner 10; K5 grün, Trennlinie leer.
+Neu: Ebenen ② `context/` (envelope · embedding · ingest · store-Port + memory-Adapter ·
+aufbau) und ③ `retrieval/` (filter · suche). Fünf ADRs gefallen: 0005 (hexagonale Achse,
+löst einen Widerspruch zwischen `ARCHITECTURE.md` §7 und `engineering-discipline.md` auf),
+0006 (Port), 0007 (Hash-Embedding), 0008 (Filter in die Abfrage kompiliert, fail-closed),
+0009 (Envelope-Vererbung). **3.13 kann rot werden — belegt:** ohne die Mandantenprüfung
+springt sie auf 37,5 %. Ebene ① `connectors/` bleibt bewusst leer bis Etappe 3.
+
+### Thema: Etappe 1 — das QA-Tor `pruefer`
+
+**Status:** 🟢 Abgeschlossen 2026-09-09. `npm test` 107/107, Schicht A 22/22; die vier Zusagemetriken unverändert, Kosten- und Kontextbaseline bewusst neu.
+Neu: Spoke `agents/pruefer.js` mit strukturierter Ausgabe, State-Felder `istFreigegeben`
+(`lastWins`) und `gruende`, Bremsen 5/6/7 statt der alten 5. Belegt: `RV-1` trägt
+`bearbeiterAufrufe: 2` (der geforderte Beweis), und `SS-1` lässt den Prüfer dauerhaft
+ablehnen — damit löst BREMSE 3 zum ersten Mal im Live-Pfad aus, statt nur zu existieren.
+**Die Falle, die der Plan nicht kannte:** der Bearbeiter muss `istFreigegeben` bei jeder
+neuen Fassung auf `null` zurücksetzen, sonst greift die Ablehnungs-Bremse sofort wieder.
+Nachgetragen in `EXTEND.md` Schritt 2 und `docs/roadmap.md`.
+
 ### Thema: Etappe 0c — LangGraph 1.x und `npm audit`
 
 **Status:** 🟢 Abgeschlossen 2026-09-09. langgraph 1.4.14, `npm audit` `high: 0`; ADR-0003 grün, Etappe 0 damit geschlossen.

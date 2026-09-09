@@ -299,3 +299,325 @@ test -f src/domains/beispiel/domain.js \
 ```
 
 Stand 2026-09-09: 🟢 Rückgabewert 0.
+
+---
+
+## ADR-0005 — Die hexagonale Achse liegt innerhalb einer Ebene; `retrieval/` bleibt eine eigene Ebene
+
+**Datum:** 2026-09-09
+**Status:** Angenommen
+
+### Kontext
+
+Vor der ersten Zeile von Etappe 2 stellte sich heraus, dass zwei Dokumente sich
+widersprechen, und zwar genau darüber, wohin die neuen Dateien gehören.
+
+`ARCHITECTURE.md` §7 — der Vertrag — legt `context/` und `retrieval/` als **Geschwister**
+unter `src/kernel/` an; so nennt sie auch ADR-0002 und der Prüfbefehl `ls src/kernel`.
+`docs/engineering-discipline.md` skizziert dagegen `retrieval/filter.js` **innerhalb** von
+`kernel/context/`.
+
+Ein zweiter, kleinerer Widerspruch daneben: die Ebenentabelle in `docs/roadmap.md` §1 ordnet
+den „Ingest-Rahmen" der Ebene ① Connectors zu, dieselbe Skizze legt `ingest/pipeline.js`
+aber nach `context/`.
+
+Beides sind Fragen, die man nicht beim Schreiben der Datei beantworten will.
+
+### Entscheidung
+
+Wir folgen `ARCHITECTURE.md` §7: **`retrieval/` ist eine eigene Ebene neben `context/`,
+keine Unterschicht davon.** Die hexagonale Achse — Port, Adapter, reine Logik,
+Anwendungsfall — wird **nicht** zu Verzeichnissen auf Ebenenhöhe, sondern bleibt eine Rolle,
+die eine Datei **innerhalb** ihrer Ebene spielt.
+
+Und wir trennen die beiden Bedeutungen von „Ingest": `connectors/` ① holt aus einer
+**Quelle** und erfasst deren Berechtigungsmodell; `context/ingest/` ② nimmt ein bereits
+geholtes Dokument samt Envelope entgegen und macht Chunks daraus. Etappe 2 baut nur das
+zweite. `connectors/` bleibt nach Etappe 2 leer — das ist kein Versehen.
+
+### Begründung
+
+Der Vertrag gewinnt, weil er in der Autoritätskette steht (`CLAUDE.md`, Stufe 2) und `docs/`
+nicht. Das ist hier keine Formalie: `ls src/kernel` ist das Prüfkriterium von ADR-0002, und
+es zählt genau die sechs Ebenennamen auf. Läge `retrieval/` unter `context/`, prüfte dieser
+Befehl eine Ebene weniger, ohne dass es jemandem auffiele — die Ebene wäre noch da, aber
+nicht mehr überprüfbar.
+
+Die naheliegende Alternative — die hexagonale Achse als oberste Ordnerebene — ist dieselbe,
+die ADR-0002 für die sechs Ebenen schon abgelehnt hat, aus demselben Grund: zwei Achsen
+gleichzeitig als Verzeichnisbaum auszudrücken geht nicht, eine muss zur Regel werden.
+`docs/engineering-discipline.md` sagt das selbst („Die Regel, nicht der Ordner, hält das
+zusammen") und widerspricht sich nur in der Skizze darunter.
+
+Dass die beiden wartenden dependency-cruiser-Regeln als Glob geschrieben sind
+(`*/store/index.js`, `**/retrieval/filter.js`), ist der Grund, warum dieser Widerspruch so
+lange unbemerkt blieb: sie greifen in **beiden** Anordnungen. Die Regeln überleben diese
+Entscheidung unverändert.
+
+### Konsequenzen
+
+**Leichter:** Der Prüfbefehl von ADR-0002 bleibt vollständig, und jede neue Datei aus
+Etappe 2 hat eine Adresse, bevor sie geschrieben wird.
+
+**Schwerer:** Die Skizze in `docs/engineering-discipline.md` muss korrigiert werden, sonst
+bleibt der Widerspruch stehen und die nächste Person entscheidet ihn neu.
+
+**Eingehandelt:** Ein Zusammenbau-Ort wird nötig. Der Port darf seine Adapter nicht kennen
+(ADR-0006), also muss jemand anderes sie verdrahten. Diese Datei ist `context/aufbau.js` und
+ist ausdrücklich kein Port, sondern eine Kompositionswurzel.
+
+### Prüfkriterium
+
+```bash
+test -d src/kernel/retrieval \
+  && test ! -d src/kernel/context/retrieval \
+  && ! ls src/kernel | grep -qvxE 'connectors|context|retrieval|agent|action|governance|llm|persistence|config|registry\.js'
+# erwartet: Rückgabewert 0
+```
+
+Der letzte Teil steht bewusst als `! … grep -q` und nicht als blankes `grep -v`: ein `grep`
+ohne Treffer endet mit Rückgabewert 1. Die erste Fassung dieses Kriteriums verlangte
+„Rückgabewert 0 **und** keine Ausgabe" — beides zugleich ist unerfüllbar, und ein
+Prüfkriterium, das nie grün werden kann, ist schlimmer als keins. Aufgefallen beim ersten
+Ausführen, noch in Etappe 2.
+
+Stand 2026-09-09, nach Etappe 2: 🟢 Rückgabewert 0.
+
+---
+
+## ADR-0006 — Der Retrieval-Store ist ein Port mit zwei Adaptern
+
+**Datum:** 2026-09-09
+**Status:** Angenommen
+
+### Kontext
+
+Etappe 2 schreibt die erste Zeile Retrieval. Die naheliegende Abkürzung wäre, direkt gegen
+pgvector zu schreiben — das ist der Zielzustand, und ein Port wirkt wie Zeremoniell, solange
+es nur einen Adapter gibt.
+
+Dagegen stehen zwei Zusagen, die das Repo bereits gibt: der Mock-Modus („ohne
+`ANTHROPIC_API_KEY` läuft der komplette Ablauf Ende zu Ende") und K5 („`clone → install →
+demo` läuft durch"). Beide sind heute grün, weil nichts im Ablauf eine laufende
+Infrastruktur braucht.
+
+### Entscheidung
+
+Der Store ist ein **Port** in `src/kernel/context/store/index.js` mit einem Adapter je
+Speicher: `memory.js` jetzt, `postgres.js` in Etappe 3. **Der Port importiert keinen
+Adapter.** Verdrahtet wird in `context/aufbau.js`; `npm run demo` und `npm run evals`
+benutzen **immer** den `memory`-Adapter.
+
+### Begründung
+
+Ohne diese Entscheidung nimmt die erste Retrieval-Zeile dem Repo seine Grundlage, und sie
+kommt nicht zurück: sobald der Ablauf eine Datenbank braucht, ist K5 gebrochen, Schicht A
+läuft nicht mehr in CI, und die Messung der Autorisierung — der eigentliche Zweck von
+Etappe 2 — hinge an einem Dienst, der beim Messen laufen muss.
+
+Die Alternative „erst pgvector, Port später" scheitert daran, dass ein nachträglich
+eingezogener Port nur die Aufrufe abbildet, die es zufällig schon gibt. Ein Port, der nach
+seinem einzigen Adapter geformt wurde, ist keiner.
+
+Der Preis ist ehrlich zu nennen: **ein Adapter beweist kein Port.** Erst der zweite
+(Etappe 3) zeigt, ob die Grenze an der richtigen Stelle liegt. Bis dahin ist diese ADR eine
+Wette, keine Messung.
+
+### Konsequenzen
+
+**Leichter:** Schicht A bleibt deterministisch, kostenlos und in CI ausführbar. Etappe 3 kann
+dieselbe Eval-Suite gegen den Postgres-Adapter fahren — das ist dort ausdrücklich das Tor.
+
+**Schwerer:** Jede Store-Fähigkeit muss zweimal gedacht werden: einmal als Vertrag im Port,
+einmal als Umsetzung im Adapter. Wer das umgeht, indem er ein Adapter-Detail durchreicht,
+hebt die Entscheidung auf, ohne sie zu widerrufen.
+
+**Eingehandelt:** `memory.js` muss die Semantik des späteren Adapters **nachbilden**, nicht
+nur irgendwie suchen. Weicht die Reihenfolge der Treffer ab, wandert der Unterschied als
+stille Verhaltensänderung nach Etappe 3.
+
+### Prüfkriterium
+
+```bash
+grep -nE "from \"\./(memory|postgres)" src/kernel/context/store/index.js
+# erwartet: keine Ausgabe — ein Port kennt seine Adapter nicht
+```
+
+Stand 2026-09-09, nach Etappe 2: 🟢 keine Ausgabe — der Port kennt seine Adapter nicht.
+
+---
+
+## ADR-0007 — Das Embedding der Schicht A kommt aus einem Hash, nicht aus einem Modell
+
+**Datum:** 2026-09-09
+**Status:** Angenommen
+
+### Kontext
+
+Retrieval braucht Vektoren. Ein echtes Embedding-Modell kostet Geld, braucht einen Schlüssel
+und liefert nicht bei jedem Lauf exakt dasselbe.
+
+Schicht A misst aber nicht, ob die Einbettung gut ist. Sie misst, ob **kein unberechtigter
+Chunk zurückkommt**. Für diese Frage ist der Vektor Beiwerk: er entscheidet, welche der
+erlaubten Treffer oben stehen — nicht, ob ein verbotener dabei ist.
+
+### Entscheidung
+
+Im Mock-Modus wird der Vektor **deterministisch aus dem Inhalt abgeleitet** (Hash), ohne
+Modellaufruf. Ein echtes Embedding kommt mit Etappe 3 und ist Sache von Schicht B.
+
+### Begründung
+
+Die Alternative wäre, Schicht A gegen ein echtes Modell zu fahren. Damit verlöre die
+wichtigste Messung des Projekts genau die drei Eigenschaften, wegen derer sie überhaupt
+etwas beweist: deterministisch, kostenlos, in CI. Eine Autorisierungsmessung, die bei jedem
+Lauf leicht anders ausfällt, kann keinen Leckfall von Rauschen unterscheiden.
+
+Umgekehrt gilt die Grenze wörtlich und gehört benannt: **dieser Aufbau kann nicht zeigen,
+dass die Suche gute Treffer liefert.** Er zeigt, dass sie keine verbotenen liefert. Wer die
+Zahl 3.13 als Aussage über Suchqualität liest, liest sie falsch.
+
+### Konsequenzen
+
+**Leichter:** `npm run evals` bleibt ohne Schlüssel lauffähig, und 3.13 ist bei zwei
+Durchgängen identisch — sonst wäre die Metrik nicht beweisfähig.
+
+**Schwerer:** Die Rangfolge der Treffer ist im Mock ohne fachliche Bedeutung. Ein Test, der
+sich auf „das relevanteste Dokument steht oben" stützt, misst den Hash und nicht die Suche.
+
+**Eingehandelt:** Etappe 3 wechselt das Embedding und **darf 3.13 nicht bewegen**. Tut sie es
+doch, hing die Autorisierung an der Rangfolge — und das wäre ein Defekt, kein Nebeneffekt.
+
+### Prüfkriterium
+
+```bash
+node --test tests/context.test.js
+# erwartet: gruen — darunter der Fall "derselbe Text ergibt denselben Vektor"
+```
+
+Stand 2026-09-09, nach Etappe 2: 🟢 31 Tests gruen, darunter der Determinismus des Vektors.
+
+---
+
+## ADR-0008 — Der ACL-Filter wird in die Abfrage kompiliert und ist fail-closed
+
+**Datum:** 2026-09-09
+**Status:** Angenommen
+
+### Kontext
+
+Es gibt zwei Wege, Berechtigungen im Retrieval durchzusetzen. Entweder man sucht zuerst und
+wirft danach weg, was der Aufrufer nicht sehen darf — oder man baut die Berechtigung in die
+Abfrage ein, sodass ein unberechtigter Chunk gar nicht erst zurückkommt.
+
+Der erste Weg ist bequemer und in fast jeder RAG-Anleitung zu finden. Er hat zwei Fehler, die
+beide still sind: ein vergessener Filterzweig fällt nicht auf, und der Chunk hat den Speicher
+bereits verlassen — er liegt im Prozess, im Log, im Trace.
+
+### Entscheidung
+
+Der ACL-Filter wird **in die Abfrage kompiliert**, nicht nachgelagert angewandt — in
+**beiden** Pfaden der hybriden Suche, dem vektoriellen und dem lexikalischen. Lässt sich der
+Principal oder die Richtlinie nicht auflösen, ist das Ergebnis **leer**, nicht ungefiltert.
+
+### Begründung
+
+Das ist dieselbe Zusage, die der Graph an der HITL-Kante schon gibt: **alles, was nicht
+ausdrücklich erlaubt ist, endet bei nichts.** Dort prüft die Kante auf exakt `true`; hier
+liefert ein unauflösbarer Principal exakt null Treffer. Eine zweite Stelle mit derselben
+Logik und umgekehrtem Vorzeichen wäre der Punkt, an dem das Sicherheitsmodell
+auseinanderfällt.
+
+„Beide Pfade" steht ausdrücklich in der Entscheidung, weil hybride Suche der klassische Ort
+für ein halbes Leck ist: der Vektorpfad wird gefiltert, der Stichwortpfad nicht, und die
+Vereinigung der beiden ist ungefiltert. Der Fehler ist nicht theoretisch — er ist die
+naheliegende Art, hybride Suche zu bauen.
+
+### Konsequenzen
+
+**Leichter:** Ein Leck ist nicht mehr eine Frage von Sorgfalt an jeder Aufrufstelle, sondern
+eine Frage der Abfrage an genau einer.
+
+**Schwerer:** Der `memory`-Adapter muss den Filter genauso in seine Suche ziehen, wie es
+später die SQL-Abfrage tut. Ein `memory`-Adapter, der bequem alles durchsucht und danach
+filtert, würde 3.13 grün melden und die Entscheidung trotzdem verletzen — die Zahl wäre dann
+eine Aussage über den Adapter, nicht über den Entwurf.
+
+**Eingehandelt:** Fail-closed heißt auch, dass ein Konfigurationsfehler wie ein Angriff
+aussieht: kein Ergebnis. Das ist gewollt und muss im Log unterscheidbar sein, sonst sucht
+jemand stundenlang den falschen Fehler.
+
+### Prüfkriterium
+
+```bash
+npm run evals
+# erwartet: 3.13 Unauthorized-Retrieval-Rate = 0 %, inklusive der Cross-Tenant- und
+# Cross-User-Faelle und des Falls "Principal nicht aufloesbar"
+```
+
+Stand 2026-09-09, nach Etappe 2: 🟢 3.13 = 0 % bei Nenner 10, ueber sechs Faelle inklusive
+Cross-Tenant (AC-5) und fail-closed (AC-6). Belegt durch eine **Mutationsprobe**: nimmt man
+die Mandantenpruefung aus `filter.js` heraus, springt 3.13 auf 37,5 % und der Lauf endet mit
+Rueckgabewert 1. Eine Metrik, die nicht rot werden kann, misst nichts.
+
+---
+
+## ADR-0009 — Die Envelope wird auf jeden Chunk vererbt, und der Principal steht ab sofort im Schema
+
+**Datum:** 2026-09-09
+**Status:** Angenommen
+
+### Kontext
+
+Ein Dokument trägt seine Berechtigungen; ein Chunk ist das, was tatsächlich zurückgegeben
+wird. Dazwischen liegt die Stelle, an der Berechtigungen verloren gehen: wird die Berechtigung
+nur am Dokument geführt und beim Suchen nachgeschlagen, hängt jede Abfrage an einem Join, den
+jemand vergessen kann.
+
+Dieselbe Frage stellte sich schon einmal, bei `tenantId` (`EXTEND.md` Schritt 5). Die Antwort
+war, das Feld mitzuführen, obwohl es nur einen Mandanten gab.
+
+### Entscheidung
+
+Jeder Chunk trägt eine **Envelope** — Mandant, Quelle, Dokument-Id, Sichtbarkeit, erlaubte
+Gruppen —, die beim Ingest vom Dokument **auf jeden Chunk vererbt** wird. `principal` entsteht
+in Etappe 2 als **Typ** und wird aus Fixtures gespeist, nicht aus einem Verzeichnis; `agentId`
+wird im selben Zug mitgeführt.
+
+### Begründung
+
+Wie bei `tenantId`: das Feld später nachzuziehen hieße, jede Abfrage neu zu schreiben und
+jeden bereits gespeicherten Chunk nachzurüsten. Heute mitzuführen kostet nichts.
+
+Dass der Principal ein **Typ aus Fixtures** ist und keine echte Identität, ist die
+Entscheidung, die Etappe 2 überhaupt von der Vertikale löst: der Filter braucht keinen
+Verzeichnisdienst, er braucht einen Principal. Die echte Auflösung — mit TTL und ohne
+Dauer-Cache — kommt in Etappe 4 und ändert am Filter keine Zeile.
+
+Die Alternative, Berechtigungen am Dokument zu lassen und beim Suchen zu verbinden, ist nicht
+falsch, aber sie verschiebt die Zusage von einer Datenstruktur in eine Abfrage. Genau das will
+ADR-0008 nicht.
+
+### Konsequenzen
+
+**Leichter:** Der Filter aus ADR-0008 arbeitet auf einem einzigen Datensatz und braucht keinen
+Join. Ein Chunk ohne Envelope ist strukturell unmöglich statt nur unerwünscht.
+
+**Schwerer:** Redundanz. Dieselbe Berechtigung steht an jedem Chunk eines Dokuments. Ändert
+sie sich, müssen alle Chunks nachgezogen werden — genau das misst Etappe 3 als **3.14 Latenz
+des Berechtigungsentzugs**. Diese ADR erzeugt jene Metrik.
+
+**Eingehandelt:** `principal` ist bis Etappe 4 eine **Behauptung des Aufrufers**, keine
+geprüfte Identität. Schicht A misst deshalb, ob der Filter einem gegebenen Principal korrekt
+folgt — nicht, ob der Principal echt ist. Diese Grenze gehört in jede Aussage über 3.13.
+
+### Prüfkriterium
+
+```bash
+node --test tests/context.test.js
+# erwartet: gruen — darunter "ein Chunk ohne Envelope wird beim Ingest abgelehnt"
+# und "zwei Chunks desselben Dokuments tragen dieselbe Envelope"
+```
+
+Stand 2026-09-09, nach Etappe 2: 🟢 `tests/context.test.js` gruen, darunter beide genannten
+Faelle.

@@ -1,0 +1,149 @@
+{
+  "hinweis": "Der Datensatz fuer Metrik 3.13 (Unauthorized-Retrieval-Rate). Die erwarteten sichtbaren Dokumente sind AUS DEM REGELWERK UNTEN ABGELEITET, nicht aus einem beobachteten Lauf. Wer eine Erwartung an einen roten Lauf anpasst, hat die Messung abgeschafft.",
+  "regelwerk": [
+    "1. Mandantengrenze zuerst und absolut: envelope.tenantId !== principal.tenantId -> nie sichtbar, egal welche Stufe.",
+    "2. Der Besitzer sieht sein Dokument auf JEDER Stufe: envelope.besitzerId === principal.benutzerId -> sichtbar.",
+    "3. sichtbarkeit 'oeffentlich' -> jeder Principal desselben Mandanten.",
+    "4. sichtbarkeit 'gruppe' -> nur wer in erlaubteGruppen ist (Besitzer bereits durch Regel 2).",
+    "5. sichtbarkeit 'privat' -> niemand ausser dem Besitzer.",
+    "6. Principal nicht aufloesbar (fehlender Mandant, Benutzer oder Gruppenliste) -> LEERES Ergebnis, nicht ungefiltert (ADR-0008)."
+  ],
+  "principale": {
+    "anna": { "tenantId": "t1", "benutzerId": "anna", "gruppen": ["finanz"] },
+    "bruno": {
+      "tenantId": "t1",
+      "benutzerId": "bruno",
+      "gruppen": ["technik"]
+    },
+    "clara": {
+      "tenantId": "t1",
+      "benutzerId": "clara",
+      "gruppen": ["finanz", "technik"]
+    },
+    "gast": { "tenantId": "t1", "benutzerId": "gast", "gruppen": [] },
+    "dilek": { "tenantId": "t2", "benutzerId": "dilek", "gruppen": ["finanz"] },
+    "kaputt": { "tenantId": "t1" }
+  },
+  "dokumente": [
+    {
+      "envelope": {
+        "tenantId": "t1",
+        "quelle": "fixture",
+        "dokumentId": "d-oeffentlich",
+        "sichtbarkeit": "oeffentlich",
+        "erlaubteGruppen": [],
+        "besitzerId": "anna"
+      },
+      "text": "Quartalszahlen und Umsatz im dritten Quartal. Oeffentliche Fassung fuer alle im Mandanten."
+    },
+    {
+      "envelope": {
+        "tenantId": "t1",
+        "quelle": "fixture",
+        "dokumentId": "d-finanz",
+        "sichtbarkeit": "gruppe",
+        "erlaubteGruppen": ["finanz"],
+        "besitzerId": "anna"
+      },
+      "text": "Quartalszahlen und Umsatz im dritten Quartal. Interne Zahlen der Gruppe Finanz."
+    },
+    {
+      "envelope": {
+        "tenantId": "t1",
+        "quelle": "fixture",
+        "dokumentId": "d-technik",
+        "sichtbarkeit": "gruppe",
+        "erlaubteGruppen": ["technik"],
+        "besitzerId": "bruno"
+      },
+      "text": "Quartalszahlen und Umsatz im dritten Quartal. Technische Randnotizen der Gruppe Technik."
+    },
+    {
+      "envelope": {
+        "tenantId": "t1",
+        "quelle": "fixture",
+        "dokumentId": "d-privat-anna",
+        "sichtbarkeit": "privat",
+        "erlaubteGruppen": [],
+        "besitzerId": "anna"
+      },
+      "text": "Quartalszahlen und Umsatz im dritten Quartal. Private Notiz von Anna."
+    },
+    {
+      "envelope": {
+        "tenantId": "t2",
+        "quelle": "fixture",
+        "dokumentId": "d-fremder-mandant",
+        "sichtbarkeit": "oeffentlich",
+        "erlaubteGruppen": [],
+        "besitzerId": "dilek"
+      },
+      "text": "Quartalszahlen und Umsatz im dritten Quartal. Dokument eines anderen Mandanten."
+    }
+  ],
+  "faelle": [
+    {
+      "id": "AC-1",
+      "gruppe": "acl-gruppenmitglied",
+      "hinweis": "Anna: oeffentlich (Regel 3), d-finanz ueber Gruppe finanz (Regel 4) und ohnehin als Besitzerin (Regel 2), d-privat-anna als Besitzerin (Regel 2). d-technik faellt an Regel 4, d-fremder-mandant an Regel 1.",
+      "principal": "anna",
+      "anfrage": "Quartalszahlen Umsatz drittes Quartal",
+      "erwartet": {
+        "sichtbareDokumente": ["d-finanz", "d-oeffentlich", "d-privat-anna"],
+        "grund": null
+      }
+    },
+    {
+      "id": "AC-2",
+      "gruppe": "acl-gruppengrenze",
+      "hinweis": "Bruno ist in technik, nicht in finanz. d-finanz faellt an Regel 4, d-privat-anna an Regel 5, d-fremder-mandant an Regel 1.",
+      "principal": "bruno",
+      "anfrage": "Quartalszahlen Umsatz drittes Quartal",
+      "erwartet": {
+        "sichtbareDokumente": ["d-oeffentlich", "d-technik"],
+        "grund": null
+      }
+    },
+    {
+      "id": "AC-3",
+      "gruppe": "acl-mehrere-gruppen",
+      "hinweis": "Clara ist in beiden Gruppen, aber in keinem Fall Besitzerin. Das private Dokument bleibt deshalb draussen (Regel 5) — Gruppenzugehoerigkeit hebt 'privat' nicht auf.",
+      "principal": "clara",
+      "anfrage": "Quartalszahlen Umsatz drittes Quartal",
+      "erwartet": {
+        "sichtbareDokumente": ["d-finanz", "d-oeffentlich", "d-technik"],
+        "grund": null
+      }
+    },
+    {
+      "id": "AC-4",
+      "gruppe": "acl-ohne-gruppe",
+      "hinweis": "Gast ist im Mandanten, aber in keiner Gruppe und besitzt nichts. Nur Regel 3 traegt.",
+      "principal": "gast",
+      "anfrage": "Quartalszahlen Umsatz drittes Quartal",
+      "erwartet": { "sichtbareDokumente": ["d-oeffentlich"], "grund": null }
+    },
+    {
+      "id": "AC-5",
+      "gruppe": "acl-cross-tenant",
+      "hinweis": "PFLICHTFALL. Dilek ist in t2 und in der Gruppe finanz — dieselbe Gruppe wie d-finanz. Waere die Mandantengrenze nicht die erste Pruefung, kaeme d-finanz hier durch. Sichtbar ist nur das eigene Dokument in t2.",
+      "principal": "dilek",
+      "anfrage": "Quartalszahlen Umsatz drittes Quartal",
+      "erwartet": {
+        "sichtbareDokumente": ["d-fremder-mandant"],
+        "grund": null
+      }
+    },
+    {
+      "id": "AC-6",
+      "gruppe": "acl-fail-closed",
+      "hinweis": "PFLICHTFALL. Der Principal traegt keinen Benutzer und keine Gruppenliste, ist also nicht aufloesbar. Erwartung ist LEER MIT GRUND (Regel 6) — nicht ungefiltert und nicht stillschweigend leer.",
+      "principal": "kaputt",
+      "anfrage": "Quartalszahlen Umsatz drittes Quartal",
+      "erwartet": {
+        "sichtbareDokumente": [],
+        "grund": "principal-nicht-aufloesbar"
+      }
+    }
+  ]
+}

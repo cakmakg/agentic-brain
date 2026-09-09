@@ -48,4 +48,16 @@ export const adapter = {
   datensatz: JSON.parse(
     fs.readFileSync(path.join(hier, "golden", "tasks.json"), "utf8"),
   ),
+
+  // Der Datensatz für Metrik 3.13. Reine DATEN: Principale, Dokumente samt
+  // Envelope und die Fälle. Der Runner baut daraus den Speicher selbst — er
+  // benutzt dafür die Mechanik des Kerns und braucht deshalb kein Wissen über
+  // diese Domäne.
+  //
+  // Eine Domäne ohne Retrieval trägt hier ausdrücklich eine leere Fallliste.
+  // Das ist eine Aussage („wir messen hier nichts") und kein Versehen; die
+  // Nenner-Probe meldet sie dann als ungemessen statt als 100 %.
+  retrieval: JSON.parse(
+    fs.readFileSync(path.join(hier, "golden", "acl.json"), "utf8"),
+  ),
 };

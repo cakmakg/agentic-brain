@@ -32,8 +32,8 @@ Entscheidung des Repos und sie bleibt unangetastet.
 | Ebene           | Motor          | `src/kernel/` — Mechanik                       | `src/domains/<domäne>/` — Bedeutung        | Stand   |
 | --------------- | -------------- | ---------------------------------------------- | ------------------------------------------ | ------- |
 | ① Connectors    | 1 · Kontext    | Ingest-Rahmen, ACL-Erfassung                   | welche Quelle, welches Berechtigungsmodell | ⬜ leer |
-| ② Context Layer | 1 · Kontext    | Chunking, Embedding-Aufruf, Envelope-Vererbung | Ontologie, Entitäts- und Relationstypen    | ⬜ leer |
-| ③ Retrieval     | 1 · Kontext    | ACL-Filter, hybride Suche, Rerank              | —                                          | ⬜ leer |
+| ② Context Layer | 1 · Kontext    | Chunking, Embedding-Aufruf, Envelope-Vererbung | Ontologie, Entitäts- und Relationstypen    | 🟢 grün |
+| ③ Retrieval     | 1 · Kontext    | ACL-Filter, hybride Suche, Rerank              | —                                          | 🟢 grün |
 | ④ Agent Runtime | 2 · Agent      | Graph, Routing-Verfahren, State, Durable       | Agenten, Prompts, Bremsenreihenfolge       | 🟢 grün |
 | ⑤ Action Layer  | 3 · Governance | Queue-Mechanik, Idempotenz, Worker             | Whitelist, Validierer                      | 🟢 grün |
 | ⑥ Governance    | 3 · Governance | Guardrail, Auth, Rate-Limit, Trace, Policy     | Guardrail-Muster                           | 🟡 halb |
@@ -186,6 +186,16 @@ sie zweimal geschrieben werden.
 
 ### Etappe 1 — Das QA-Tor · `pruefer`
 
+> **🟢 Erledigt am 2026-09-09.** Belegt: `npm test` 107/107 (vorher 98) bei 91,47 % ·
+> Schicht A **22/22** vertragstreu, zwei Durchgänge identisch · 3.1 = 100 %, 3.2 = 0 %,
+> 3.3 = 100 %, 3.4 = 100 % — alle vier wie gefordert unverändert · `npm run demo` Exit 0 ·
+> `grep -rn "beispiel" src/kernel/` leer · ESLint unverändert 12 Warnungen / 0 Fehler.
+>
+> **Die Baseline hat sich bewegt, und zwar erwartungsgemäß:** Kosten je Lauf
+> 0,000999 → 0,001884 USD, Kontextwachstum ×1,00 → Median ×2,79 (p90 ×2,94, Spitze 101
+> Token). Beides ist der Preis des zweiten LLM-Aufrufs je Lauf; keine der vier
+> Zusagemetriken hat sich bewegt.
+
 `EXTEND.md` Schritt 2, jetzt terminiert. Heute wächst `revisionCount` zwar, aber nichts lehnt
 je ab — **Bremse 3 (`MAX_REVISIONS = 5`) feuert im Live-Pfad nie.** Ein Schutzschalter, der
 nie auslöst, ist unbelegt.
@@ -207,8 +217,39 @@ Neu: ein zweiter Spoke `agents/pruefer.js` mit strukturierter Ausgabe, ein State
 > nicht gelöscht.
 >
 > Diese Etappe läuft **allein**. Sie ist die einzige, die die Golden-Sequenzen bewegt.
+>
+> **Eingelöst:** `RV-1` trägt `bearbeiterAufrufe: 2`. Dazu kam ein Fall, den der Plan nicht
+> verlangt hatte: `SS-1` lässt den Prüfer **dauerhaft** ablehnen und belegt damit, dass
+> Bremse 3 wirklich auslöst — genau die Lücke, aus der diese Etappe ihre Begründung zieht.
+> Ein Schutzschalter, der nur beim Einzeltest der Bremse feuert, ist halb belegt.
+>
+> **Was der Plan nicht vorhergesehen hatte:** der Bearbeiter muss `istFreigegeben` bei jeder
+> neuen Fassung auf `null` zurücksetzen. Ohne das bleibt das Feld auf `false` stehen, die
+> Ablehnungs-Bremse greift sofort wieder, und der Bearbeiter ruft sich selbst auf — dieselbe
+> Endlosschleife wie die dokumentierte Falle, nur eine Bremse weiter. Nachgetragen in
+> `EXTEND.md` Schritt 2.
 
 ### Etappe 2 — Messbare Autorisierung · ohne Infrastruktur · vertikalunabhängig
+
+> **🟢 Erledigt am 2026-09-09.** Belegt: `npm test` **138/138** (vorher 107) bei 92,45 % ·
+> Schicht A **28/28** vertragstreu (22 Aufgaben + 6 Abrufe), zwei Durchgänge identisch ·
+> **3.13 = 0 %** bei Nenner 10 · 3.1 = 100 %, 3.2 = 0 %, 3.3 = 100 %, 3.4 = 100 % unverändert ·
+> `npm run demo` Exit 0 **ohne jede Infrastruktur** (K5) · `grep -rn "beispiel" src/kernel/`
+> leer · ESLint unverändert 12 Warnungen / 0 Fehler.
+>
+> **3.13 kann rot werden — nachgewiesen, nicht behauptet.** Mutationsprobe: nimmt man die
+> Mandantenprüfung aus `filter.js`, springt die Zahl auf **37,5 %**, fünf Fälle melden ihr
+> Leck namentlich, und der Lauf endet mit Rückgabewert 1. AC-5 fängt dabei genau das, wofür
+> der Fall gebaut ist: `d-finanz` fließt an eine Benutzerin desselben Gruppennamens im
+> **anderen** Mandanten.
+>
+> **Fünf ADRs sind dabei gefallen:** ADR-0005 (hexagonale Achse, löst einen Widerspruch
+> zwischen `ARCHITECTURE.md` §7 und `docs/engineering-discipline.md` auf) · ADR-0006 (Port
+> mit zwei Adaptern) · ADR-0007 (Hash-Embedding) · ADR-0008 (Filter in die Abfrage
+> kompiliert, fail-closed) · ADR-0009 (Envelope-Vererbung, Principal im Schema).
+>
+> **Ebene ① `connectors/` bleibt leer** — sie kommt mit der Vertikale in Etappe 3. Das ist
+> die Abgrenzung, die ADR-0005 ausdrücklich zieht.
 
 Hier entsteht der eigentliche Vorsprung, und er braucht **keine Infrastruktur**: Port plus
 `memory`-Adapter, Mock-Embedding, Ingest-Pipeline, Envelope samt Vererbung auf jeden Chunk,

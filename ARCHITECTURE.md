@@ -118,9 +118,15 @@ Ebenen (ADR-0002). Dieser Baum ist der **Vertrag**; `docs/roadmap.md` sagt nur, 
 ```
 src/
   kernel/                    MECHANIK · kennt keine Domäne
-    connectors/              ① NEU · Ingest-Rahmen; die Quelle selbst liegt in der Domäne
-    context/                 ② NEU · Envelope, Chunking, Embedding, Store-Port
-    retrieval/               ③ NEU · ACL-Filter, hybride Suche, Rerank
+    connectors/              ① NEU · holt aus einer Quelle, erfasst ihr Berechtigungsmodell
+                                     (Etappe 3; nach Etappe 2 noch leer — ADR-0005)
+    context/                 ② envelope.js · embedding.js · aufbau.js
+      ingest/pipeline.js         Chunking und Envelope-Vererbung (ADR-0009)
+      store/index.js             Port — kennt seine Adapter NICHT (ADR-0006)
+      store/memory.js            Adapter · trägt Mock-Modus, CI und K5 allein
+      store/postgres.js          NEU · Adapter, Etappe 3
+    retrieval/               ③ filter.js · reine Logik, kein IO (ADR-0008)
+      suche.js                   hybride Suche — beide Pfade gefiltert
     agent/                   ④ build · routing · runner · schema · reducers · checkpointer
     action/                  ⑤ queue
     governance/              ⑥ guardrail · auth · rateLimiter · trace · eventBus · costTracker

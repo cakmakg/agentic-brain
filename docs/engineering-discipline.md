@@ -87,13 +87,24 @@ von IO_. Die beiden stehen senkrecht zueinander.
 lebt **innerhalb** eines Moduls und wird durch Regeln erzwungen:
 
 ```
-kernel/context/
+kernel/context/           ② eine Ebene
   store/index.js        · Port          (Anwendungsfall)
   store/memory.js       · Adapter       (Infrastruktur)
   store/postgres.js     · Adapter       (Infrastruktur)
-  retrieval/filter.js   · reine Logik   (kein IO, kein Import aus store/)
   ingest/pipeline.js    · Anwendungsfall
+  aufbau.js             · Kompositionswurzel — verdrahtet Port und Adapter
+
+kernel/retrieval/         ③ eine EIGENE Ebene, keine Unterschicht von context/
+  filter.js             · reine Logik   (kein IO, kein Import aus store/)
+  suche.js              · Anwendungsfall
 ```
+
+> **Korrigiert am 2026-09-09 (ADR-0005).** Diese Skizze legte `retrieval/filter.js` zuvor
+> **unter** `kernel/context/` und widersprach damit `ARCHITECTURE.md` §7, wo `retrieval/`
+> eine eigene Ebene ist. Der Vertrag gewinnt: `ls src/kernel` ist das Prüfkriterium von
+> ADR-0002 und zählt genau die sechs Ebenennamen auf — als Unterverzeichnis wäre `retrieval/`
+> aus diesem Befehl verschwunden. Die beiden Regeln unten sind davon nicht betroffen, weil
+> sie als Glob geschrieben sind; genau deshalb fiel der Widerspruch so lange nicht auf.
 
 Die Regel, nicht der Ordner, hält das zusammen:
 

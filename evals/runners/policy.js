@@ -53,6 +53,14 @@ const { onLlmCall } = await import("../../src/kernel/llm/adapter.js");
 const { berechneMetriken, vertragstreue } = await import("../metrics/index.js");
 const { DOMAENEN, ladeAdapter } = await import("../domains/index.js");
 
+// Mechanik des Kerns, keine Domäne: der Runner baut den Chunk-Speicher selbst
+// und füllt ihn aus den Fixtures des Adapters. Damit bleibt der Adapter reine
+// Daten und dieser Runner weiterhin domänenfrei.
+const { baueStore } = await import("../../src/kernel/context/aufbau.js");
+const { ingestiere } =
+  await import("../../src/kernel/context/ingest/pipeline.js");
+const { suche } = await import("../../src/kernel/retrieval/suche.js");
+
 // ── Einen Workflow-Fall ausführen ────────────────────────────────────────
 async function laufWorkflow(aufgabe, adapter) {
   const { startWorkflow, resolveApproval } = adapter.runner;
@@ -186,6 +194,63 @@ async function laufAktion(aufgabe, adapter) {
   };
 }
 
+// ── Einen Abruf-Fall ausführen (Metrik 3.13) ─────────────────────────────
+// Ein frischer Speicher je Fall. Teurer als einer für alle, aber ein Fall darf
+// nicht davon abhängen, was ein vorheriger hineingeschrieben hat — sonst misst
+// der zweite Durchgang gealterten Zustand statt derselben Frage.
+async function laufAbruf(fall, adapter) {
+  const { principale, dokumente } = adapter.retrieval;
+  const store = baueStore("memory");
+  ingestiere(store, dokumente);
+
+  const principal = principale[fall.principal] ?? null;
+  const {
+    treffer,
+    dokumente: gefunden,
+    grund,
+  } = suche({
+    store,
+    principal,
+    anfrage: fall.anfrage,
+    // Bewusst hoch: ein Leck darf nicht deshalb unsichtbar bleiben, weil es
+    // auf Platz sechs stand. Die Metrik misst Berechtigung, nicht Rangfolge.
+    k: 100,
+  });
+
+  const erlaubt = new Set(fall.erwartet?.sichtbareDokumente ?? []);
+  const gelieferteIds = gefunden.map((d) => d.dokumentId).sort();
+
+  return {
+    id: fall.id,
+    gruppe: fall.gruppe,
+    art: "abruf",
+    genehmigung: null,
+    sequenz: [],
+    endstatus: null,
+    artefaktstatus: null,
+    queueEintraege: 0,
+    threatScore: null,
+    guardrail: null,
+    llmAufrufe: 0,
+    inputTokens: [],
+    kostenUsd: 0,
+    fehler: null,
+
+    // Zähler und Nenner von 3.13 entstehen HIER, auf Chunk-Ebene: ein Dokument
+    // kann mehrere Chunks liefern, und jeder unerlaubte davon ist ein Leck.
+    gelieferteChunks: treffer.length,
+    unerlaubteChunks: treffer.filter((t) => !erlaubt.has(t.dokumentId)).length,
+
+    gelieferteDokumente: gelieferteIds,
+    // Was FEHLT, ist kein Leck und gehört nicht in 3.13 — aber ein stiller
+    // Ausfall des Retrievals. Die Vertragstreue fängt ihn ab.
+    fehlendeDokumente: [...erlaubt].filter((d) => !gelieferteIds.includes(d)),
+    grund,
+    erwartet: fall.erwartet,
+    abweichungen: [],
+  };
+}
+
 // ── Ergebnis gegen die Erwartung halten ──────────────────────────────────
 function pruefe(lauf, sequenzen) {
   const e = lauf.erwartet ?? {};
@@ -196,6 +261,24 @@ function pruefe(lauf, sequenzen) {
       ab.push(`eingereiht: ${lauf.eingereiht} statt ${e.eingereiht}`);
     if (e.endstatus !== undefined && lauf.endstatus !== e.endstatus)
       ab.push(`endstatus: ${lauf.endstatus} statt ${e.endstatus}`);
+    return lauf;
+  }
+
+  if (lauf.art === "abruf") {
+    // BEIDE Richtungen prüfen. Nur auf Lecks zu schauen ließe ein Retrieval
+    // durchgehen, das gar nichts liefert — 3.13 wäre 0 % und die Zahl wertlos.
+    const erwarteteDokumente = [...(e.sichtbareDokumente ?? [])].sort();
+    if (lauf.unerlaubteChunks > 0) {
+      ab.push(
+        `LECK: ${lauf.unerlaubteChunks} unerlaubte Chunks aus [${lauf.gelieferteDokumente.filter((d) => !erwarteteDokumente.includes(d)).join(", ")}]`,
+      );
+    }
+    if (lauf.fehlendeDokumente.length > 0) {
+      ab.push(`fehlend: [${lauf.fehlendeDokumente.join(", ")}]`);
+    }
+    if (e.grund !== undefined && lauf.grund !== e.grund) {
+      ab.push(`grund: ${lauf.grund} statt ${e.grund}`);
+    }
     return lauf;
   }
 
@@ -248,6 +331,14 @@ async function durchgang(adapter) {
         : await laufWorkflow(aufgabe, adapter);
     laeufe.push(pruefe(lauf, adapter.datensatz.sequenzen));
   }
+
+  // Die Abruf-Fälle laufen im selben Durchgang: nur so trägt der
+  // Determinismus-Nachweis (zwei Durchgänge) auch 3.13.
+  for (const fall of adapter.retrieval.faelle ?? []) {
+    laeufe.push(
+      pruefe(await laufAbruf(fall, adapter), adapter.datensatz.sequenzen),
+    );
+  }
   return laeufe;
 }
 
@@ -277,6 +368,7 @@ async function fahreDomaene(adapter) {
     modus: "mock",
     domaene: adapter.name,
     aufgaben: adapter.datensatz.aufgaben.length,
+    abrufe: (adapter.retrieval.faelle ?? []).length,
     deterministisch,
     vertragstreue: treue,
     metriken,
@@ -300,10 +392,11 @@ async function fahreDomaene(adapter) {
     `  ${m.name.padEnd(38)} ${proz(m.wert).padStart(13)}   (${m.zaehler}/${m.nenner})`;
 
   console.log(
-    `\nSchicht A · Domäne ${bericht.domaene} · ${bericht.aufgaben} Aufgaben · Mock\n`,
+    `\nSchicht A · Domäne ${bericht.domaene} · ${bericht.aufgaben} Aufgaben · ${bericht.abrufe} Abrufe · Mock\n`,
   );
   console.log(zeile(metriken["3.1"]));
   console.log(zeile(metriken["3.2"]));
+  console.log(zeile(metriken["3.13"]));
   console.log(zeile(metriken["3.3"]));
   console.log(zeile(metriken["3.4"]));
   console.log(
@@ -336,7 +429,8 @@ async function fahreDomaene(adapter) {
     metriken["3.1"].erfuellt !== false &&
     metriken["3.2"].erfuellt !== false &&
     metriken["3.3"].erfuellt !== false &&
-    metriken["3.4"].erfuellt !== false;
+    metriken["3.4"].erfuellt !== false &&
+    metriken["3.13"].erfuellt !== false;
 
   return bestanden;
 }

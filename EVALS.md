@@ -24,13 +24,13 @@ Und deshalb:
 
 ## 2. Zwei Schichten
 
-| | **Schicht A** | **Schicht B** |
-| --- | --- | --- |
-| Misst | Richtlinien und Routing | Qualität der Modellausgabe |
-| Modus | Mock, ohne Schlüssel | echtes Modell, kostenpflichtig |
-| Eigenschaft | deterministisch, kostenlos, CI-fähig | nichtdeterministisch, budgetiert |
-| Aufruf | `npm run evals` | eigener Runner je Domäne (siehe §5) |
-| Bricht ab, wenn | `ANTHROPIC_API_KEY` gesetzt ist | die Ausgabengrenze erreicht ist |
+|                 | **Schicht A**                        | **Schicht B**                       |
+| --------------- | ------------------------------------ | ----------------------------------- |
+| Misst           | Richtlinien und Routing              | Qualität der Modellausgabe          |
+| Modus           | Mock, ohne Schlüssel                 | echtes Modell, kostenpflichtig      |
+| Eigenschaft     | deterministisch, kostenlos, CI-fähig | nichtdeterministisch, budgetiert    |
+| Aufruf          | `npm run evals`                      | eigener Runner je Domäne (siehe §5) |
+| Bricht ab, wenn | `ANTHROPIC_API_KEY` gesetzt ist      | die Ausgabengrenze erreicht ist     |
 
 Die Unterscheidung gehört in **jede** Evaluationsdiskussion. Schicht A sagt nichts über die
 Textqualität, und Schicht B sagt nichts über die Einhaltung der Richtlinien. Wer beides
@@ -101,6 +101,31 @@ Im Bericht steht dafür `null`, nicht `1`.
 - Verhältnis des größten Eingabe-Aufrufs zum ersten Aufruf desselben Laufs, Median und p90.
 - Ein Lauf, dessen Kontext über die Runden wächst, wird still teuer.
 
+### 3.13 Unauthorized-Retrieval-Rate · Ziel 0 %
+
+- **Nenner:** alle zurückgegebenen Chunks über alle Retrieval-Fälle.
+- **Zähler:** davon jene, die der anfragende Principal **nicht** sehen darf.
+- Datensatz: `(principal, Anfrage, erwartete sichtbare doc_ids)`. Die Erwartung wird **aus
+  den ACL-Regeln abgeleitet** — Benutzer, Gruppen, Dokumente, Sichtbarkeiten —, nie aus
+  einem beobachteten Lauf.
+- **Cross-Tenant- und Cross-User-Leckfälle sind Pflicht, nicht optional.** Ein Datensatz
+  ohne sie meldet 0 % und hat nichts geprüft.
+- Ebenfalls Pflicht: der Fall **„Principal nicht auflösbar"**. Erwartung ist ein **leeres**
+  Ergebnis, nicht ein ungefiltertes (ADR-0008, fail-closed).
+
+> **Was diese Zahl NICHT auffängt: zu wenig.** 3.13 zählt nur, was zu **viel** kam. Ein
+> Retrieval, das gar nichts liefert, meldet 0 % — makellos und wertlos. Die Gegenrichtung
+> trägt deshalb die **Vertragstreue**: jeder Abruf-Fall nennt seine erwarteten sichtbaren
+> Dokumente, und ein fehlendes wird als Abweichung berichtet. Beides in eine Zahl zu werfen
+> hieße, ein Leck gegen einen Ausfall aufzurechnen.
+
+> **Was diese Zahl NICHT sagt.** Sie sagt nichts über Suchqualität. In Schicht A kommt der
+> Vektor aus einem Hash (ADR-0007), die Rangfolge der Treffer ist also ohne fachliche
+> Bedeutung. Und `principal` ist bis Etappe 4 eine **Behauptung des Aufrufers**, keine
+> geprüfte Identität (ADR-0009): gemessen wird, ob der Filter einem gegebenen Principal
+> korrekt folgt — nicht, ob der Principal echt ist. Beide Grenzen gehören in jede Aussage
+> über 3.13.
+
 ---
 
 ## 4. Der Datensatz
@@ -117,15 +142,17 @@ und merkt es an nichts, weil alles grün bleibt.
 
 Die mitgelieferten Gruppen der Domäne `beispiel`:
 
-| Gruppe | Was sie prüft |
-| --- | --- |
-| `goldener-pfad` | der normale Ablauf hält vor der Genehmigung an |
-| `menschliche-ablehnung` | eine Ablehnung stellt nichts zu, reiht nichts ein |
-| `menschliche-genehmigung` | eine Freigabe stellt zu und reiht genau eine Aktion ein |
-| `prompt-injection` | die drei Bänder des Guardrails |
-| `guardrail-falschpositive` | Angriffsvokabular als legitimes Thema kommt durch |
-| `budgetgrenze` | der Kill-Switch greift vor dem ersten LLM-Aufruf |
-| `aktions-isolation` | beide Tore der Action-Queue |
+| Gruppe                     | Was sie prüft                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------- |
+| `goldener-pfad`            | der normale Ablauf hält vor der Genehmigung an                                                    |
+| `revisionsschleife`        | eine Ablehnung des QA-Tors schickt den Bearbeiter ein zweites Mal los (`bearbeiterAufrufe: 2`)    |
+| `schutzschalter`           | Dauerablehnung läuft bis `MAX_REVISIONS` und wird von BREMSE 3 abgefangen, statt endlos zu drehen |
+| `menschliche-ablehnung`    | eine Ablehnung stellt nichts zu, reiht nichts ein                                                 |
+| `menschliche-genehmigung`  | eine Freigabe stellt zu und reiht genau eine Aktion ein                                           |
+| `prompt-injection`         | die drei Bänder des Guardrails                                                                    |
+| `guardrail-falschpositive` | Angriffsvokabular als legitimes Thema kommt durch                                                 |
+| `budgetgrenze`             | der Kill-Switch greift vor dem ersten LLM-Aufruf                                                  |
+| `aktions-isolation`        | beide Tore der Action-Queue                                                                       |
 
 ---
 
@@ -177,8 +204,8 @@ Guardrail-Blockierschwelle auf die Summe aller Gewichte setzen.
 ## 8. Baseline und Verlauf
 
 | Datum | Domäne | Bericht | 3.1 | 3.2 | 3.3 | 3.4 | Vertragstreue |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| — | — | — | — | — | — | — | — |
+| ----- | ------ | ------- | --- | --- | --- | --- | ------------- |
+| —     | —      | —       | —   | —   | —   | —   | —             |
 
 <!-- Erste Zeile: dein erster eigener Lauf. Trag ihn ein, auch wenn er rot ist —
      besonders dann. Der Übergang von Rot zu Grün ist der Beweis. -->

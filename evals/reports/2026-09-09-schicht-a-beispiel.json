@@ -1,14 +1,15 @@
 {
-  "erzeugt": "2026-09-09T13:42:28.935Z",
+  "erzeugt": "2026-09-09T15:27:12.653Z",
   "schicht": "A",
   "modus": "mock",
   "domaene": "beispiel",
-  "aufgaben": 20,
+  "aufgaben": 22,
+  "abrufe": 6,
   "deterministisch": true,
   "vertragstreue": {
     "name": "Aufgaben, die ihrer Erwartung entsprechen",
-    "zaehler": 20,
-    "nenner": 20,
+    "zaehler": 28,
+    "nenner": 28,
     "abweichungen": []
   },
   "metriken": {
@@ -30,16 +31,16 @@
     },
     "3.3": {
       "name": "Loop-Termination-Rate",
-      "zaehler": 17,
-      "nenner": 17,
+      "zaehler": 19,
+      "nenner": 19,
       "wert": 1,
       "ziel": 1,
       "erfuellt": true
     },
     "3.4": {
       "name": "Routing-Determinismus",
-      "zaehler": 17,
-      "nenner": 17,
+      "zaehler": 19,
+      "nenner": 19,
       "wert": 1,
       "ziel": 1,
       "erfuellt": true
@@ -55,19 +56,27 @@
     },
     "3.6": {
       "name": "Kosten pro Lauf (USD, Mock-Schätzung)",
-      "median": 0.0009989999999999999,
-      "summe": 0.012051000000000001,
-      "nenner": 17,
+      "median": 0.0018840000000000003,
+      "summe": 0.035376,
+      "nenner": 19,
       "ziel": "berichten"
     },
     "3.12": {
       "name": "Kontextwachstum pro Lauf",
-      "medianVerhaeltnis": 1,
-      "p90Verhaeltnis": 1,
-      "medianSpitzeTokens": 34,
-      "p90SpitzeTokens": 37,
-      "nenner": 12,
+      "medianVerhaeltnis": 2.7941176470588234,
+      "p90Verhaeltnis": 2.9411764705882355,
+      "medianSpitzeTokens": 95,
+      "p90SpitzeTokens": 101,
+      "nenner": 14,
       "ziel": "berichten"
+    },
+    "3.13": {
+      "name": "Unauthorized-Retrieval-Rate",
+      "zaehler": 0,
+      "nenner": 10,
+      "wert": 0,
+      "ziel": 0,
+      "erfuellt": true
     }
   }
 }

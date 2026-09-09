@@ -69,6 +69,8 @@ ist bewusst: sie verhindert, dass zwei Gedächtnisse auseinanderdriften.
 | KI-gestützter Entwicklungsprozess, Gedächtnisrhythmus | `docs/development-process.md`                                                           |
 | Agentenverhalten und Prompts                          | `src/domains/<domäne>/prompts.js`                                                       |
 | Graph, Routing, State, Pause und Fortsetzung          | `src/kernel/agent/` — Kernfelder plus Felder der Domäne                                 |
+| Envelope, Chunking, Embedding, Store-Port             | `src/kernel/context/` — Adapterwahl in `aufbau.js`                                      |
+| ACL-Filter, hybride Suche                             | `src/kernel/retrieval/` — `filter.js` ist reine Logik, kein IO                          |
 | Auth, Rate-Limit, Guardrail, Trace, Kosten            | `src/kernel/governance/`                                                                |
 | Aktions-Isolation                                     | `src/kernel/action/queue.js` (Mechanik) · `src/domains/<domäne>/actions.js` (Whitelist) |
 | LLM-Adapter und Mock-Modus                            | `src/kernel/llm/`                                                                       |
