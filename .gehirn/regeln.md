@@ -1,13 +1,11 @@
 # Projektregeln
 
-Die hier eingetragenen Regeln sind **verbindlich**. Zu Sitzungsbeginn gelangen die ersten
-60 Zeilen automatisch in den Kontext — die nützlichsten Regeln gehören deshalb nach oben.
-
-Diese Regeln gelten speziell für `agentic-brain`. Allgemeine Präferenzen (TypeScript,
-Next.js, Mongoose, Git) stehen in der globalen `~/.claude/CLAUDE.md` und werden hier nicht
-wiederholt.
-
 ## Regeln
+
+- **Regel:** **Niemals eine Annahme treffen.** Wo etwas unklar ist, wird gefragt, bevor
+  gehandelt wird — wechselseitig, die Architektur entsteht gemeinsam. **Grund:** Eine
+  stillschweigende Annahme sieht im Ergebnis aus wie eine abgestimmte Entscheidung; der
+  Unterschied fällt erst auf, wenn die Rücknahme teuer ist. (2026-09-08 nachdrücklich bestätigt.)
 
 - **Regel:** „Fertig" darf erst gesagt werden, wenn der Prüfbefehl durchläuft. Dass eine Datei
   existiert, ist kein Beweis. **Grund:** Ein Häkchen nach Dateiexistenz gesetzt verdeckt genau
@@ -16,6 +14,15 @@ wiederholt.
 - **Regel:** Prüfe einen Befund durch Ausführen, bevor du ihn meldest. Ein aus dem Code
   gelesenes Ergebnis ist nicht „verifiziert". **Grund:** Eine Hypothese kann beim Lesen
   vollkommen richtig aussehen und beim Ausführen falsch sein.
+
+- **Regel:** Die HITL-Entscheidung wird niemals einem Modell überlassen. Sie gehört in eine
+  deterministische Bremse, vor jeder Datenlogik. **Grund:** Es ist die einzige Zusage, die
+  das ganze Sicherheitsmodell trägt.
+
+- **Regel:** Eine ADR wird **vom Prüfkriterium her** geschrieben — erst der Befehl, dann die
+  Prosa. **Grund:** Wer den Befehl zuletzt sucht, formuliert ihn passend zum schon
+  geschriebenen Text; wer ihn zuerst schreibt, merkt sofort, wenn eine Entscheidung gar nicht
+  prüfbar ist. (2026-09-09 so angewiesen: „Prüfkriterium satırından başlayabilirsin".)
 
 - **Regel:** Keine Zahl in README oder Dokumenten, die nicht aus einem datierten Lauf in
   `evals/reports/` stammt. Was nicht gemessen wurde, trägt die Markierung „nicht gemessen" —
@@ -44,9 +51,6 @@ wiederholt.
 - **Regel:** Neue Dateien entstehen direkt an ihrem Zielort. Es gibt keine vorläufige Ablage.
   **Grund:** Eine später umgezogene Datei bricht den Vergleich zur Baseline.
 
-- **Regel:** Geh Schritt für Schritt vor und frag nach. Nimm nichts an. **Grund:** In einem
-  Zug erzeugte Dateien zementieren still Entscheidungen, deren Rücknahme teuer ist.
-
 - **Regel:** Zeig, was du schreiben willst, bevor du ins Repo schreibst. Erzeuge keine Dateien
   im Block. **Grund:** Ohne Freigabe angelegte Dateien hinterlassen Reste, die wieder
   aufgeräumt werden müssen.
@@ -55,11 +59,17 @@ wiederholt.
   Vertragsdokumente, bevor du etwas übernimmst. **Grund:** Ein übernommener Plan kann
   bereits getroffenen Entscheidungen widersprechen und wird trotzdem als „Plan" weitergereicht.
 
-- **Regel:** Die HITL-Entscheidung wird niemals einem Modell überlassen. Sie gehört in eine
-  deterministische Bremse, vor jeder Datenlogik. **Grund:** Es ist die einzige Zusage, die
-  das ganze Sicherheitsmodell trägt.
-
 ## Wie diese Liste wächst
+
+Die hier eingetragenen Regeln sind **verbindlich**. Zu Sitzungsbeginn gelangen die ersten
+60 Zeilen automatisch in den Kontext — die nützlichsten Regeln gehören deshalb nach oben.
+Diese Erklärung steht bewusst **unten**: jede Zeile oberhalb der Regeln kostet in jeder
+Sitzung eine Regel. Am 2026-09-09 war die HITL-Regel mitten im Satz abgeschnitten, weil vier
+Kopfzeilen das Fenster belegten.
+
+Diese Regeln gelten speziell für `agentic-brain`. Allgemeine Präferenzen (TypeScript,
+Next.js, Mongoose, Git) stehen in der globalen `~/.claude/CLAUDE.md` und werden hier nicht
+wiederholt.
 
 Wenn du korrigiert wirst („mach das nicht so", „nie wieder so"), trage die Korrektur in
 derselben Sitzung als neuen Punkt ein: **welche Regel**, **warum sie existiert**. Halte dich

@@ -7,13 +7,12 @@ was hier wächst, kostet in jeder Sitzung Kontext.
 
 ## Was dieses Repo ist
 
-**agentic-brain** — ein Startgerüst mit produktionsreifen Mustern für menschlich genehmigte
-Multi-Agenten-Systeme, domänenunabhängig.
+**agentic-brain** — ein **permission-aware Enterprise Context Layer** mit agentischer
+Prozessautomatisierung. Wissen wird samt seinen Berechtigungen aufgenommen,
+berechtigungstreu abgefragt und in menschlich genehmigte Aktionen überführt (ADR-0001).
 
-Kein Produkt, sondern ein **Satz technischer Muster** mit eingebautem Messinstrument.
-
-<!-- ERSETZ DIESEN ABSATZ, sobald du weißt, was DEIN Projekt ist. Ein Absatz genügt:
-     was es ist, für wen, in welchem Zustand. Die ausführliche Fassung nach PRODUCT.md. -->
+Stand: Agent Runtime und Governance-Kern stehen und sind gemessen; Kontext, Retrieval und
+Connectoren sind leer.
 
 > Die Autoritätskette und das Gedächtnisprotokoll stehen in `CLAUDE.md` — dort und nur dort.
 > Claude Code lädt jene Datei ohnehin bei jeder Sitzung; eine zweite Kopie hier würde
@@ -48,5 +47,5 @@ Kein Produkt, sondern ein **Satz technischer Muster** mit eingebautem Messinstru
 
 ## Wo nachschauen
 
-`CLAUDE.md` trägt den vollständigen Wegweiser. Die vier Vertragsdokumente sind `PRODUCT.md`,
-`ARCHITECTURE.md`, `DECISIONS.md`, `EVALS.md`; der Wachstumsweg steht in `EXTEND.md`.
+`CLAUDE.md` trägt den vollständigen Wegweiser. Verträge: `PRODUCT.md`, `ARCHITECTURE.md`,
+`DECISIONS.md`, `EVALS.md`. Wachstum: `EXTEND.md`. Etappen: `docs/roadmap.md`.

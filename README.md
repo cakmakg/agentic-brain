@@ -1,13 +1,16 @@
 # agentic-brain
 
-Ein domänenunabhängiges Startgerüst für **menschlich genehmigte Multi-Agenten-Systeme**.
+Ein **permission-aware Enterprise Context Layer** mit agentischer Prozessautomatisierung:
+Wissen wird samt seinen Berechtigungen aufgenommen, berechtigungstreu abgefragt und in
+**menschlich genehmigte** Aktionen überführt.
 
-Kein Produkt, sondern ein **Satz technischer Muster** mit einem eingebauten Messinstrument.
 Der Anspruch: nicht nur die Arbeit zählt als Beweis, sondern **wie sie gemessen wurde**.
 
-> Dieses Repo ist frisch. Alle Vertragsdokumente (`PRODUCT.md`, `ARCHITECTURE.md`,
-> `DECISIONS.md`, `EVALS.md`) sind **Vorlagen** — sie tragen die Struktur, nicht die
-> Antworten. Die Antworten schreibst du beim Bauen.
+> **Stand 2026-09-09.** Agent Runtime und der Kern der Governance stehen und sind gemessen —
+> `npm test` 98/98, Schicht A 20/20. Kontext, Retrieval und Connectoren sind **leer**.
+> Die Identität steht als ADR-0001 in [`DECISIONS.md`](DECISIONS.md), die Reihenfolge der
+> Etappen in [`docs/roadmap.md`](docs/roadmap.md). `PRODUCT.md` und `ARCHITECTURE.md` tragen
+> noch Vorlagenkästen — sie halten die Struktur, nicht überall schon die Antworten.
 
 ---
 
@@ -36,12 +39,12 @@ START → guardrail → orchestrator ⇄ {bearbeiter, ablage}
 
 Vier Zusagen, jede an einen Prüfbefehl gebunden:
 
-| Zusage | Wo sie im Code steht | Wo sie geprüft wird |
-| --- | --- | --- |
-| Ohne menschliche Freigabe wirkt nichts nach außen | `src/kernel/graph/build.js` (fail-closed-Kante) | `tests/workflow.test.js` |
-| Kein Agent ruft je selbst eine externe API | `src/kernel/security/actionQueue.js` | `tests/actionQueue.test.js` |
-| Ein Neustart verliert keine wartende Genehmigung | `src/kernel/persistence/` | `tests/integration/persistence.test.js` |
-| Routing ist deterministisch und terminiert | `src/kernel/graph/routing.js` | `npm run evals` |
+| Zusage                                            | Wo sie im Code steht                            | Wo sie geprüft wird                     |
+| ------------------------------------------------- | ----------------------------------------------- | --------------------------------------- |
+| Ohne menschliche Freigabe wirkt nichts nach außen | `src/kernel/graph/build.js` (fail-closed-Kante) | `tests/workflow.test.js`                |
+| Kein Agent ruft je selbst eine externe API        | `src/kernel/security/actionQueue.js`            | `tests/actionQueue.test.js`             |
+| Ein Neustart verliert keine wartende Genehmigung  | `src/kernel/persistence/`                       | `tests/integration/persistence.test.js` |
+| Routing ist deterministisch und terminiert        | `src/kernel/graph/routing.js`                   | `npm run evals`                         |
 
 **Fail-closed heißt wörtlich fail-closed:** alles, was nicht exakt `true` ist — auch
 `null` — endet bei `END`. Eine Ablehnung stellt nicht zu und reiht nichts ein.
@@ -56,7 +59,8 @@ src/
                grep -rn "beispiel" src/kernel/   → muss leer bleiben
   domains/
     beispiel/  BEDEUTUNG. Agenten, Bremsenreihenfolge, Guardrail-Muster,
-               erlaubte Aktionen. Das Gerüst, aus dem deine Domäne entsteht.
+               erlaubte Aktionen. Referenzdomäne: sie bleibt bestehen, die echte
+               Domäne tritt daneben (ADR-0004).
   adapters/    AUSSENKONTAKT. Heute HTTP; ein zweiter Kanal käme daneben.
   bin/         Einstiegspunkte (demo, serve).
 
@@ -65,8 +69,8 @@ tests/         node:test, keine Testbibliothek.
 .gehirn/       Projektgedächtnis zwischen Sitzungen (siehe CLAUDE.md).
 ```
 
-Die Trennlinie zwischen `kernel/` und `domains/` ist die wichtigste Entscheidung dieses
-Gerüsts. Sie hat ein Prüfkriterium: **eine zweite Domäne ändert null Zeilen unter
+Die Trennlinie zwischen `kernel/` und `domains/` ist die teuerste Entscheidung dieses
+Repos. Sie hat ein Prüfkriterium: **eine zweite Domäne ändert null Zeilen unter
 `src/kernel/`.** Ohne dieses Kriterium wandert Domänenwissen still in den Kern, und die
 dritte Domäne kostet dann so viel wie die erste.
 
@@ -87,18 +91,19 @@ Der ausführliche Weg steht in [`EXTEND.md`](EXTEND.md).
 
 ## Wo was steht
 
-| Frage | Datei |
-| --- | --- |
-| Umfang, Nicht-Ziele, Erfolgskriterien | `PRODUCT.md` |
-| Architektur, Trade-offs, bekannte Grenzen | `ARCHITECTURE.md` |
-| „Warum wurde so entschieden" | `DECISIONS.md` |
-| Metrikdefinitionen, Baseline, Messregeln | `EVALS.md` |
-| Wachstumsreihenfolge | `EXTEND.md` |
-| Knotenreihenfolge, HITL-Mechanik | `docs/workflow.md` |
-| Bedrohungsmodell, die vier MOAT-Schichten | `docs/security-model.md` |
+| Frage                                                 | Datei                         |
+| ----------------------------------------------------- | ----------------------------- |
+| Umfang, Nicht-Ziele, Erfolgskriterien                 | `PRODUCT.md`                  |
+| Architektur, Trade-offs, bekannte Grenzen             | `ARCHITECTURE.md`             |
+| „Warum wurde so entschieden"                          | `DECISIONS.md`                |
+| Metrikdefinitionen, Baseline, Messregeln              | `EVALS.md`                    |
+| Wachstumsreihenfolge                                  | `EXTEND.md`                   |
+| Etappen, ihre Tore, was wann gebraucht wird           | `docs/roadmap.md`             |
+| Knotenreihenfolge, HITL-Mechanik                      | `docs/workflow.md`            |
+| Bedrohungsmodell, die vier MOAT-Schichten             | `docs/security-model.md`      |
 | Arbeitsweise mit einem KI-Agenten, Gedächtnisrhythmus | `docs/development-process.md` |
-| Grenzen des Messinstruments | `evals/README.md` |
-| Anweisungen für den Agenten, Autoritätskette | `CLAUDE.md` |
+| Grenzen des Messinstruments                           | `evals/README.md`             |
+| Anweisungen für den Agenten, Autoritätskette          | `CLAUDE.md`                   |
 
 ---
 
