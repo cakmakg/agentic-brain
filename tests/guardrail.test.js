@@ -12,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { guardrailNode } from "../src/domains/beispiel/domain.js";
-import { cost } from "../src/kernel/observability/costTracker.js";
+import { cost } from "../src/kernel/governance/costTracker.js";
 
 import { frischerZustand } from "./helpers/zustand.js";
 

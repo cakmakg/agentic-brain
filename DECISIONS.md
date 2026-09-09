@@ -152,7 +152,7 @@ andere nicht ersetzen.
 ### Konsequenzen
 
 **Leichter:** Jede neue Datei hat eine Adresse, bevor sie geschrieben wird
-(`docs/roadmap.md` §3). Abhängigkeitsregeln lassen sich auf Ebenenpfade schreiben — deshalb
+(`ARCHITECTURE.md` §7). Abhängigkeitsregeln lassen sich auf Ebenenpfade schreiben — deshalb
 kommt der dependency-cruiser-Rollout (`docs/engineering-discipline.md` E0-B) **nach** dem
 Umbau und nicht davor.
 
@@ -176,8 +176,9 @@ ls src/kernel | grep -vxE 'connectors|context|retrieval|agent|action|governance|
 Der Befehl prüft beide Richtungen zugleich: dass die alten Namen verschwunden sind **und**
 dass niemand später ein siebtes Verzeichnis daneben erfindet.
 
-Stand 2026-09-09: 🔴 vier Treffer (`graph`, `observability`, `security`, `state`) — das ist
-die Aufgabe von Etappe 0b.
+Stand 2026-09-09, nach dem Umbau (Etappe 0b): 🟢 keine Ausgabe. Der Kontext oben
+beschreibt weiterhin den Zustand **vor** der Entscheidung — eine ADR wird nicht
+nachträglich umgeschrieben, nur ihre Statuszeile wird nachgeführt.
 
 ---
 
@@ -227,7 +228,7 @@ Zeile weder dem einen noch dem anderen zuzuordnen.
 **Leichter:** Alles ab Etappe 2 baut auf einem unterstützten Major. `npm audit` bleibt ein
 Tor und wird kein Rückstand.
 
-**Schwerer:** `src/kernel/graph/` und der Checkpointer werden angefasst werden müssen — und
+**Schwerer:** `src/kernel/agent/` und der Checkpointer werden angefasst werden müssen — und
 zwar an genau der Stelle, an der die HITL-Kante hängt. Die Zusage „die Kante prüft auf exakt
 `true`" gilt auch durch die Migration hindurch; sie ist testgedeckt und muss es bleiben.
 

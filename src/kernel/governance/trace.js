@@ -1,4 +1,4 @@
-// ── kernel/observability/trace.js ────────────────────────────────────────
+// ── kernel/governance/trace.js ───────────────────────────────────────────
 // Minimaler Trace: je Lauf eine JSONL-Datei unter evals/traces/<run_id>.jsonl.
 // Keine neue Abhängigkeit, kein Dienst, keine Datenbank — node:fs genügt.
 //

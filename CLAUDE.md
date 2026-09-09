@@ -56,28 +56,28 @@ ist bewusst: sie verhindert, dass zwei Gedächtnisse auseinanderdriften.
 
 ## Wegweiser nach Aufgabentyp
 
-| Aufgabentyp                                           | Wo nachschauen                                                                    |
-| ----------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Umfang, Nicht-Ziele, Erfolgskriterien                 | `PRODUCT.md`                                                                      |
-| Architekturentscheidung, Trade-off, bekannte Grenzen  | `ARCHITECTURE.md`                                                                 |
-| „Warum wurde so entschieden"                          | `DECISIONS.md`                                                                    |
-| Messung, Metrikdefinition, Baseline                   | `EVALS.md`                                                                        |
-| Wachstumsreihenfolge, schichtweiser Ausbau            | `EXTEND.md`                                                                       |
-| Etappen, ihre Tore, was wann gebraucht wird           | `docs/roadmap.md` — Vorschlag, kein Vertrag                                       |
-| Ablaufdetails, Knotenreihenfolge, HITL-Mechanik       | `docs/workflow.md`                                                                |
-| Sicherheitsmodell, Bedrohungsmodell                   | `docs/security-model.md`                                                          |
-| KI-gestützter Entwicklungsprozess, Gedächtnisrhythmus | `docs/development-process.md`                                                     |
-| Agentenverhalten und Prompts                          | `src/domains/<domäne>/prompts.js`                                                 |
-| Graph-Topologie, Pause und Fortsetzung                | `src/kernel/graph/`                                                               |
-| Auth, Rate-Limit, Aktions-Isolation                   | `src/kernel/security/` (Mechanik) · `src/domains/<domäne>/actions.js` (Whitelist) |
-| LLM-Adapter, Mock-Modus, Kosten                       | `src/kernel/llm/` · `src/kernel/observability/costTracker.js`                     |
-| State-Schema und Reducer                              | `src/kernel/state/` — Kernfelder plus Felder der Domäne                           |
-| Domänen-Spezifikation, Bremsenreihenfolge             | `src/domains/<domäne>/domain.js` · Registrierung `src/kernel/registry.js`         |
-| Tests                                                 | `tests/` — `node:test`, Aufruf `npm test`                                         |
-| Evaluations-Harness und Datensatz                     | `evals/` — Aufruf `npm run evals`, Grenzen in `evals/README.md`                   |
-| Offene Themen                                         | `.gehirn/themen.md`                                                               |
-| Verbindliche Projektkonventionen                      | `.gehirn/regeln.md`                                                               |
-| Gesundheitscheck                                      | Skill `projekt-doktor`                                                            |
+| Aufgabentyp                                           | Wo nachschauen                                                                          |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Umfang, Nicht-Ziele, Erfolgskriterien                 | `PRODUCT.md`                                                                            |
+| Architekturentscheidung, Trade-off, bekannte Grenzen  | `ARCHITECTURE.md`                                                                       |
+| „Warum wurde so entschieden"                          | `DECISIONS.md`                                                                          |
+| Messung, Metrikdefinition, Baseline                   | `EVALS.md`                                                                              |
+| Wachstumsreihenfolge, schichtweiser Ausbau            | `EXTEND.md`                                                                             |
+| Etappen, ihre Tore, was wann gebraucht wird           | `docs/roadmap.md` — Vorschlag, kein Vertrag                                             |
+| Ablaufdetails, Knotenreihenfolge, HITL-Mechanik       | `docs/workflow.md`                                                                      |
+| Sicherheitsmodell, Bedrohungsmodell                   | `docs/security-model.md`                                                                |
+| KI-gestützter Entwicklungsprozess, Gedächtnisrhythmus | `docs/development-process.md`                                                           |
+| Agentenverhalten und Prompts                          | `src/domains/<domäne>/prompts.js`                                                       |
+| Graph, Routing, State, Pause und Fortsetzung          | `src/kernel/agent/` — Kernfelder plus Felder der Domäne                                 |
+| Auth, Rate-Limit, Guardrail, Trace, Kosten            | `src/kernel/governance/`                                                                |
+| Aktions-Isolation                                     | `src/kernel/action/queue.js` (Mechanik) · `src/domains/<domäne>/actions.js` (Whitelist) |
+| LLM-Adapter und Mock-Modus                            | `src/kernel/llm/`                                                                       |
+| Domänen-Spezifikation, Bremsenreihenfolge             | `src/domains/<domäne>/domain.js` · Registrierung `src/kernel/registry.js`               |
+| Tests                                                 | `tests/` — `node:test`, Aufruf `npm test`                                               |
+| Evaluations-Harness und Datensatz                     | `evals/` — Aufruf `npm run evals`, Grenzen in `evals/README.md`                         |
+| Offene Themen                                         | `.gehirn/themen.md`                                                                     |
+| Verbindliche Projektkonventionen                      | `.gehirn/regeln.md`                                                                     |
+| Gesundheitscheck                                      | Skill `projekt-doktor`                                                                  |
 
 ## Wohin neue Dateien gehören
 

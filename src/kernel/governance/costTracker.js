@@ -1,4 +1,4 @@
-// ── kernel/observability/costTracker.js ──────────────────────────────────────────────
+// ── kernel/governance/costTracker.js ─────────────────────────────────────────────────
 // Kostenverfolgung Token → USD + AUTOMATISCHER BUDGET-KILL-SWITCH.
 //
 // Gründerlektion: In einem System, das Geld ausgibt, ist Kosten ein

@@ -1,4 +1,4 @@
-// ── kernel/graph/routing.js ──────────────────────────────────────────────
+// ── kernel/agent/routing.js ──────────────────────────────────────────────
 // Das VERFAHREN des dreischichtigen Routings. Die REIHENFOLGE der Bremsen
 // bringt die Domäne mit — das ist die feinste Stelle der Naht.
 //

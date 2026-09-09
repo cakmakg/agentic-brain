@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 
 // Vor dem Import setzen: env.js liest process.env beim Laden.
 process.env.API_KEY = "test-schluessel-123";
-const { authMiddleware } = await import("../src/kernel/security/auth.js");
+const { authMiddleware } = await import("../src/kernel/governance/auth.js");
 
 const GUELTIG = "test-schluessel-123";
 

@@ -1,7 +1,9 @@
 # ARCHITECTURE
 
-> **VORLAGE mit Bestand.** §1 bis §5 beschreiben, was im Repo tatsächlich steht — sie sind
-> keine Lücken. §6 und §7 sind für deine Entscheidungen frei.
+> **Vertragsdokument.** Alle sieben Abschnitte tragen Bestand: §1–§5 beschreiben, was im Repo
+> tatsächlich steht, §6 hält die offenen Fragen samt Fälligkeit, §7 ist der verbindliche
+> Zielbaum. Bei Widerspruch gewinnt diese Datei gegen `docs/roadmap.md` — jenes ist ein
+> Vorschlag und steht in der Autoritätskette gar nicht.
 
 ## 1. Die Trennlinie
 
@@ -14,12 +16,12 @@ Zwei Schichten, eine Naht:
 
 Die Naht hat genau **vier feine Stellen** — dort reicht die Domäne dem Kern etwas an:
 
-| Stelle | Kern liefert | Domäne liefert |
-| --- | --- | --- |
-| Routing | `createRouter` (das Verfahren) | die Bremsen, in ihrer Reihenfolge |
-| Guardrail | `createGuardrail` (die Regex-Engine) | die Muster und ihre Gewichte |
-| Aktions-Queue | `createActionQueue` (die Mechanik) | Whitelist und Validierer |
-| State | Kernfelder + `buildState` | die eigenen Felder samt Reducer-Wahl |
+| Stelle        | Kern liefert                         | Domäne liefert                       |
+| ------------- | ------------------------------------ | ------------------------------------ |
+| Routing       | `createRouter` (das Verfahren)       | die Bremsen, in ihrer Reihenfolge    |
+| Guardrail     | `createGuardrail` (die Regex-Engine) | die Muster und ihre Gewichte         |
+| Aktions-Queue | `createActionQueue` (die Mechanik)   | Whitelist und Validierer             |
+| State         | Kernfelder + `buildState`            | die eigenen Felder samt Reducer-Wahl |
 
 **Prüfkriterium:** eine zweite Domäne ändert **null Zeilen** unter `src/kernel/`.
 
@@ -68,8 +70,14 @@ Diese Liste ist absichtlich sichtbar. Eine verschwiegene Grenze wird zu einem Au
 - **Der Event-Puffer wird nur am Ende von `startWorkflow` aufgeräumt.** Nach
   `resolveApproval` erzeugte Events können erneut gepuffert werden. Kleines Leck.
 - **Der Action-Worker simuliert.** Der echte externe Aufruf steht als Kommentar in
-  `actionQueue.js`. Wer ihn einsetzt, erbt die Idempotenz — und muss die Ausgabengrenze prüfen.
-- <!-- trag deine eigenen ein, sobald du sie kennst -->
+  `action/queue.js`. Wer ihn einsetzt, erbt die Idempotenz — und muss die Ausgabengrenze prüfen.
+- **Zwei Stellen sind zu groß geraten.** `createActionQueue` in `src/kernel/action/queue.js`
+  umfasst 101 Zeilen, und `src/kernel/agent/checkpointer.js` verschachtelt an einer Stelle
+  fünf Ebenen tief. Beide sind als ESLint-Warnung sichtbar und bleiben es, bis der
+  Lint-Rollout sie einzeln aufgreift — nicht nebenbei bei einer anderen Änderung.
+- **Der Abhängigkeitsstand ist zurück.** Gemessen am 2026-09-09: `@langchain/langgraph` 0.2.74
+  gegen aktuell 1.4.14, `npm audit` meldet sechs hohe Schwachstellen. Das ist keine dauerhafte
+  Grenze, sondern eine terminierte: ADR-0003 entscheidet den Sprung, Etappe 0c führt ihn aus.
 
 ## 5. Beobachtbarkeit
 
@@ -88,11 +96,63 @@ die Summe der Zeilen.
 
 ## 6. Entscheidungen, die noch offen sind
 
-<!-- Was du bewusst noch nicht entschieden hast, und woran du es entscheiden wirst.
-     Sobald eine Entscheidung fällt, wandert sie als ADR nach DECISIONS.md. -->
+| Frage                                                          | Blockiert heute                 | Fällt in                   |
+| -------------------------------------------------------------- | ------------------------------- | -------------------------- |
+| **Welche Vertikale?** Ontologie, ACL-Modell, erster Connector  | die Ebenen ①–③ mit echten Daten | `docs/roadmap.md` Etappe 3 |
+| K5 (`clone → install → demo` ohne Infrastruktur) nach Postgres | nichts                          | Etappe 3, per ADR          |
+| Vollständige TypeScript-Migration                              | nichts                          | offen                      |
+| Darf ein zweiter Kanal (MCP) `approve` anbieten?               | nichts                          | Etappe 6, per ADR          |
+
+Fällt eine dieser Fragen, wandert sie als ADR nach `DECISIONS.md` und wird hier auf einen
+Verweis gekürzt. Eine Frage, die an zwei Orten offen steht, wird zweimal beantwortet.
 
 ## 7. Zielstruktur beim Wachsen
 
-<!-- Wenn das Projekt über eine Domäne und einen Adapter hinauswächst:
-     wie sieht der Baum dann aus, und welche Datei zieht wohin?
-     Vorher festlegen — eine später umgezogene Datei bricht den Vergleich zur Baseline. -->
+Seit dem Umbau am 2026-09-09 tragen die Verzeichnisse unter `src/kernel/` die Namen der sechs
+Ebenen (ADR-0002). Dieser Baum ist der **Vertrag**; `docs/roadmap.md` sagt nur, in welcher
+**Reihenfolge** er gefüllt wird. `NEU` steht für einen Ort, der heute leer ist — die Ebenen
+①–③ existieren noch nicht.
+
+```
+src/
+  kernel/                    MECHANIK · kennt keine Domäne
+    connectors/              ① NEU · Ingest-Rahmen; die Quelle selbst liegt in der Domäne
+    context/                 ② NEU · Envelope, Chunking, Embedding, Store-Port
+    retrieval/               ③ NEU · ACL-Filter, hybride Suche, Rerank
+    agent/                   ④ build · routing · runner · schema · reducers · checkpointer
+    action/                  ⑤ queue
+    governance/              ⑥ guardrail · auth · rateLimiter · trace · eventBus · costTracker
+
+    llm/                     Infrastruktur · adapter · mock — keine der sechs Ebenen
+    persistence/store.js     Infrastruktur · von agent/ UND action/ benutzt
+    config/env.js            Infrastruktur
+    registry.js              Infrastruktur
+
+  domains/<domäne>/          BEDEUTUNG · der Kern kennt diese Dateien nicht
+    domain.js                die Naht: stateFields, brakes, guardrailRules, nodes
+    agents/*.js · prompts.js · actions.js
+    ontology.js              NEU · Entitäten, Relationen, Aktionstypen
+    acl.js                   NEU · Berechtigungsmodell der Quelle → Principal
+    connectors/<quelle>.js   NEU
+
+  adapters/                  AUSSENKONTAKT
+    http/server.js
+    mcp/server.js            NEU, später · bietet KEIN approve an
+```
+
+**Zwei Zuordnungen, hergeleitet und nicht geraten.** `checkpointer.js` liegt in `agent/`, weil
+Durable Execution zur Agent Runtime gehört und nicht zur Infrastruktur. `trace`, `eventBus`
+und `costTracker` liegen in `governance/`, weil Beobachtbarkeit dorthin gehört.
+`persistence/store.js` bleibt außerhalb der Ebenen: es wird von zweien benutzt und ist selbst
+keine.
+
+Die Ebenenliste ist damit **nicht vollständig** — `llm/`, `persistence/`, `config/` und
+`registry.js` sind Infrastruktur. Wer den Baum liest, muss das wissen; der Prüfbefehl weiß es:
+
+```bash
+ls src/kernel | grep -vxE 'connectors|context|retrieval|agent|action|governance|llm|persistence|config|registry\.js'
+# erwartet: keine Ausgabe
+```
+
+Er prüft beide Richtungen — dass keine alte Struktur zurückkehrt **und** dass niemand später
+ein siebtes Verzeichnis daneben erfindet.

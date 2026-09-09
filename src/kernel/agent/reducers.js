@@ -1,4 +1,4 @@
-// ── kernel/state/reducers.js ─────────────────────────────────────────────
+// ── kernel/agent/reducers.js ─────────────────────────────────────────────
 // Die vier Reducer als Mechanik: hier steht nur, wie sie rechnen. Welches Feld
 // welchen bekommt, entscheidet die Domäne — und genau diese Zuordnung ist eine
 // fachliche Aussage, keine Formalie. Sie gehört als ADR nach `DECISIONS.md`.

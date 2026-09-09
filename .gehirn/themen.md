@@ -16,17 +16,6 @@ Bewegung entstehen zwei Wahrheiten.
 > nicht. Die **Statuszeile muss deshalb für sich allein stehen** und in sich abgeschlossen
 > sein. Der Fließtext darunter ist Vertiefung für den, der die Datei öffnet.
 
-### Thema: Etappe 0b — Umbau auf die sechs Ebenen
-
-**Status:** 🔴 Der unmittelbar nächste Schritt. Reine Umbenennung, null Logikänderung, läuft allein. Entschieden in ADR-0002.
-`graph/ state/ security/ observability/` → `agent/ action/ governance/`; `persistence/`,
-`llm/`, `config/`, `registry.js` bleiben als Infrastruktur außerhalb der Ebenen. Betroffen
-sind auch Importpfade in `tests/`, `evals/domains/*/adapter.js` und die Wegweiser-Tabelle in
-`CLAUDE.md`. Tor: Kerntor mit **identischen** Zahlen (nicht nur grünen) plus das
-Prüfkriterium von ADR-0002. **Verbot:** keine „wo wir schon dabei sind"-Korrektur — die
-101-Zeilen-Funktion in der Aktions-Queue und die fünf Verschachtelungsebenen im Checkpointer
-bleiben unangetastet, sie gehören zum Lint-Rollout.
-
 ### Thema: LangGraph 1.x und die Schwachstellen — Etappe 0c
 
 **Status:** 🔴 Entschieden als ADR-0003, noch nicht ausgeführt. Gemessen 2026-09-09: langgraph 0.2.74 (aktuell 1.4.14), `npm audit` 6 hoch.
@@ -38,13 +27,13 @@ von ADR-0003 ist zugleich das Tor. Nebenbei fällig: `description` in `package.j
 
 ### Thema: Ingenieursdisziplin einführen
 
-**Status:** 🟡 E0-A steht (12 Warnungen, 0 Fehler); E0-B ist an den Umbau gekoppelt und kommt **nach** Etappe 0b.
+**Status:** 🟡 E0-A steht (12 Warnungen, 0 Fehler); **E0-B ist seit dem Umbau frei** und der nächste Disziplinschritt.
 Seit 2026-09-08: ESLint 10, Prettier, lefthook, alle Regeln auf `warn`, `src/` unberührt.
-E0-B (dependency-cruiser) schreibt seine Regeln auf **Pfade** — vor dem Umbau geschrieben,
-müsste es zweimal geschrieben werden. Danach E0-C (`envLive` — erste Etappe mit
+E0-B (dependency-cruiser) schreibt seine Regeln auf **Pfade**; seit Etappe 0b stehen die
+Ebenenpfade fest, es kann also einmal geschrieben werden. Danach E0-C (`envLive` — erste Etappe mit
 Quellcodeänderung), E0-D (`checkJs`), E0-E (zod am HTTP-Rand), E0-F (knip + `.gehirn`-Validator).
-Nach dem Umbau werden zwei neue Regeln überhaupt erst schreibbar: `*/store/index.js ✗→
-*/store/*.js` und `**/retrieval/filter.js ✗→ node:fs, node:http`.
+Zwei Regeln bleiben bis Etappe 2 unschreibbar, weil ihre Verzeichnisse noch leer sind:
+`*/store/index.js ✗→ */store/*.js` und `**/retrieval/filter.js ✗→ node:fs, node:http`.
 
 ### Thema: Welche Vertikale — die offene Produktentscheidung
 
@@ -56,6 +45,14 @@ erster Connector und die Aktionstypen leiten sich weiterhin alle aus ihr ab. Tor
 Ticket · Ticket-Triage · Kunden-Onboarding.
 
 ## Abgeschlossene Themen
+
+### Thema: Etappe 0b — Umbau auf die sechs Ebenen
+
+**Status:** 🟢 Abgeschlossen 2026-09-09. Reine Umbenennung, null Logikänderung; ADR-0002 grün.
+Belegt: Schicht-A-Bericht **Byte für Byte identisch** zum committeten Stand · `npm test` 98/98 ·
+`npm run demo` Exit 0 · `ls src/kernel` ohne Fremdling · kein Dokument nennt mehr einen Pfad,
+den es vor dem Umbau gab und jetzt nicht mehr gibt. Der Zielbaum ist als Vertrag nach
+`ARCHITECTURE.md` §7 gezogen, `docs/roadmap.md` §3 auf einen Verweis gekürzt.
 
 ### Thema: Das Gerüst aufsetzen
 

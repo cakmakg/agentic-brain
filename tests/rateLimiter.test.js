@@ -14,7 +14,7 @@ import {
   globalLimiter,
   workflowLimiter,
   approveLimiter,
-} from "../src/kernel/security/rateLimiter.js";
+} from "../src/kernel/governance/rateLimiter.js";
 
 test("Es gibt drei getrennte Limiter, keinen gemeinsamen", () => {
   const alle = [globalLimiter, workflowLimiter, approveLimiter];

@@ -9,8 +9,8 @@ Der Anspruch: nicht nur die Arbeit zählt als Beweis, sondern **wie sie gemessen
 > **Stand 2026-09-09.** Agent Runtime und der Kern der Governance stehen und sind gemessen —
 > `npm test` 98/98, Schicht A 20/20. Kontext, Retrieval und Connectoren sind **leer**.
 > Die Identität steht als ADR-0001 in [`DECISIONS.md`](DECISIONS.md), die Reihenfolge der
-> Etappen in [`docs/roadmap.md`](docs/roadmap.md). `PRODUCT.md` und `ARCHITECTURE.md` tragen
-> noch Vorlagenkästen — sie halten die Struktur, nicht überall schon die Antworten.
+> Etappen in [`docs/roadmap.md`](docs/roadmap.md). `PRODUCT.md` trägt noch einen
+> Vorlagenkasten — es hält die Struktur, noch nicht die Antworten.
 
 ---
 
@@ -39,12 +39,12 @@ START → guardrail → orchestrator ⇄ {bearbeiter, ablage}
 
 Vier Zusagen, jede an einen Prüfbefehl gebunden:
 
-| Zusage                                            | Wo sie im Code steht                            | Wo sie geprüft wird                     |
-| ------------------------------------------------- | ----------------------------------------------- | --------------------------------------- |
-| Ohne menschliche Freigabe wirkt nichts nach außen | `src/kernel/graph/build.js` (fail-closed-Kante) | `tests/workflow.test.js`                |
-| Kein Agent ruft je selbst eine externe API        | `src/kernel/security/actionQueue.js`            | `tests/actionQueue.test.js`             |
-| Ein Neustart verliert keine wartende Genehmigung  | `src/kernel/persistence/`                       | `tests/integration/persistence.test.js` |
-| Routing ist deterministisch und terminiert        | `src/kernel/graph/routing.js`                   | `npm run evals`                         |
+| Zusage                                            | Wo sie im Code steht                                                   | Wo sie geprüft wird                     |
+| ------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------- |
+| Ohne menschliche Freigabe wirkt nichts nach außen | `src/kernel/agent/build.js` (fail-closed-Kante)                        | `tests/workflow.test.js`                |
+| Kein Agent ruft je selbst eine externe API        | `src/kernel/action/queue.js`                                           | `tests/actionQueue.test.js`             |
+| Ein Neustart verliert keine wartende Genehmigung  | `src/kernel/agent/checkpointer.js` · `src/kernel/persistence/store.js` | `tests/integration/persistence.test.js` |
+| Routing ist deterministisch und terminiert        | `src/kernel/agent/routing.js`                                          | `npm run evals`                         |
 
 **Fail-closed heißt wörtlich fail-closed:** alles, was nicht exakt `true` ist — auch
 `null` — endet bei `END`. Eine Ablehnung stellt nicht zu und reiht nichts ein.

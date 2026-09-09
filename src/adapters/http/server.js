@@ -21,17 +21,17 @@
 import express from "express";
 import crypto from "node:crypto";
 
-import { authMiddleware } from "../../kernel/security/auth.js";
+import { authMiddleware } from "../../kernel/governance/auth.js";
 import {
   globalLimiter,
   workflowLimiter,
   approveLimiter,
-} from "../../kernel/security/rateLimiter.js";
+} from "../../kernel/governance/rateLimiter.js";
 import { getRunner } from "../../kernel/registry.js";
 import {
   agentEventBus,
   drainBuffer,
-} from "../../kernel/observability/eventBus.js";
+} from "../../kernel/governance/eventBus.js";
 
 // Die Domäne wird hier registriert — der Adapter wählt sie, der Kern kennt sie nicht.
 import "../../domains/beispiel/domain.js";

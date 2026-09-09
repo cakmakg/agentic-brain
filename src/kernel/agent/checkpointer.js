@@ -1,4 +1,4 @@
-// ── kernel/persistence/checkpointer.js ───────────────────────────────────
+// ── kernel/agent/checkpointer.js ─────────────────────────────────────────
 // Der Checkpointer, der einen Neustart überlebt. Er ist die Hälfte der
 // HITL-Zusage: der Graph hält bei `human_approval` an und lebt DANN zwischen
 // zwei HTTP-Anfragen weiter. Lag er im Arbeitsspeicher, war „zwischen zwei
@@ -30,7 +30,7 @@
 
 import { MemorySaver } from "@langchain/langgraph";
 
-import { appendLog, readLog } from "./store.js";
+import { appendLog, readLog } from "../persistence/store.js";
 
 // Die serialisierte Form ist ein Byte-Array; JSONL trägt Text. Base64 ist der
 // kleinste ehrliche Übersetzer dazwischen.

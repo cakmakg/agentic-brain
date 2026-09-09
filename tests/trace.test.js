@@ -13,7 +13,7 @@ const traceDir = fs.mkdtempSync(path.join(os.tmpdir(), "trace-unit-"));
 process.env.TRACE_DIR = traceDir;
 
 const { startTrace, resumeTrace } =
-  await import("../src/kernel/observability/trace.js");
+  await import("../src/kernel/governance/trace.js");
 
 const lies = (runId) =>
   fs

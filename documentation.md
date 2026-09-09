@@ -47,13 +47,14 @@ Bugünkü gerçek ağaç. `★` ile işaretliler bu oturumda eklendi.
 agentic-brain/
 ├── src/                              27 dosya, hepsi .js (ESM)
 │   ├── kernel/                       MEKANİK — hiçbir alanı tanımaz
-│   │   ├── config/env.js             tüm ortam değişkenleri tek noktada
-│   │   ├── graph/                    build · routing · runner
-│   │   ├── llm/                      adapter · mock
-│   │   ├── state/                    schema (çekirdek alanlar) · reducers
-│   │   ├── persistence/              store · checkpointer
-│   │   ├── observability/            eventBus · trace · costTracker
-│   │   ├── security/                 guardrail · auth · rateLimiter · actionQueue
+│   │   ├── action/                   queue — ⑤ Action Layer
+│   │   ├── agent/                    ④ Agent Runtime: build · routing · runner ·
+│   │   │                             schema · reducers · checkpointer
+│   │   ├── governance/               ⑥ Governance: guardrail · auth · rateLimiter ·
+│   │   │                             trace · eventBus · costTracker
+│   │   ├── config/env.js             altyapı — tüm ortam değişkenleri tek noktada
+│   │   ├── llm/                      altyapı — adapter · mock
+│   │   ├── persistence/              altyapı — store (iki katman birden kullanır)
 │   │   └── registry.js               alan kaydı
 │   ├── domains/beispiel/             ANLAM — örnek alan
 │   │   ├── domain.js                 dikişin dört noktası
@@ -187,12 +188,12 @@ grep -rn "beispiel" src/kernel/     # boş kalmalı → bugün 0 ✓
 
 ### 4.1 Dört katman, isteğin geçtiği sırayla
 
-| #   | Katman             | Dosya                                              | Ne yapar                                                                           | Bilinen sınırı                                                 |
-| --- | ------------------ | -------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| 1   | Guardrail          | `security/guardrail.js`                            | **LLM'siz** ağırlıklı regex, üç bant: ≥3 blok · 2 sanitize · 1 geçir ama raporla   | Regex yalnız bilinen biçimi tanır. Dış veri de düşmandır       |
-| 2   | Bütçe kill-switch  | `observability/costTracker.js`                     | Bütçe aşıldıysa koşu **guardrail'de** biter — ilk LLM çağrısından önce             | Mock modunda token tahmini kaba (karakter ÷ 4)                 |
-| 3   | Auth + rate limit  | `security/auth.js`, `rateLimiter.js`               | Anahtar **doğrulanır, bereinigt edilmez**; sabit-zamanlı karşılaştırma; üç limiter | SSE ucu auth'un **önünde** — koruma tahmin edilemez `threadId` |
-| 4   | Aksiyon izolasyonu | `security/actionQueue.js` + `domains/*/actions.js` | `Ajan → Kuyruk (sadece YAZAR) → Worker (okur + DOĞRULAR + çalıştırır)`             | Worker simüle ediyor; gerçek çağrı sert timeout ister          |
+| #   | Katman             | Dosya                                      | Ne yapar                                                                           | Bilinen sınırı                                                 |
+| --- | ------------------ | ------------------------------------------ | ---------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| 1   | Guardrail          | `governance/guardrail.js`                  | **LLM'siz** ağırlıklı regex, üç bant: ≥3 blok · 2 sanitize · 1 geçir ama raporla   | Regex yalnız bilinen biçimi tanır. Dış veri de düşmandır       |
+| 2   | Bütçe kill-switch  | `governance/costTracker.js`                | Bütçe aşıldıysa koşu **guardrail'de** biter — ilk LLM çağrısından önce             | Mock modunda token tahmini kaba (karakter ÷ 4)                 |
+| 3   | Auth + rate limit  | `governance/auth.js`, `rateLimiter.js`     | Anahtar **doğrulanır, bereinigt edilmez**; sabit-zamanlı karşılaştırma; üç limiter | SSE ucu auth'un **önünde** — koruma tahmin edilemez `threadId` |
+| 4   | Aksiyon izolasyonu | `action/queue.js` + `domains/*/actions.js` | `Ajan → Kuyruk (sadece YAZAR) → Worker (okur + DOĞRULAR + çalıştırır)`             | Worker simüle ediyor; gerçek çağrı sert timeout ister          |
 
 **Neden guardrail'de LLM yok:** güvenlik denetiminin kendisi prompt injection'a bağışık
 olmalı. Bir modele _"bu metin tehlikeli mi?"_ diye sorarsan, saldıran kişi o modeli de
@@ -410,13 +411,13 @@ erişimciler** koymak.
 npx eslint .        # ✖ 12 problems (0 errors, 12 warnings) · exit 0
 ```
 
-| Kural                    | Adet | Nerede                                                                                |
-| ------------------------ | ---- | ------------------------------------------------------------------------------------- |
-| `no-restricted-syntax`   | 3    | `src/kernel/observability/trace.js:31` · `src/kernel/persistence/store.js:34,38`      |
-| `no-unused-vars`         | 3    | `tests/schichtB.test.js:17,18,19` (`fs`, `os`, `path` — kullanılmayan import)         |
-| `max-lines-per-function` | 3    | `src/kernel/security/actionQueue.js:57` (`createActionQueue`, 101 satır) + evals'de 2 |
-| `complexity`             | 2    | `evals/`                                                                              |
-| `max-depth`              | 1    | `src/kernel/persistence/checkpointer.js:78` (iç içe 5, sınır 4)                       |
+| Kural                    | Adet | Nerede                                                                        |
+| ------------------------ | ---- | ----------------------------------------------------------------------------- |
+| `no-restricted-syntax`   | 3    | `src/kernel/governance/trace.js:31` · `src/kernel/persistence/store.js:34,38` |
+| `no-unused-vars`         | 3    | `tests/schichtB.test.js:17,18,19` (`fs`, `os`, `path` — kullanılmayan import) |
+| `max-lines-per-function` | 3    | `src/kernel/action/queue.js:57` (`createActionQueue`, 101 satır) + evals'de 2 |
+| `complexity`             | 2    | `evals/`                                                                      |
+| `max-depth`              | 1    | `src/kernel/agent/checkpointer.js:78` (iç içe 5, sınır 4)                     |
 
 **Dizin dağılımı:** `src/` 5 · `evals/` 4 · `tests/` 3.
 

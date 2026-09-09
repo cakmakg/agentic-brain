@@ -1,4 +1,4 @@
-// ── kernel/security/actionQueue.js ───────────────────────────────────────
+// ── kernel/action/queue.js ───────────────────────────────────────────────
 // MOAT Layer 4 — AKTIONS-ISOLATION. Die QUEUE-MECHANIK; die WHITELIST bringt
 // die Domäne mit. Das ist die dritte feine Stelle der Naht.
 //
@@ -34,7 +34,8 @@ import { appendLog, readLog } from "../persistence/store.js";
 // auch wenn seine Felder in anderer Reihenfolge entstanden sind. JSON.stringify
 // allein leistet das nicht — es schreibt in Einfügereihenfolge.
 function stabil(wert) {
-  if (wert === null || typeof wert !== "object") return JSON.stringify(wert) ?? "null";
+  if (wert === null || typeof wert !== "object")
+    return JSON.stringify(wert) ?? "null";
   if (Array.isArray(wert)) return `[${wert.map(stabil).join(",")}]`;
   return `{${Object.keys(wert)
     .sort()

@@ -1,4 +1,4 @@
-// ── kernel/security/rateLimiter.js ──────────────────────────────────────────────
+// ── kernel/governance/rateLimiter.js ────────────────────────────────────────────
 // MOAT Layer 2 — Rate-Limiting, nach Endpunkt gestaffelt: teure LLM-Endpunkte
 // werden strenger begrenzt.
 //

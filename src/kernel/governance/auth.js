@@ -1,4 +1,4 @@
-// ── kernel/security/auth.js ─────────────────────────────────────────────────────
+// ── kernel/governance/auth.js ───────────────────────────────────────────────────
 // MOAT Layer 3 — Authentifizierung. FAIL-CLOSED.
 //
 // Regeln:
@@ -30,7 +30,8 @@ function hatGueltigesFormat(k) {
 // LÄNGE nichts verrät — timingSafeEqual allein verlangt gleich lange Puffer und
 // würde bei ungleicher Länge früh abbrechen.
 function sindGleich(a, b) {
-  const h = (s) => crypto.createHash("sha256").update(String(s), "utf8").digest();
+  const h = (s) =>
+    crypto.createHash("sha256").update(String(s), "utf8").digest();
   return crypto.timingSafeEqual(h(a), h(b));
 }
 

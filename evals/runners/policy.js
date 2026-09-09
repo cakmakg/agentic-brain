@@ -48,7 +48,7 @@ if (!MOCK_LLM) {
   process.exit(1);
 }
 
-const { cost } = await import("../../src/kernel/observability/costTracker.js");
+const { cost } = await import("../../src/kernel/governance/costTracker.js");
 const { onLlmCall } = await import("../../src/kernel/llm/adapter.js");
 const { berechneMetriken, vertragstreue } = await import("../metrics/index.js");
 const { DOMAENEN, ladeAdapter } = await import("../domains/index.js");

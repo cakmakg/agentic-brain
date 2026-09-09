@@ -15,7 +15,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { buildState } from "../src/kernel/state/schema.js";
+import { buildState } from "../src/kernel/agent/schema.js";
 import { beispielDomain } from "../src/domains/beispiel/domain.js";
 
 import { frischerZustand } from "./helpers/zustand.js";

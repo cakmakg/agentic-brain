@@ -20,9 +20,9 @@ import { Annotation } from "@langchain/langgraph";
 import { z } from "zod";
 
 import { registerDomain } from "../../kernel/registry.js";
-import { createRouter } from "../../kernel/graph/routing.js";
-import { createGuardrail } from "../../kernel/security/guardrail.js";
-import { keepIfFilled, lastWins } from "../../kernel/state/reducers.js";
+import { createRouter } from "../../kernel/agent/routing.js";
+import { createGuardrail } from "../../kernel/governance/guardrail.js";
+import { keepIfFilled, lastWins } from "../../kernel/agent/reducers.js";
 import { llmStructured } from "../../kernel/llm/adapter.js";
 import { modelFor } from "../../kernel/config/env.js";
 

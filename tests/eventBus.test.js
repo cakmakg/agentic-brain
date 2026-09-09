@@ -11,7 +11,7 @@ import {
   emitToThread,
   drainBuffer,
   scheduleBufferGc,
-} from "../src/kernel/observability/eventBus.js";
+} from "../src/kernel/governance/eventBus.js";
 
 test("Ohne Zuhörer werden Events gepuffert und später in Reihenfolge geliefert", () => {
   const threadId = "t-puffer";

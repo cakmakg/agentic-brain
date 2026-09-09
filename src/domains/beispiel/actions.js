@@ -10,7 +10,7 @@
 // nichts darüber hinaus. Was nicht auf dieser Liste steht, kann kein Agent
 // auslösen, auch kein übernommener.
 
-import { createActionQueue } from "../../kernel/security/actionQueue.js";
+import { createActionQueue } from "../../kernel/action/queue.js";
 
 export const whitelist = ["NOTIFY", "WEBHOOK", "EMAIL"];
 

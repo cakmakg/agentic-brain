@@ -31,7 +31,7 @@ const { startWorkflow, resolveApproval } = getRunner("beispiel");
 const { getArtifact } =
   await import("../src/domains/beispiel/agents/ablage.js");
 const { getQueue } = await import("../src/domains/beispiel/actions.js");
-const { cost } = await import("../src/kernel/observability/costTracker.js");
+const { cost } = await import("../src/kernel/governance/costTracker.js");
 
 const AUFGABE = "Eine kurze Zusammenfassung der Quartalszahlen.";
 const queueFor = (threadId) =>

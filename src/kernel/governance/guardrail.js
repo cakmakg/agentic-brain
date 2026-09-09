@@ -1,4 +1,4 @@
-// ── kernel/security/guardrail.js ─────────────────────────────────────────
+// ── kernel/governance/guardrail.js ───────────────────────────────────────
 // MOAT Layer 1 — die REGEX-ENGINE. Die MUSTER bringt die Domäne mit; das ist
 // die zweite feine Stelle der Naht.
 //
@@ -10,7 +10,7 @@
 // Nutzereingabe (hier) UND bei externen Daten (Ergebnis eines Web-Scrapes).
 // Auch externe Daten sind feindlich.
 
-import { cost } from "../observability/costTracker.js";
+import { cost } from "./costTracker.js";
 
 export function createGuardrail({
   rules,

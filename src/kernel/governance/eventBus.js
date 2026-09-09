@@ -1,4 +1,4 @@
-// ── kernel/observability/eventBus.js ──────────────────────────────────────────────────────
+// ── kernel/governance/eventBus.js ─────────────────────────────────────────────────────────
 // Ereignisbus für den Live-Stream (SSE) + EVENT-BUFFERING.
 //
 // Gründerlektion: In einem asynchronen System ist die Race-Condition der

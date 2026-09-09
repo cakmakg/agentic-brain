@@ -1,4 +1,4 @@
-// ── kernel/state/schema.js ───────────────────────────────────────────────
+// ── kernel/agent/schema.js ───────────────────────────────────────────────
 // Kernfelder + Erweiterungspunkt der Domäne.
 //
 // Die Trennlinie: im Kern steht, was JEDE Domäne braucht — die Aufgabe, der

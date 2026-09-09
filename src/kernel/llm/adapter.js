@@ -8,7 +8,7 @@
 // Modell oder Anbieter wechseln, ändert sich eine Datei — nicht fünfzehn Agenten.
 
 import { env, MOCK_LLM } from "../config/env.js";
-import { trackUsage } from "../observability/costTracker.js";
+import { trackUsage } from "../governance/costTracker.js";
 import { estTokens, mockText } from "./mock.js";
 
 // Beobachter je LLM-Aufruf. Ohne ihn ist das Kontextwachstum nicht

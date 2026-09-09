@@ -61,76 +61,19 @@ die Änderung — oder es braucht vorher eine ADR, die den Bruch benennt und beg
 
 ## 3. Zielbaum
 
-> **Vorläufige Adresse.** Sobald der Umbau (Etappe 0b) durch ist, zieht dieser Baum als
-> Vertrag nach `ARCHITECTURE.md` §7 und wird hier auf einen Verweis gekürzt. Zwei Bäume in
-> zwei Dateien driften auseinander.
+> **Umgezogen am 2026-09-09.** Der Baum steht jetzt als **Vertrag** in
+> `ARCHITECTURE.md` §7 — dort, wo die Autoritätskette ihn sucht. Dieses Dokument ist ein
+> Vorschlag und trägt keine Struktur; es trägt die **Reihenfolge**, in der die Ebenen
+> gefüllt werden. Zwei Bäume in zwei Dateien driften auseinander, deshalb steht hier keiner
+> mehr.
 
-Die Ebenennamen folgen dem Diagramm des Ausgangstexts **wörtlich**. Alles mit `NEU`
-existiert heute nicht; `←` zeigt, woher eine bestehende Datei kommt.
+Seit dem Umbau (Etappe 0b) tragen die Verzeichnisse unter `src/kernel/` die Ebenennamen:
+`agent/`, `action/`, `governance/` stehen; `connectors/`, `context/` und `retrieval/` sind
+die drei Orte, die noch leer sind. `llm/`, `persistence/`, `config/` und `registry.js`
+bleiben Infrastruktur außerhalb der Ebenen.
 
-```
-src/
-  kernel/                        ← MECHANIK · kennt keine Domäne
-    connectors/                  ① NEU · Rahmen; die Quelle selbst liegt in der Domäne
-    context/                     ② NEU
-      envelope.js                   Authorization Envelope: Bau, Prüfung, Vererbung
-      ingest/pipeline.js            landing → classify → normalize → chunk → enrich → embed
-      ingest/chunker.js             überschriftbegrenzt, Vorgabe 500 Token / 100 Überlappung
-      ingest/enricher.js            Pflichtmetadaten + access_control + content_hash + Dedup
-      embed/adapter.js              gleiches Muster wie llm/adapter.js: echt ODER Mock
-      embed/mock.js                 deterministischer Vektor aus dem Inhalts-Hash
-      store/index.js                Port (Schnittstelle)
-      store/memory.js               Adapter: Mock-Modus, CI, npm run demo
-      store/postgres.js             Adapter: pgvector, Produktion
-    retrieval/                   ③ NEU
-      filter.js                     ACL-Prädikat — wird IN die Query kompiliert
-      search.js                     lexical | dense | hybrid — BEIDE Pfade gefiltert
-      rerank.js
-    agent/                       ④
-      build.js                   ← graph/build.js
-      routing.js                 ← graph/routing.js
-      runner.js                  ← graph/runner.js
-      schema.js                  ← state/schema.js
-      reducers.js                ← state/reducers.js
-      checkpointer.js            ← persistence/checkpointer.js   (Durable Execution)
-    action/                      ⑤
-      queue.js                   ← security/actionQueue.js
-    governance/                  ⑥
-      guardrail.js               ← security/guardrail.js
-      auth.js                    ← security/auth.js
-      rateLimiter.js             ← security/rateLimiter.js
-      trace.js                   ← observability/trace.js
-      eventBus.js                ← observability/eventBus.js
-      costTracker.js             ← observability/costTracker.js
-      identity/principal.js         NEU · {tenantId, userId, groups[], roles[], agentId}
-      identity/resolver.js          NEU · TTL-begrenzt, KEIN Dauer-Cache
-      policy/engine.js              NEU · deklarative Regeln
-      policy/risk.js                NEU · Risikoklasse → Genehmigungspflicht
-      audit/log.js                  NEU · append-only, Hash-Kette, Aufbewahrungsfrist
-
-    llm/{adapter,mock}.js        — Modellschicht, keine der sechs Ebenen
-    persistence/store.js         — Infrastruktur: von checkpointer UND queue benutzt
-    config/env.js                — Infrastruktur
-    registry.js                  — Infrastruktur
-
-  domains/<domäne>/              ← BEDEUTUNG · der Kern kennt diese Dateien nicht
-    domain.js                       die Naht: stateFields, brakes, guardrailRules, nodes
-    agents/*.js · prompts.js · actions.js
-    agents/pruefer.js               NEU · Etappe 1
-    ontology.js                     NEU · Entitäten, Relationen, AKTIONSTYPEN
-    acl.js                          NEU · Berechtigungsmodell der Quelle → Principal
-    connectors/<quelle>.js          NEU
-
-  adapters/
-    http/server.js
-    mcp/server.js                   NEU, später · bietet KEIN approve an
-```
-
-**Zwei Zuordnungen, hergeleitet und nicht geraten.** `checkpointer.js` gehört nach `agent/`,
-weil das Diagramm des Ausgangstexts (§38) _Durable Execution_ ausdrücklich in die Box
-`AGENT RUNTIME` stellt. `trace/eventBus/costTracker` gehören nach `governance/`, weil dasselbe
-Diagramm _Observability_ in die Box `GOVERNANCE` stellt. `persistence/store.js` bleibt
-Infrastruktur: es wird von zwei Ebenen benutzt und ist selbst keine.
+Prüfbefehl und Herleitung der beiden nicht offensichtlichen Zuordnungen
+(`checkpointer.js` → `agent/`, Beobachtbarkeit → `governance/`): `ARCHITECTURE.md` §7.
 
 ---
 
@@ -195,6 +138,9 @@ npm test && npm run evals && npm run demo
 ```
 
 ### Etappe 0 — Grundlage · vertikalunabhängig
+
+> **Stand 2026-09-09:** 0a erledigt (vier ADRs in `DECISIONS.md`), 0b erledigt (Umbau,
+> Prüfkriterium von ADR-0002 grün, Schicht-A-Bericht Byte für Byte identisch). **0c offen.**
 
 Drei Teile, **strikt nacheinander**. Zwei davon gleichzeitig zu fahren heißt: eine rote
 Zeile ist weder dem einen noch dem anderen zuzuordnen.

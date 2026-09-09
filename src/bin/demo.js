@@ -10,7 +10,7 @@
 import crypto from "node:crypto";
 
 import { getRunner } from "../kernel/registry.js";
-import { agentEventBus } from "../kernel/observability/eventBus.js";
+import { agentEventBus } from "../kernel/governance/eventBus.js";
 import "../domains/beispiel/domain.js";
 import { getArtifact } from "../domains/beispiel/agents/ablage.js";
 

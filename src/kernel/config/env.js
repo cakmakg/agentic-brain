@@ -29,7 +29,7 @@ export const env = {
   tenantId: process.env.TENANT_ID || "default",
 
   // Wohin der dauerhafte Zustand geschrieben wird. Überschreibbar wie
-  // TRACE_DIR in observability/trace.js — Tests und der Harness zeigen damit
+  // TRACE_DIR in governance/trace.js — Tests und der Harness zeigen damit
   // auf ein frisches Verzeichnis, sonst schleppt ein Lauf den vorigen mit und
   // der Determinismus-Nachweis wäre keiner mehr.
   stateDir: process.env.STATE_DIR || path.join(process.cwd(), ".zustand"),

@@ -1,4 +1,4 @@
-// ── kernel/graph/runner.js ───────────────────────────────────────────────
+// ── kernel/agent/runner.js ───────────────────────────────────────────────
 // Die Schicht, die den Graphen ausführt. Drei Verantwortungen:
 //   1) Streamen und bei jedem Knotenübergang ein SSE-Event senden.
 //   2) Je Lauf einen Trace schreiben — der Bus zeigt an und vergisst,
@@ -12,8 +12,8 @@
 // Das Geheimnis ist: DIESELBE thread_id.
 
 import { buildGraph, HUMAN_NODE } from "./build.js";
-import { emitToThread, scheduleBufferGc } from "../observability/eventBus.js";
-import { startTrace, resumeTrace } from "../observability/trace.js";
+import { emitToThread, scheduleBufferGc } from "../governance/eventBus.js";
+import { startTrace, resumeTrace } from "../governance/trace.js";
 
 export function createRunner(domain) {
   const app = buildGraph(domain);

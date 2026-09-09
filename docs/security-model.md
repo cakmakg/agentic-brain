@@ -27,7 +27,7 @@ Wovor es **nicht** schützt (bewusst):
 
 ## Schicht 1 — Guardrail
 
-`src/kernel/security/guardrail.js` (Mechanik) · `src/domains/<domäne>/domain.js` (Muster)
+`src/kernel/governance/guardrail.js` (Mechanik) · `src/domains/<domäne>/domain.js` (Muster)
 
 **KEIN LLM.** Die Sicherheitsprüfung selbst muss gegen Prompt-Injection immun sein. Fragst du
 ein Modell „ist dieser Text gefährlich?", kann die angreifende Person auch dieses Modell
@@ -35,11 +35,11 @@ täuschen.
 
 Gewichtete Regex-Bewertung, drei Bänder:
 
-| Score | Wirkung | Beispiel |
-| --- | --- | --- |
-| ≥ 3 | **blockiert** — der Lauf endet nach dem Eingang | `ignore previous instructions` |
-| 2 | **sanitisiert** — die Stelle wird ersetzt, der Lauf geht weiter | `pretend to be a …` |
-| 1 | **durchgelassen** — der Score wird trotzdem gemeldet | `malware`, `sql injection` |
+| Score | Wirkung                                                         | Beispiel                       |
+| ----- | --------------------------------------------------------------- | ------------------------------ |
+| ≥ 3   | **blockiert** — der Lauf endet nach dem Eingang                 | `ignore previous instructions` |
+| 2     | **sanitisiert** — die Stelle wird ersetzt, der Lauf geht weiter | `pretend to be a …`            |
+| 1     | **durchgelassen** — der Score wird trotzdem gemeldet            | `malware`, `sql injection`     |
 
 Das dritte Band ist **Absicht**. Angriffsvokabular kann ein legitimes Thema sein. Wer es
 blockiert, kauft Trefferquote mit Falschpositiven — Metrik 3.5 misst beide Seiten.
@@ -61,7 +61,7 @@ sind ebenso feindlich** — wer einen Scraper anschließt, braucht dort dieselbe
 
 ## Schicht 2 — Budget-Kill-Switch
 
-`src/kernel/observability/costTracker.js`
+`src/kernel/governance/costTracker.js`
 
 Ist das Budget überschritten, endet der Lauf **im Guardrail** — vor dem ersten LLM-Aufruf.
 Nicht danach, nicht „beim nächsten Mal".
@@ -77,7 +77,7 @@ Ausreißer, nicht für eine Abrechnung.
 
 ## Schicht 3 — Auth und Rate-Limit
 
-`src/kernel/security/auth.js` · `src/kernel/security/rateLimiter.js`
+`src/kernel/governance/auth.js` · `src/kernel/governance/rateLimiter.js`
 
 - Der API-Schlüssel wird **geprüft, nicht bereinigt**. Eine Bereinigung vergrößert den
   akzeptierten Schlüsselraum still: aus `d!e!v!-!l!o!c!a!l!-!k!e!y` würde sonst ein gültiger
@@ -97,7 +97,7 @@ Stream.
 
 ## Schicht 4 — Aktions-Isolation
 
-`src/kernel/security/actionQueue.js` (Mechanik) · `src/domains/<domäne>/actions.js` (Whitelist)
+`src/kernel/action/queue.js` (Mechanik) · `src/domains/<domäne>/actions.js` (Whitelist)
 
 ```
 Agent → ActionQueue (SCHREIBT nur) → Worker (liest + VALIDIERT + führt aus)

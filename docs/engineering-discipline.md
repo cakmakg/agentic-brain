@@ -20,19 +20,19 @@
 Jeder Befund wurde **ausgeführt**, nicht aus dem Code gelesen. Der Befehl steht daneben,
 damit er wiederholbar ist.
 
-| #   | Befund                                                                                                                                                                                                                         | Prüfbefehl                                                       | Bewertung                                                              |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| B1  | `process.env` steht an **drei** Stellen außerhalb von `kernel/config/env.js`: `observability/trace.js:31`, `persistence/store.js:34`, `persistence/store.js:38`. **Korrigiert am 2026-09-08** — siehe Kasten unter der Tabelle | `grep -rn "process\.env" src/ \| grep -v "kernel/config/env.js"` | 🟠 Nicht Verfall, sondern ein doppelt geführter Variablenname          |
-| B2  | `zod` wird in **1 von 27** Dateien benutzt (`domains/beispiel/domain.js`, für die strukturierte LLM-Ausgabe). Der HTTP-Rand parst nicht                                                                                        | `grep -rln "from \"zod\"" src/`                                  | 🔴 „Parse, don't validate" ist heute eine Absicht, keine Praxis        |
-| B3  | Kein Lint, kein Formatter, kein Hook, keine Typprüfung. **Null** devDependencies                                                                                                                                               | `ls \| grep -iE "eslint\|prettier\|lefthook\|tsconfig"`          | 🔴 Die einzige echte Werkzeuglücke des Repos                           |
-| B4  | `@langchain/langgraph` ist auf **0.2.74** gepinnt, die Registry führt **1.4.14**. `@langchain/anthropic` 0.3.24 gegen 1.5.9                                                                                                    | `npm view @langchain/langgraph version`                          | 🟠 Eine Hauptversion zurück — eigene ADR, **nicht** Teil dieser Etappe |
-| B5  | Die Trennlinie hält: kein Domänenname im Kern                                                                                                                                                                                  | `grep -rn "beispiel" src/kernel/` → 0                            | 🟢 Grün, aber nur von Hand geprüft                                     |
-| B6  | `PRODUCT.md` trägt noch 9 Vorlagenmarken; §1 bis §4 sind leer                                                                                                                                                                  | `grep -c "VORLAGE\|<!-- " PRODUCT.md` → 9                        | 🟠 Tor der Etappe 0 in `roadmap.md`                                    |
-| B7  | 11 Schwachstellen (6 hoch, 5 mittel) — **keine** aus den Werkzeugen dieser Etappe, alle aus den Produktionsabhängigkeiten. Darunter „LangChain serialization injection enables secret extraction"                              | `npm audit`                                                      | 🔴 Hebt B4 von einer Aktualitäts- zu einer Sicherheitsfrage            |
+| #   | Befund                                                                                                                                                                                                                      | Prüfbefehl                                                       | Bewertung                                                              |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| B1  | `process.env` steht an **drei** Stellen außerhalb von `kernel/config/env.js`: `governance/trace.js:31`, `persistence/store.js:34`, `persistence/store.js:38`. **Korrigiert am 2026-09-08** — siehe Kasten unter der Tabelle | `grep -rn "process\.env" src/ \| grep -v "kernel/config/env.js"` | 🟠 Nicht Verfall, sondern ein doppelt geführter Variablenname          |
+| B2  | `zod` wird in **1 von 27** Dateien benutzt (`domains/beispiel/domain.js`, für die strukturierte LLM-Ausgabe). Der HTTP-Rand parst nicht                                                                                     | `grep -rln "from \"zod\"" src/`                                  | 🔴 „Parse, don't validate" ist heute eine Absicht, keine Praxis        |
+| B3  | Kein Lint, kein Formatter, kein Hook, keine Typprüfung. **Null** devDependencies                                                                                                                                            | `ls \| grep -iE "eslint\|prettier\|lefthook\|tsconfig"`          | 🔴 Die einzige echte Werkzeuglücke des Repos                           |
+| B4  | `@langchain/langgraph` ist auf **0.2.74** gepinnt, die Registry führt **1.4.14**. `@langchain/anthropic` 0.3.24 gegen 1.5.9                                                                                                 | `npm view @langchain/langgraph version`                          | 🟠 Eine Hauptversion zurück — eigene ADR, **nicht** Teil dieser Etappe |
+| B5  | Die Trennlinie hält: kein Domänenname im Kern                                                                                                                                                                               | `grep -rn "beispiel" src/kernel/` → 0                            | 🟢 Grün, aber nur von Hand geprüft                                     |
+| B6  | `PRODUCT.md` trägt noch 9 Vorlagenmarken; §1 bis §4 sind leer                                                                                                                                                               | `grep -c "VORLAGE\|<!-- " PRODUCT.md` → 9                        | 🟠 Tor der Etappe 0 in `roadmap.md`                                    |
+| B7  | 11 Schwachstellen (6 hoch, 5 mittel) — **keine** aus den Werkzeugen dieser Etappe, alle aus den Produktionsabhängigkeiten. Darunter „LangChain serialization injection enables secret extraction"                           | `npm audit`                                                      | 🔴 Hebt B4 von einer Aktualitäts- zu einer Sicherheitsfrage            |
 
 > **Korrektur zu B1, eingetragen am 2026-09-08.** Die erste Fassung nannte die drei Stellen
 > „Verfall einer Konvention". Das Lesen des Codes hat das Urteil gedreht: alle drei sind
-> **dokumentierte Absicht**. `env.js` nennt `TRACE_DIR in observability/trace.js` in einem
+> **dokumentierte Absicht**. `env.js` nennt `TRACE_DIR in governance/trace.js` in einem
 > eigenen Kommentar, und über den beiden Stellen in `store.js` steht, warum dort bei JEDEM
 > Aufruf gelesen wird statt beim Modul-Laden — sonst fröre die Import-Reihenfolge den Ort
 > ein und ein Test, der `STATE_DIR` später setzt, schriebe still ins falsche Verzeichnis.
@@ -109,10 +109,10 @@ src/kernel/**            ✗→  src/domains/**      (die Trennlinie)
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/domain/`                            | Ein Buchstabe Unterschied zu `src/domains/`, zwei verschiedene Bedeutungen. Garantierte Verwechslung                                                                                               |
 | `src/infrastructure/`                    | Drittes Synonym für das, was `adapters/` und die modulinternen Adapter schon sind                                                                                                                  |
-| `src/agent/{planner,executor,evaluator}` | **Der gefährlichste Punkt.** `executor` neben `kernel/graph/runner.js` heißt: zwei Ausführungspfade — und nur einer hält bei `human_approval`. Die einzige Zusage des Repos wäre dann pfadabhängig |
+| `src/agent/{planner,executor,evaluator}` | **Der gefährlichste Punkt.** `executor` neben `kernel/agent/runner.js` heißt: zwei Ausführungspfade — und nur einer hält bei `human_approval`. Die einzige Zusage des Repos wäre dann pfadabhängig |
 
-Die drei Rollen haben bereits eine Adresse: **Planer** = `graph/routing.js` plus die Bremsen
-der Domäne · **Ausführer** = `graph/runner.js` plus `domains/<d>/agents/*` · **Prüfer** =
+Die drei Rollen haben bereits eine Adresse: **Planer** = `agent/routing.js` plus die Bremsen
+der Domäne · **Ausführer** = `agent/runner.js` plus `domains/<d>/agents/*` · **Prüfer** =
 `domains/<d>/agents/pruefer.js`, noch nicht gebaut, `EXTEND.md` Schritt 2.
 
 ---
@@ -133,11 +133,11 @@ Beide dürfen sofort auf `error`: B5 zeigt, dass sie heute grün sind.
 
 ### Stufe 2 — Der Rand
 
-| Regel                                                     | Werkzeug                       | Stufe     | Mechanisiert                                                      |
-| --------------------------------------------------------- | ------------------------------ | --------- | ----------------------------------------------------------------- |
-| `process.env` nur in `kernel/config/env.js`               | ESLint `no-restricted-syntax`  | **error** | die Konvention hinter B1                                          |
-| `node:fs` nur in `persistence/`, `observability/trace.js` | ESLint `no-restricted-imports` | error     | Pfadprüfung statt Pfadbereinigung (`security-model.md` Schicht 3) |
-| Jede HTTP-Eingabe geht durch ein zod-Schema               | Review + Test                  | error     | „Parse, don't validate" · Befund B2                               |
+| Regel                                                  | Werkzeug                       | Stufe     | Mechanisiert                                                      |
+| ------------------------------------------------------ | ------------------------------ | --------- | ----------------------------------------------------------------- |
+| `process.env` nur in `kernel/config/env.js`            | ESLint `no-restricted-syntax`  | **error** | die Konvention hinter B1                                          |
+| `node:fs` nur in `persistence/`, `governance/trace.js` | ESLint `no-restricted-imports` | error     | Pfadprüfung statt Pfadbereinigung (`security-model.md` Schicht 3) |
+| Jede HTTP-Eingabe geht durch ein zod-Schema            | Review + Test                  | error     | „Parse, don't validate" · Befund B2                               |
 
 ### Stufe 3 — Agentenspezifisch, nur mit Typinformation erreichbar
 
@@ -254,7 +254,7 @@ plus Kerntor unverändert. Zusätzlich: `tests/persistence.test.js` und
 ### E0-D · Typprüfung ohne Umschreiben
 
 `tsconfig.json` nur für `tsc --noEmit`: `allowJs`, `checkJs`, `strict`. Dann `// @ts-check`
-**dateiweise**, beginnend bei `kernel/state/schema.js`. JSDoc dort, wo der Prüfer es
+**dateiweise**, beginnend bei `kernel/agent/schema.js`. JSDoc dort, wo der Prüfer es
 verlangt. Kein Build-Schritt, keine Umbenennung, K5 unberührt.
 
 **Tor:** `npx tsc --noEmit` sauber · Kerntor unverändert.

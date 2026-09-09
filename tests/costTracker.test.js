@@ -9,7 +9,7 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
-import { trackUsage, cost } from "../src/kernel/observability/costTracker.js";
+import { trackUsage, cost } from "../src/kernel/governance/costTracker.js";
 import { env } from "../src/kernel/config/env.js";
 
 beforeEach(() => cost.reset());

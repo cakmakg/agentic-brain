@@ -8,7 +8,7 @@
 // Ein Eintrag in einer Registry ist Konfiguration, kein Kernwissen — deshalb
 // zählt er beim Prüfkriterium nicht mit.
 
-import { createRunner } from "./graph/runner.js";
+import { createRunner } from "./agent/runner.js";
 
 const specs = new Map();
 const runners = new Map();

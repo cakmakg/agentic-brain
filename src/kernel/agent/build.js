@@ -1,4 +1,4 @@
-// ── kernel/graph/build.js ────────────────────────────────────────────────
+// ── kernel/agent/build.js ────────────────────────────────────────────────
 // Baut den StateGraph aus einer Domänen-Spezifikation. Die Topologie
 // HUB-AND-SPOKE ist Mechanik und steht deshalb hier; WELCHE Agenten es gibt,
 // steht in der Domäne.
@@ -10,8 +10,8 @@
 // Prüfkriterium: eine zweite Domäne darf an dieser Datei NULL Zeilen ändern.
 
 import { StateGraph, START, END } from "@langchain/langgraph";
-import { buildState } from "../state/schema.js";
-import { DateiCheckpointer } from "../persistence/checkpointer.js";
+import { buildState } from "./schema.js";
+import { DateiCheckpointer } from "./checkpointer.js";
 
 // human_approval = LEERER Platzhalter. Seine einzige Funktion: die Stelle
 // markieren, an der der Graph anhält.

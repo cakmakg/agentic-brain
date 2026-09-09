@@ -13,7 +13,7 @@ import { z } from "zod";
 
 import { MOCK_LLM } from "../src/kernel/config/env.js";
 import { llmText, llmStructured } from "../src/kernel/llm/adapter.js";
-import { cost } from "../src/kernel/observability/costTracker.js";
+import { cost } from "../src/kernel/governance/costTracker.js";
 
 before(() => {
   assert.equal(
