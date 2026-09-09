@@ -16,14 +16,14 @@ Bewegung entstehen zwei Wahrheiten.
 > nicht. Die **Statuszeile muss deshalb für sich allein stehen** und in sich abgeschlossen
 > sein. Der Fließtext darunter ist Vertiefung für den, der die Datei öffnet.
 
-### Thema: LangGraph 1.x und die Schwachstellen — Etappe 0c
+### Thema: `express` 4 → 5 — die zwei verbliebenen mittleren Schwachstellen
 
-**Status:** 🔴 Entschieden als ADR-0003, noch nicht ausgeführt. Gemessen 2026-09-09: langgraph 0.2.74 (aktuell 1.4.14), `npm audit` 6 hoch.
-Der Entscheidungsteil ist erledigt und steht in `DECISIONS.md`; offen ist nur noch die
-Ausführung. Unter den hohen: „LangChain serialization injection enables secret extraction"
-(`@langchain/core`). Läuft **nach** dem Umbau und **nie gleichzeitig** mit ihm. Prüfkriterium
-von ADR-0003 ist zugleich das Tor. Nebenbei fällig: `description` in `package.json` sagt noch
-„Startgeruest" — die einzige bekannte Ausnahme zum Prüfkriterium von ADR-0001.
+**Status:** 🟠 Neu am 2026-09-09. `npm audit` ist bei `high: 0`, aber zwei **mittlere** in `qs` bleiben; sie brauchen `express` 5.
+Aufgetaucht als Rest von Etappe 0c. `express` 4.22.2 zieht `qs` 6.15.3 mit; die zwei
+mittleren Befunde (Array-Limit-Umgehung, DoS über `isBuffer`) verschwinden erst mit dem
+Major-Sprung auf `express` 5. Das hat mit ADR-0003 nichts zu tun und darf deshalb nicht
+nebenbei passieren — betroffen wäre `src/adapters/http/`. Braucht eine eigene ADR, bevor eine
+Zeile fällt. Notiert in `ARCHITECTURE.md` §4, damit die Grenze nicht verschwiegen ist.
 
 ### Thema: Ingenieursdisziplin einführen
 
@@ -45,6 +45,17 @@ erster Connector und die Aktionstypen leiten sich weiterhin alle aus ihr ab. Tor
 Ticket · Ticket-Triage · Kunden-Onboarding.
 
 ## Abgeschlossene Themen
+
+### Thema: Etappe 0c — LangGraph 1.x und `npm audit`
+
+**Status:** 🟢 Abgeschlossen 2026-09-09. langgraph 1.4.14, `npm audit` `high: 0`; ADR-0003 grün, Etappe 0 damit geschlossen.
+Belegt: `npm test` 98/98 · Schicht-A-Bericht **Zeile für Zeile identisch** zum Stand vor dem
+Sprung (einziger Unterschied: der Zeitstempel) · `npm run demo` Exit 0, sowohl aus frischem
+Zustand als auch gegen den alten · ESLint unverändert 12 Warnungen / 0 Fehler.
+Zwei Dinge, die der Plan nicht vorhergesehen hatte: LangGraph 1.x verlangt `zod ^3.25.32` als
+Peer (3.23.8 → 3.25.76, bleibt in v3), und die einzige Bruchstelle im Quellcode war **nicht**
+das State-Schema, sondern `serde.dumpsTyped` im Checkpointer — in 1.x asynchron geworden.
+88 alte Checkpoints aus 0.2.74 spielten fehlerfrei zurück: der Sprung ist zustandskompatibel.
 
 ### Thema: Etappe 0b — Umbau auf die sechs Ebenen
 

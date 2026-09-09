@@ -75,9 +75,11 @@ Diese Liste ist absichtlich sichtbar. Eine verschwiegene Grenze wird zu einem Au
   umfasst 101 Zeilen, und `src/kernel/agent/checkpointer.js` verschachtelt an einer Stelle
   fünf Ebenen tief. Beide sind als ESLint-Warnung sichtbar und bleiben es, bis der
   Lint-Rollout sie einzeln aufgreift — nicht nebenbei bei einer anderen Änderung.
-- **Der Abhängigkeitsstand ist zurück.** Gemessen am 2026-09-09: `@langchain/langgraph` 0.2.74
-  gegen aktuell 1.4.14, `npm audit` meldet sechs hohe Schwachstellen. Das ist keine dauerhafte
-  Grenze, sondern eine terminierte: ADR-0003 entscheidet den Sprung, Etappe 0c führt ihn aus.
+- **Zwei mittlere Schwachstellen bleiben offen.** Der Abhängigkeitsrückstand ist eingelöst:
+  seit Etappe 0c läuft `@langchain/langgraph` 1.4.14 und `npm audit` meldet `high: 0`
+  (ADR-0003). Übrig bleiben zwei **mittlere** in `qs`, das `express` 4.x mitbringt. Sie
+  verschwinden erst mit `express` 5 — ein Major-Sprung, der mit ADR-0003 nichts zu tun hat und
+  deshalb eine eigene Entscheidung braucht, nicht ein Nebenbei. Gemessen am 2026-09-09.
 
 ## 5. Beobachtbarkeit
 

@@ -109,8 +109,8 @@ export class DateiCheckpointer extends MemorySaver {
     const ergebnis = await super.put(config, checkpoint, metadata, newVersions);
     if (this.#spieltAb) return ergebnis;
 
-    const [cpTyp, cp] = this.serde.dumpsTyped(checkpoint);
-    const [metaTyp, meta] = this.serde.dumpsTyped(metadata);
+    const [cpTyp, cp] = await this.serde.dumpsTyped(checkpoint);
+    const [metaTyp, meta] = await this.serde.dumpsTyped(metadata);
     appendLog(this.#logName, {
       art: "put",
       config,
@@ -127,14 +127,19 @@ export class DateiCheckpointer extends MemorySaver {
     await super.putWrites(config, writes, taskId);
     if (this.#spieltAb) return;
 
+    // Serialisiert wird VOR dem Schreiben, nicht darin: `appendLog` ist
+    // synchron und nimmt keine Promises entgegen.
+    const eintraege = await Promise.all(
+      writes.map(async ([kanal, wert]) => {
+        const [typ, bytes] = await this.serde.dumpsTyped(wert);
+        return [kanal, typ, zuText(bytes)];
+      }),
+    );
     appendLog(this.#logName, {
       art: "writes",
       config,
       taskId,
-      writes: writes.map(([kanal, wert]) => {
-        const [typ, bytes] = this.serde.dumpsTyped(wert);
-        return [kanal, typ, zuText(bytes)];
-      }),
+      writes: eintraege,
     });
   }
 }

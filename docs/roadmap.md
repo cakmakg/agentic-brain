@@ -140,7 +140,9 @@ npm test && npm run evals && npm run demo
 ### Etappe 0 — Grundlage · vertikalunabhängig
 
 > **Stand 2026-09-09:** 0a erledigt (vier ADRs in `DECISIONS.md`), 0b erledigt (Umbau,
-> Prüfkriterium von ADR-0002 grün, Schicht-A-Bericht Byte für Byte identisch). **0c offen.**
+> Prüfkriterium von ADR-0002 grün, Schicht-A-Bericht Byte für Byte identisch), 0c erledigt
+> (LangGraph 1.4.14, `npm audit` `high: 0`, Prüfkriterium von ADR-0003 grün).
+> **Etappe 0 ist damit geschlossen.**
 
 Drei Teile, **strikt nacheinander**. Zwei davon gleichzeitig zu fahren heißt: eine rote
 Zeile ist weder dem einen noch dem anderen zuzuordnen.
@@ -164,11 +166,19 @@ und die Wegweiser-Tabelle in `CLAUDE.md`.
 > Aktions-Queue und die fünf Verschachtelungsebenen im Checkpointer bleiben, wie sie sind —
 > sie gehören zum Lint-Rollout, nicht hierher. Sonst verliert das Tor seine Aussage.
 
-**0c — LangGraph 1.x und `npm audit`.** Heute gepinnt auf 0.2.74, aktuell 1.4.14; `npm audit`
-meldet elf Schwachstellen, sechs davon hoch, darunter „LangChain serialization injection
-enables secret extraction". Am billigsten jetzt: 98 Tests als Netz, noch keine eigene Domäne.
+**0c — LangGraph 1.x und `npm audit`.** 🟢 **Erledigt am 2026-09-09.** Vorher auf 0.2.74
+gepinnt, `npm audit` elf Schwachstellen, sechs davon hoch, darunter „LangChain serialization
+injection enables secret extraction". Jetzt: `@langchain/langgraph` 1.4.14, `@langchain/core`
+1.2.9, `@langchain/anthropic` 1.5.9. Die 98 Tests waren das Netz, wie vorhergesagt.
 
-> **Tor:** Kerntor unverändert **und** `npm audit` meldet `high: 0`.
+> **Tor:** Kerntor unverändert **und** `npm audit` meldet `high: 0`. — 🟢 `npm test` 98/98,
+> Schicht-A-Bericht in **allen** Metriken identisch (einziger Unterschied: der Zeitstempel),
+> `npm run demo` Exit 0, `high: 0`.
+>
+> **Was der Plan nicht vorhergesehen hatte:** LangGraph 1.x verlangt `zod ^3.25.32` als
+> Peer — `zod` musste von 3.23.8 auf 3.25.76 mit, bleibt aber in v3. Und die einzige
+> Bruchstelle im Quellcode war nicht das State-Schema, sondern der Checkpointer:
+> `serde.dumpsTyped` ist in 1.x **asynchron** geworden. Zwei Aufrufstellen, sonst nichts.
 
 **Danach, nicht davor:** der Lint-Rollout E0-B aus `docs/engineering-discipline.md` §6.
 dependency-cruiser-Regeln werden auf Pfade geschrieben; vor dem Umbau geschrieben, müssten

@@ -107,13 +107,14 @@ Prüfkriteriums — ein Kriterium, das eine bekannte Ausnahme mitprüft, wird ab
 ### Prüfkriterium
 
 ```bash
-grep -rniE "kein produkt|startger[üu]st" README.md CLAUDE.md .gehirn/kern.md PRODUCT.md
+grep -rniE "kein produkt|startger[üu]st" README.md CLAUDE.md .gehirn/kern.md PRODUCT.md package.json
 # erwartet: keine Ausgabe
 ```
 
 Stand 2026-09-09: 🟢 keine Ausgabe. Die Ankertexte tragen die Identität. Die einzige
-bekannte Ausnahme bleibt das `description`-Feld in `package.json` — bewusst außerhalb des
-Befehls, fällig in Etappe 0c.
+bekannte Ausnahme — das `description`-Feld in `package.json` — ist in Etappe 0c eingelöst.
+Die Datei steht seitdem **im** Befehl statt außerhalb: das Kriterium prüft jetzt, was es
+vorher aussparen musste.
 
 ---
 
@@ -244,7 +245,8 @@ node -e "const v=require('@langchain/langgraph/package.json').version; process.e
 # erwartet: Rückgabewert 0
 ```
 
-Stand 2026-09-09: 🔴 Major 0, `high: 6` — die Aufgabe von Etappe 0c.
+Stand 2026-09-09: 🟢 Rückgabewert 0 — `@langchain/langgraph` 1.4.14, `npm audit` `high: 0`.
+Eingelöst in Etappe 0c.
 
 ---
 

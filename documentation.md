@@ -442,16 +442,16 @@ kural olurdu.
 
 Her bulgunun onu bulan komutu var. Düzeltilenler açıkça işaretli.
 
-| #   | Bulgu                                                                                                                                                    | Komut                                     | Durum                    |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------ |
-| B1  | `src/` içinde 3 `process.env` yeri. ~~Konvansiyon çürümesi~~ → **düzeltildi:** üçü de kasıtlı geç bağlama; asıl kusur değişken adının iki yerde yaşaması | `npx eslint .`                            | 🟠 E0-C                  |
-| B2  | `zod` 27 dosyadan 1'inde. HTTP sınırı parse edilmiyor                                                                                                    | `grep -rln "from \"zod\"" src/`           | 🟠 E0-E                  |
-| B3  | Lint/formatter/hook/tip kontrolü yok, sıfır devDependency                                                                                                | `ls \| grep -iE "eslint\|prettier"`       | 🟢 **E0-A'da kapandı**   |
-| B4  | `@langchain/langgraph` 0.2.74 kurulu, registry'de 1.4.14. `@langchain/anthropic` 0.3.24 → 1.5.9                                                          | `npm view @langchain/langgraph version`   | 🔴 ADR bekliyor          |
-| B5  | Çekirdek/alan çizgisi sağlam                                                                                                                             | `grep -rn "beispiel" src/kernel/` → 0     | 🟢                       |
-| B6  | `PRODUCT.md` 9 şablon markası taşıyor; §1–§4 boş                                                                                                         | `grep -c "VORLAGE\|<!-- " PRODUCT.md` → 9 | 🔴 dikey kararı bekliyor |
-| B7  | 11 bağımlılık zafiyeti (6 high), tamamı üretim bağımlılıklarından                                                                                        | `npm audit`                               | 🔴 B4 ile birlikte       |
-| B8  | `tests/schichtB.test.js` üç kullanılmayan import taşıyor — Schicht B'nin henüz iskelet olduğunun izi                                                     | `npx eslint .`                            | ⚪ küçük                 |
+| #   | Bulgu                                                                                                                                                    | Komut                                     | Durum                       |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | --------------------------- |
+| B1  | `src/` içinde 3 `process.env` yeri. ~~Konvansiyon çürümesi~~ → **düzeltildi:** üçü de kasıtlı geç bağlama; asıl kusur değişken adının iki yerde yaşaması | `npx eslint .`                            | 🟠 E0-C                     |
+| B2  | `zod` 27 dosyadan 1'inde. HTTP sınırı parse edilmiyor                                                                                                    | `grep -rln "from \"zod\"" src/`           | 🟠 E0-E                     |
+| B3  | Lint/formatter/hook/tip kontrolü yok, sıfır devDependency                                                                                                | `ls \| grep -iE "eslint\|prettier"`       | 🟢 **E0-A'da kapandı**      |
+| B4  | ~~`@langchain/langgraph` 0.2.74~~ → **1.4.14**, `@langchain/core` 1.2.9, `@langchain/anthropic` 1.5.9                                                    | `npm view @langchain/langgraph version`   | 🟢 **Etappe 0c'de kapandı** |
+| B5  | Çekirdek/alan çizgisi sağlam                                                                                                                             | `grep -rn "beispiel" src/kernel/` → 0     | 🟢                          |
+| B6  | `PRODUCT.md` 9 şablon markası taşıyor; §1–§4 boş                                                                                                         | `grep -c "VORLAGE\|<!-- " PRODUCT.md` → 9 | 🔴 dikey kararı bekliyor    |
+| B7  | ~~11 zafiyet (6 high)~~ → `high: 0`. Geriye `express` 4.x'in getirdiği 2 orta kaldı; onlar `express` 5 gerektiriyor, ayrı karar                          | `npm audit`                               | 🟢 **Etappe 0c'de kapandı** |
+| B8  | `tests/schichtB.test.js` üç kullanılmayan import taşıyor — Schicht B'nin henüz iskelet olduğunun izi                                                     | `npx eslint .`                            | ⚪ küçük                    |
 
 ---
 
@@ -481,11 +481,12 @@ seçimi **hepsi** bu karardan türüyor.
 
 ### 8.3 Açık kararlar (ADR adayları)
 
-| Soru                                                                                             | Ne zaman                | Nereye         |
-| ------------------------------------------------------------------------------------------------ | ----------------------- | -------------- |
-| **LangGraph 0.2.74 → 1.x?** B4 + B7 birlikte. En ucuz an şimdi: 98 test ağ, henüz kendi alan yok | Etappe 1'den önce       | `DECISIONS.md` |
-| Tam TypeScript geçişi?                                                                           | Dikey seçildikten sonra | `DECISIONS.md` |
-| `DECISIONS.md` → `docs/decisions/` bölünsün mü?                                                  | ~10 ADR'den sonra       | —              |
+| Soru                                                                                       | Ne zaman                | Nereye         |
+| ------------------------------------------------------------------------------------------ | ----------------------- | -------------- |
+| ~~**LangGraph 0.2.74 → 1.x?**~~ ADR-0003 olarak karara bağlandı, Etappe 0c'de uygulandı    | ✅ 2026-09-09           | `DECISIONS.md` |
+| **`express` 4 → 5?** Kalan 2 orta zafiyet yalnızca bununla kapanır. ADR-0003 kapsamı değil | Belirsiz                | `DECISIONS.md` |
+| Tam TypeScript geçişi?                                                                     | Dikey seçildikten sonra | `DECISIONS.md` |
+| `DECISIONS.md` → `docs/decisions/` bölünsün mü?                                            | ~10 ADR'den sonra       | —              |
 
 **Pazarlık dışı sıralama:** bağımlılık geçişi ile lint rollout'u **aynı anda yapılmaz.**
 Kırmızıya dönen bir testin kuraldan mı yoksa yeni kütüphane sürümünden mi geldiği ayırt
