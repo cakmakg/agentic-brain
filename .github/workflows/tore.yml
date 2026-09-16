@@ -1,0 +1,102 @@
+# Die Tore dieses Repos, bei jedem Push gefahren — von einer Maschine, die
+# nicht der Agent ist.
+#
+# WARUM ES DIESE DATEI GIBT. Bis zum 2026-09-17 lief jede Pruefung nur, wenn der
+# Agent sie ausfuehrte, und galt nur, wenn er sie ehrlich berichtete. Genau das
+# ist die Luecke zwischen „der Agent sagt gruen" und „das System ist gruen".
+# Keine Metrik und kein Hook schliessen sie; eine unabhaengige Maschine schon.
+#
+# DIE AUFTEILUNG IST ABSICHT. Drei Jobs, drei Fragen — ein Job, der zwei Fragen
+# beantwortet, sagt im roten Fall nicht mehr, welche gescheitert ist.
+#
+#   schicht-a       Laeuft das System ohne Schluessel und ohne Datenbank durch?
+#                   Das IST die Zusage K5 (clone -> install -> demo). Dieser Job
+#                   darf niemals einen Dienst brauchen; bekaeme er einen, waere
+#                   K5 aufgegeben, nur ueber einen Umweg.
+#   postgres        Liefert derselbe Datensatz gegen den zweiten Store-Adapter
+#                   dieselben Zahlen (ADR-0013)? Bis heute lief das nur, wenn
+#                   jemand es von Hand fuhr.
+#   disziplin       Was sagen Lint und `npm audit` heute?
+
+name: Tore
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  schicht-a:
+    name: Schicht A — ohne Schluessel, ohne Datenbank (K5)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Festgenagelt, nicht „latest": die Zahlen in EVALS.md §8 stammen aus
+          # dieser Hauptversion. Ein anderer Node kann dieselbe Suite anders
+          # messen, und dann vergleicht der Verlauf zwei Dinge.
+          node-version: "24"
+          cache: npm
+      # `npm ci` und nicht `npm install`: die Lockdatei entscheidet, sonst
+      # misst der Lauf eine andere Abhaengigkeitsmenge als die committete.
+      - run: npm ci
+      - run: npm test
+      - run: npm run evals
+      - run: npm run demo
+      - run: npm run demo:besprechung
+
+  postgres:
+    name: Derselbe Datensatz gegen Postgres (ADR-0013)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: agentic
+          POSTGRES_PASSWORD: agentic
+          POSTGRES_DB: agentic
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agentic -d agentic"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://agentic:agentic@localhost:5432/agentic
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run evals:postgres
+      # Mit gesetztem DATABASE_URL laufen die sechs Integrationstests mit, die
+      # lokal uebersprungen werden. Ohne diesen Schritt bleibt der SQL-Pfad
+      # ungeprueft und `npm test` meldet trotzdem gruen — dieselbe Falle wie
+      # eine Metrik mit Nenner null.
+      - run: npm test
+
+  disziplin:
+    name: Lint und Abhaengigkeiten
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      # In E0-A ist JEDE ESLint-Regel `warn`, dieser Schritt kann also heute
+      # nicht rot werden — er berichtet den Bestand (Stand 2026-09-17: 15
+      # Warnungen, 0 Fehler). Er steht hier, damit die Zahl bei jedem Push im
+      # Protokoll auftaucht statt nur dann, wenn jemand nachsieht. Rot wird er
+      # erst, wenn die Regelleiter aus docs/engineering-discipline.md eine Regel
+      # auf `error` hebt. Eine Schwelle auf die 15 zu setzen waere verfrueht:
+      # ob sie angehoben oder als Ausnahme notiert wird, ist offen.
+      - run: npx eslint .
+      # Das ist ein echtes Tor: `high: 0` ist seit Etappe 0c eine Zusage.
+      # Eigener Job, damit ein ueber Nacht veroeffentlichter Befund nicht wie
+      # ein gefallener Test aussieht.
+      - run: npm audit --audit-level=high
