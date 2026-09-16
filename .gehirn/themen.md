@@ -54,7 +54,7 @@ gegenueber dem breiten Testadapter.
 
 ### Thema: Zwang fehlt — von drei Schichten des Inventars steht eine
 
-**Status:** 🟠 Neu am 2026-09-16. Beweiskette ✅ (drei Commits), **Sperre ⬜, CI ⬜** — jede Pruefung haengt weiter daran, dass der Agent sie ausfuehrt und ehrlich berichtet.
+**Status:** 🟠 Aktualisiert am 2026-09-17. Beweiskette ✅, Sperre ✅, **CI geschrieben und NIE GELAUFEN** — bis der erste Push gruen ist, haengt jede Pruefung weiter daran, dass der Agent sie ausfuehrt und ehrlich berichtet.
 Das Inventar vom 2026-09-15 fand 18 Kontrollpunkte und **keinen einzigen technischen Riegel
 gegen den Agenten**: `npx eslint src/` endet mit 0 (in E0-A ist jede Regel `warn`), also
 blockiert `lefthook` nichts; `prettier` schreibt und laeuft weiter; `.github` fehlt; in
@@ -64,13 +64,24 @@ menschliche Blick auf `git diff`.
 Schicht 1 ist am 2026-09-16 gefallen — die Beweiskette (`.gitignore`, `projekt-doktor` §13,
 sechs Berichte im Repo). Offen bleiben zwei:
 
-- **Sperre.** `PreToolUse`-Hook auf `tests/**`, `evals/domains/*/golden/**`,
-  `.gehirn/regeln.md`, `PRODUCT.md`, `EVALS.md`, `DECISIONS.md`: Diff zeigen, Freigabe
-  verlangen. Der Agent schreibt weiter Tests, aber eine gelockerte Assertion kann nicht mehr
-  still passieren.
-- **CI.** `npm test && npm run evals` bei jedem Push. Nur das schliesst die Luecke zwischen
-  „der Agent sagt gruen" und „das System ist gruen" — und nur das misst den Postgres-Pfad
-  regelmaessig statt nur dann, wenn ihn jemand von Hand faehrt.
+- **Sperre — am 2026-09-17 gefallen.** `.claude/hooks/schutz-vertragsdateien.sh` gibt bei
+  `tests/**`, `evals/domains/*/golden/**`, `.gehirn/regeln.md`, `PRODUCT.md`, `EVALS.md` und
+  `DECISIONS.md` ein `permissionDecision: "ask"` zurueck: Claude Code zeigt den Diff und
+  fragt, auch wenn die Sitzung sonst ohne Rueckfrage schreiben duerfte. Er blockiert nicht —
+  der Agent schreibt weiter Tests, aber nicht mehr STILL. Belegt: elf Pipe-Proben (relative
+  und absolute Pfade, Windows-Backslash, Gross-/Kleinschreibung) plus ein Spurnachweis, dass
+  der Harness ihn wirklich aufruft. **Offen bleibt, welche Dateien noch dazugehoeren:**
+  `evals/metrics/index.js` (der Rechner), `evals/runners/policy.js` (das Urteil) und
+  `evals/domains/*/adapter.js` (seit ADR-0017 traegt es `ungemessen`) sind dieselbe Art von
+  Datei, stehen aber nicht auf der Liste.
+- **CI — geschrieben am 2026-09-17, aber NIE GELAUFEN.** `.github/workflows/tore.yml`, drei
+  Jobs: `schicht-a` (ohne Dienst, das IST K5), `postgres` (pgvector als Service, ADR-0013) und
+  `disziplin` (eslint berichtend, `npm audit --audit-level=high` als echtes Tor). Belegt ist
+  bisher nur, dass die **Befehle** laufen: aus einem frischen Klon mit `npm ci` sieben von
+  sieben gruen, und `npm test` gegen eine erreichbare Datenbank **228/228 statt 222/6
+  uebersprungen**. Nicht belegt ist die YAML-Verdrahtung selbst — dafuer gibt es auf dieser
+  Maschine kein Werkzeug (kein `act`, kein YAML-Parser), nur den ersten Push. Bis dahin gilt
+  hier dasselbe wie beim Voyage-Adapter: gebaut ist nicht gemessen.
 
 Davor gehoeren zwei gemessene Defekte im Messinstrument selbst: `evals/runners/policy.js`
 entscheidet in Zeile 618-626 sechsmal mit `erfuellt !== false` — ein `undefined` gilt als
