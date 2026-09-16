@@ -11,8 +11,12 @@ was hier wächst, kostet in jeder Sitzung Kontext.
 Prozessautomatisierung. Wissen wird samt seinen Berechtigungen aufgenommen,
 berechtigungstreu abgefragt und in menschlich genehmigte Aktionen überführt (ADR-0001).
 
-Stand: Agent Runtime und Governance-Kern stehen und sind gemessen; Kontext, Retrieval und
-Connectoren sind leer.
+Stand: Alle sechs Ebenen sind belegt und gemessen. Die Vertikale steht seit dem 2026-09-10
+(ADR-0010): Besprechungsnotiz → Aktionspunkt → Ticket, Quelle ein geteiltes
+Notizenlaufwerk. **Chunk-Speicher und Embedding sind je ein Port mit zwei Adaptern**
+(`memory`/`postgres`, `hash`/`voyage`) und dieselbe Messung liefert dieselben Zahlen. Offen:
+der **Voyage-Lauf selbst** (kein Schlüssel — der Adapter ist gebaut, aber nie gegen den
+echten Dienst gelaufen) und echte Identitäten.
 
 > Die Autoritätskette und das Gedächtnisprotokoll stehen in `CLAUDE.md` — dort und nur dort.
 > Claude Code lädt jene Datei ohnehin bei jeder Sitzung; eine zweite Kopie hier würde

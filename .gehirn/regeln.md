@@ -1,7 +1,5 @@
 # Projektregeln
 
-## Regeln
-
 - **Regel:** **Niemals eine Annahme treffen.** Wo etwas unklar ist, wird gefragt, bevor
   gehandelt wird — wechselseitig, die Architektur entsteht gemeinsam. **Grund:** Eine
   stillschweigende Annahme sieht im Ergebnis aus wie eine abgestimmte Entscheidung; der
@@ -37,6 +35,12 @@
 - **Regel:** Ein Defekt pro Änderung. **Grund:** Dass eine Verbesserung gegenüber der Baseline
   belegbar ist, hängt daran, dass jede Änderung genau einer Metrik zuzuordnen ist. Zwei
   Defekte in einem Zug behoben heißt: nicht mehr feststellbar, welcher die Zahl bewegt hat.
+
+- **Regel:** Vor der Commit-Nachricht `git diff --cached --stat` lesen. Die Nachricht
+  beschreibt, **was im Commit ist** — nicht, was man selbst geändert hat; trägt der Commit
+  ältere unversionierte Arbeit mit, wird das benannt. **Grund:** Ein Titel, der einen Teil
+  des Inhalts verschweigt, wird später geglaubt. (2026-09-16 so korrigiert: drei Commits
+  mussten mit `reset --soft` neu geschrieben werden.)
 
 - **Regel:** Domänenwissen gehört nie in `src/kernel/`. Nach jeder Erweiterung:
   `grep -rn "<domäne>" src/kernel/` — muss leer sein. **Grund:** Die Trennlinie ist die
