@@ -39,6 +39,19 @@ process.env.STATE_DIR = fs.mkdtempSync(
   path.join(os.tmpdir(), "agentic-evals-zustand-"),
 );
 
+// `--store=postgres` ist gleichwertig zu STORE_ADAPTER=postgres. Beide Wege
+// existieren, weil das Setzen einer Umgebungsvariablen je nach Shell anders
+// geschrieben wird — und ein Messbefehl, der auf einem Rechner anders lautet
+// als auf dem anderen, wird irgendwann falsch abgetippt.
+//
+// Das MUSS hier oben stehen: `aufbau.js` liest die Vorgabe beim Import, und
+// ein danach gesetzter Wert käme zu spät.
+const storeArg = process.argv.find((a) => a.startsWith("--store="));
+if (storeArg) process.env.STORE_ADAPTER = storeArg.slice("--store=".length);
+
+const embArg = process.argv.find((a) => a.startsWith("--embedding="));
+if (embArg) process.env.EMBEDDING_ADAPTER = embArg.slice("--embedding=".length);
+
 const { MOCK_LLM } = await import("../../src/kernel/config/env.js");
 if (!MOCK_LLM) {
   console.error(
@@ -56,10 +69,16 @@ const { DOMAENEN, ladeAdapter } = await import("../domains/index.js");
 // Mechanik des Kerns, keine Domäne: der Runner baut den Chunk-Speicher selbst
 // und füllt ihn aus den Fixtures des Adapters. Damit bleibt der Adapter reine
 // Daten und dieser Runner weiterhin domänenfrei.
-const { baueStore } = await import("../../src/kernel/context/aufbau.js");
+const {
+  baueStore,
+  VORGABE: STORE_ADAPTER,
+  EMBEDDING_VORGABE: EMBEDDING_ADAPTER,
+} = await import("../../src/kernel/context/aufbau.js");
 const { ingestiere } =
   await import("../../src/kernel/context/ingest/pipeline.js");
 const { suche } = await import("../../src/kernel/retrieval/suche.js");
+const { synchronisiere } =
+  await import("../../src/kernel/connectors/synchronisation.js");
 
 // ── Einen Workflow-Fall ausführen ────────────────────────────────────────
 async function laufWorkflow(aufgabe, adapter) {
@@ -194,61 +213,168 @@ async function laufAktion(aufgabe, adapter) {
   };
 }
 
+// ── Ein Speicher je Fall, adapterunabhaengig ─────────────────────────────
+// Der Speicher wird gebaut, GELEERT und am Ende geschlossen.
+//
+// Das Leeren ist seit Etappe 3c nötig und war es vorher nicht: ein frischer
+// `memory`-Adapter ist leer, eine Postgres-Tabelle nicht. Ohne diese Zeile
+// säahe Fall 2 die Zeilen von Fall 1 — und der Determinismus-Nachweis wäre
+// eine Aussage über gealterten Zustand statt über dieselbe Frage. Genau die
+// Art Unterschied, die ein zweiter Adapter aufdeckt.
+//
+// Das Schließen ebenso: ein Verbindungspool hält den Prozess offen, und ein
+// Eval-Lauf, der nie endet, meldet auch nie ein Ergebnis.
+async function mitStore(fn) {
+  const store = await baueStore();
+  await store.leere();
+  try {
+    return await fn(store);
+  } finally {
+    await store.schliesse();
+  }
+}
+
 // ── Einen Abruf-Fall ausführen (Metrik 3.13) ─────────────────────────────
 // Ein frischer Speicher je Fall. Teurer als einer für alle, aber ein Fall darf
 // nicht davon abhängen, was ein vorheriger hineingeschrieben hat — sonst misst
 // der zweite Durchgang gealterten Zustand statt derselben Frage.
 async function laufAbruf(fall, adapter) {
   const { principale, dokumente } = adapter.retrieval;
-  const store = baueStore("memory");
-  ingestiere(store, dokumente);
+  return mitStore(async (store) => {
+    await ingestiere(store, dokumente);
 
-  const principal = principale[fall.principal] ?? null;
-  const {
-    treffer,
-    dokumente: gefunden,
-    grund,
-  } = suche({
-    store,
-    principal,
-    anfrage: fall.anfrage,
-    // Bewusst hoch: ein Leck darf nicht deshalb unsichtbar bleiben, weil es
-    // auf Platz sechs stand. Die Metrik misst Berechtigung, nicht Rangfolge.
-    k: 100,
+    const principal = principale[fall.principal] ?? null;
+    const {
+      treffer,
+      dokumente: gefunden,
+      grund,
+    } = await suche({
+      store,
+      principal,
+      anfrage: fall.anfrage,
+      // Bewusst hoch: ein Leck darf nicht deshalb unsichtbar bleiben, weil es
+      // auf Platz sechs stand. Die Metrik misst Berechtigung, nicht Rangfolge.
+      k: 100,
+    });
+
+    const erlaubt = new Set(fall.erwartet?.sichtbareDokumente ?? []);
+    const gelieferteIds = gefunden.map((d) => d.dokumentId).sort();
+
+    return {
+      id: fall.id,
+      gruppe: fall.gruppe,
+      art: "abruf",
+      genehmigung: null,
+      sequenz: [],
+      endstatus: null,
+      artefaktstatus: null,
+      queueEintraege: 0,
+      threatScore: null,
+      guardrail: null,
+      llmAufrufe: 0,
+      inputTokens: [],
+      kostenUsd: 0,
+      fehler: null,
+
+      // Zähler und Nenner von 3.13 entstehen HIER, auf Chunk-Ebene: ein Dokument
+      // kann mehrere Chunks liefern, und jeder unerlaubte davon ist ein Leck.
+      gelieferteChunks: treffer.length,
+      unerlaubteChunks: treffer.filter((t) => !erlaubt.has(t.dokumentId))
+        .length,
+
+      gelieferteDokumente: gelieferteIds,
+      // Was FEHLT, ist kein Leck und gehört nicht in 3.13 — aber ein stiller
+      // Ausfall des Retrievals. Die Vertragstreue fängt ihn ab.
+      fehlendeDokumente: [...erlaubt].filter((d) => !gelieferteIds.includes(d)),
+      grund,
+      erwartet: fall.erwartet,
+      abweichungen: [],
+    };
   });
+}
 
-  const erlaubt = new Set(fall.erwartet?.sichtbareDokumente ?? []);
-  const gelieferteIds = gefunden.map((d) => d.dokumentId).sort();
+// ── Einen Entzugs-Fall ausführen (Metrik 3.14) ───────────────────────────
+// Der Ablauf ist die Metrikdefinition, in fünf Schritten:
+//
+//   1) frische Quelle, erster Synchronisationszyklus
+//   2) suchen  → muss `vorher` entsprechen, sonst belegt der Fall nichts
+//   3) den Entzug IN DER QUELLE vornehmen — der Speicher weiß noch nichts
+//   4) EIN weiterer Zyklus
+//   5) suchen  → muss `nachher` entsprechen; was darüber hinaus kommt, ist
+//      ein VERALTETER Chunk und geht in den Zähler von 3.14
+//
+// Schritt 2 ist der Grund, warum diese Zahl etwas aussagt. Ohne ihn wäre ein
+// Fall, dessen Dokument schon vorher unsichtbar war, ein grüner Fall ohne
+// Aussage — und ein Speicher, der bei jedem Zyklus alles verwirft, hätte eine
+// makellose 3.14.
+//
+// DOMÄNENFREI wie die anderen Läufe: der Runner kennt weder die Form der
+// Quelle noch die Arten des Entzugs. `baue()` liefert einen Connector und
+// eine Funktion `aendere`, die die Anweisung des Datensatzes ausführt; was in
+// ihr steht, deutet allein die Domäne.
+async function laufEntzug(fall, adapter) {
+  const { principale, baue } = adapter.entzug;
+  return mitStore(async (store) => {
+    const quelle = baue();
+    const principal = principale[fall.principal] ?? null;
 
-  return {
-    id: fall.id,
-    gruppe: fall.gruppe,
-    art: "abruf",
-    genehmigung: null,
-    sequenz: [],
-    endstatus: null,
-    artefaktstatus: null,
-    queueEintraege: 0,
-    threatScore: null,
-    guardrail: null,
-    llmAufrufe: 0,
-    inputTokens: [],
-    kostenUsd: 0,
-    fehler: null,
+    const frage = { store, principal, anfrage: fall.anfrage, k: 100 };
+    const ids = (treffer) => treffer.map((d) => d.dokumentId).sort();
 
-    // Zähler und Nenner von 3.13 entstehen HIER, auf Chunk-Ebene: ein Dokument
-    // kann mehrere Chunks liefern, und jeder unerlaubte davon ist ein Leck.
-    gelieferteChunks: treffer.length,
-    unerlaubteChunks: treffer.filter((t) => !erlaubt.has(t.dokumentId)).length,
+    // 1) und 2)
+    await synchronisiere(store, quelle.connector);
+    const vorher = await suche(frage);
 
-    gelieferteDokumente: gelieferteIds,
-    // Was FEHLT, ist kein Leck und gehört nicht in 3.13 — aber ein stiller
-    // Ausfall des Retrievals. Die Vertragstreue fängt ihn ab.
-    fehlendeDokumente: [...erlaubt].filter((d) => !gelieferteIds.includes(d)),
-    grund,
-    erwartet: fall.erwartet,
-    abweichungen: [],
-  };
+    // 3) und 4) — genau EIN Zyklus. Mehr zu fahren hieße, die Latenz zu
+    // verstecken, die gemessen werden soll.
+    quelle.aendere(fall.entzug);
+    const ZYKLEN = 1;
+    await synchronisiere(store, quelle.connector);
+
+    // 5)
+    const nachher = await suche(frage);
+
+    const erlaubtNachher = new Set(fall.nachher?.sichtbareDokumente ?? []);
+    const gelieferteIdsNachher = ids(nachher.dokumente);
+
+    return {
+      id: fall.id,
+      gruppe: fall.gruppe,
+      art: "entzug",
+      genehmigung: null,
+      sequenz: [],
+      endstatus: null,
+      artefaktstatus: null,
+      queueEintraege: 0,
+      threatScore: null,
+      guardrail: null,
+      llmAufrufe: 0,
+      inputTokens: [],
+      kostenUsd: 0,
+      fehler: null,
+
+      zyklen: ZYKLEN,
+
+      // Der Zustand VOR dem Entzug. Er ist Teil der Erwartung, nicht Beiwerk.
+      gelieferteDokumenteVorher: ids(vorher.dokumente),
+
+      // Zähler und Nenner von 3.14. Der Nenner sind die FÄLLE, nicht die
+      // Chunks: liefert ein dichter Fall null Chunks, wäre ein Chunk-Nenner
+      // null und die Metrik ausgerechnet im Idealfall „nicht messbar".
+      gelieferteChunks: nachher.treffer.length,
+      veralteteChunks: nachher.treffer.filter(
+        (t) => !erlaubtNachher.has(t.dokumentId),
+      ).length,
+
+      gelieferteDokumente: gelieferteIdsNachher,
+      fehlendeDokumente: [...erlaubtNachher].filter(
+        (d) => !gelieferteIdsNachher.includes(d),
+      ),
+      grund: nachher.grund,
+      erwartet: fall,
+      abweichungen: [],
+    };
+  });
 }
 
 // ── Ergebnis gegen die Erwartung halten ──────────────────────────────────
@@ -261,6 +387,42 @@ function pruefe(lauf, sequenzen) {
       ab.push(`eingereiht: ${lauf.eingereiht} statt ${e.eingereiht}`);
     if (e.endstatus !== undefined && lauf.endstatus !== e.endstatus)
       ab.push(`endstatus: ${lauf.endstatus} statt ${e.endstatus}`);
+    return lauf;
+  }
+
+  if (lauf.art === "entzug") {
+    // DREI Richtungen, und alle drei sind nötig.
+    //
+    // `vorher`: war das Dokument überhaupt sichtbar? Ein Fall, der schon vor
+    // dem Entzug nichts lieferte, belegt nichts — er meldete grün und hätte
+    // nie etwas geprüft.
+    const vorherErwartet = [...(e.vorher?.sichtbareDokumente ?? [])].sort();
+    if (
+      JSON.stringify(lauf.gelieferteDokumenteVorher) !==
+      JSON.stringify(vorherErwartet)
+    ) {
+      ab.push(
+        `vorher: [${lauf.gelieferteDokumenteVorher.join(", ")}] statt [${vorherErwartet.join(", ")}] — der Fall belegt nichts`,
+      );
+    }
+
+    // `veraltet`: das eigentliche Leck. Nach einem Zyklus noch da.
+    if (lauf.veralteteChunks > 0) {
+      const veraltete = lauf.gelieferteDokumente.filter(
+        (d) => !(e.nachher?.sichtbareDokumente ?? []).includes(d),
+      );
+      ab.push(
+        `VERALTET nach ${lauf.zyklen} Zyklus: ${lauf.veralteteChunks} Chunks aus [${veraltete.join(", ")}]`,
+      );
+    }
+
+    // `fehlend`: die Gegenrichtung. Ohne sie wäre ein Speicher, der bei jedem
+    // Zyklus alles verwirft, in 3.14 makellos.
+    if (lauf.fehlendeDokumente.length > 0) {
+      ab.push(
+        `fehlend nach dem Entzug: [${lauf.fehlendeDokumente.join(", ")}]`,
+      );
+    }
     return lauf;
   }
 
@@ -339,6 +501,14 @@ async function durchgang(adapter) {
       pruefe(await laufAbruf(fall, adapter), adapter.datensatz.sequenzen),
     );
   }
+
+  // Ebenso die Entzugs-Fälle, aus demselben Grund für 3.14. Jeder baut sich
+  // seine eigene Quelle; zwei Durchgänge müssen deshalb identisch sein.
+  for (const fall of adapter.entzug.faelle ?? []) {
+    laeufe.push(
+      pruefe(await laufEntzug(fall, adapter), adapter.datensatz.sequenzen),
+    );
+  }
   return laeufe;
 }
 
@@ -367,8 +537,18 @@ async function fahreDomaene(adapter) {
     schicht: "A",
     modus: "mock",
     domaene: adapter.name,
+    // WELCHER Speicher gemessen wurde, gehört in den Bericht. Ohne diese
+    // Zeile wäre ein Lauf, bei dem STORE_ADAPTER still verschluckt wurde,
+    // von einem echten Postgres-Lauf nicht zu unterscheiden — und er meldete
+    // grün. Genau der Ausfall, um den dieses Repo gebaut ist.
+    storeAdapter: STORE_ADAPTER,
+    // Ebenso das Embedding. Ein Lauf mit `hash` ist kostenlos und
+    // deterministisch, einer mit `voyage` weder noch — die beiden duerfen im
+    // Bericht nicht gleich aussehen.
+    embeddingAdapter: EMBEDDING_ADAPTER,
     aufgaben: adapter.datensatz.aufgaben.length,
     abrufe: (adapter.retrieval.faelle ?? []).length,
+    entzuege: (adapter.entzug.faelle ?? []).length,
     deterministisch,
     vertragstreue: treue,
     metriken,
@@ -381,7 +561,10 @@ async function fahreDomaene(adapter) {
   fs.mkdirSync(berichtDir, { recursive: true });
   const datei = path.join(
     berichtDir,
-    `${bericht.erzeugt.slice(0, 10)}-schicht-a-${adapter.name}.json`,
+    // Der Adaptername steht im Dateinamen, sonst überschriebe der
+    // Postgres-Lauf den Beleg des memory-Laufs — und übrig bliebe genau der
+    // Vergleich nicht mehr, um den es in dieser Etappe geht.
+    `${bericht.erzeugt.slice(0, 10)}-schicht-a-${adapter.name}-${STORE_ADAPTER}-${EMBEDDING_ADAPTER}.json`,
   );
   fs.writeFileSync(datei, JSON.stringify(bericht, null, 2) + "\n");
 
@@ -392,11 +575,20 @@ async function fahreDomaene(adapter) {
     `  ${m.name.padEnd(38)} ${proz(m.wert).padStart(13)}   (${m.zaehler}/${m.nenner})`;
 
   console.log(
-    `\nSchicht A · Domäne ${bericht.domaene} · ${bericht.aufgaben} Aufgaben · ${bericht.abrufe} Abrufe · Mock\n`,
+    `\nSchicht A · Domäne ${bericht.domaene} · ${bericht.aufgaben} Aufgaben · ${bericht.abrufe} Abrufe · ${bericht.entzuege} Entzüge · Mock · Store: ${bericht.storeAdapter} · Embedding: ${bericht.embeddingAdapter}\n`,
   );
   console.log(zeile(metriken["3.1"]));
   console.log(zeile(metriken["3.2"]));
   console.log(zeile(metriken["3.13"]));
+  // Die Zyklenzahl steht in derselben Zeile: „0,0 %" allein ließe offen,
+  // worauf sich die Dichtheit bezieht — und die Antwort ist nicht „Sekunden".
+  console.log(
+    `${zeile(metriken["3.14"])}  ${
+      metriken["3.14"].nenner === 0
+        ? ""
+        : `· ${metriken["3.14"].zyklen} Zyklus · ${metriken["3.14"].veralteteChunks} veraltete Chunks`
+    }`,
+  );
   console.log(zeile(metriken["3.3"]));
   console.log(zeile(metriken["3.4"]));
   console.log(
@@ -423,14 +615,36 @@ async function fahreDomaene(adapter) {
 
   // Ein Harness, der immer grün meldet, misst nichts. Rot ist ein Ergebnis,
   // kein Absturz — der Exit-Code trägt es nach CI.
+  // Bis zum 2026-09-16 stand hier sechsmal `erfuellt !== false`. Der
+  // Unterschied zu heute ist genau EIN Zustand: `null`. Eine Metrik mit
+  // Nenner 0 ist ungemessen, `erfuellt` wird `null`, und `null !== false` ist
+  // wahr — der Lauf blieb grün. Damit war die Metrik gegen Verschlechterung
+  // geschützt, aber nicht gegen Verschwinden: wer die Fälle aus dem
+  // Golden-Datensatz löscht, senkt den Nenner auf null und bekommt weiterhin
+  // Exit-Code 0. Kaputtmachen fiel auf, Abschaffen nicht (ADR-0017).
+  //
+  // Jetzt muss jede Pflichtmetrik gemessen UND erfüllt sein — es sei denn, die
+  // Domäne hat sie in `ungemessen` mit Grund benannt. Und eine Erklärung, die
+  // nicht mehr zutrifft, ist selbst ein Befund: sonst bliebe sie stehen,
+  // nachdem die Domäne einen Connector bekommen hat, und deckte von da an
+  // genau den Ausfall wieder zu, gegen den sie geschrieben wurde.
+  const PFLICHTMETRIKEN = ["3.1", "3.2", "3.3", "3.4", "3.13", "3.14"];
+  const befunde = PFLICHTMETRIKEN.map((schluessel) => {
+    const { erfuellt, nenner } = metriken[schluessel];
+    const grund = adapter.ungemessen[schluessel];
+    if (grund !== undefined && nenner > 0)
+      return `${schluessel}: als ungemessen erklärt, ist aber gemessen (Nenner ${nenner}) — die Erklärung in adapter.ungemessen ist veraltet`;
+    if (erfuellt === true) return null;
+    if (erfuellt === null && grund !== undefined) return null;
+    if (erfuellt === null)
+      return `${schluessel}: ungemessen (Nenner 0) und in adapter.ungemessen nicht erklärt — der Datensatz misst diese Zusage nicht mehr`;
+    return `${schluessel}: nicht erfüllt (${metriken[schluessel].zaehler}/${nenner}, Ziel ${metriken[schluessel].ziel})`;
+  }).filter(Boolean);
+
+  for (const befund of befunde) console.log(`  🔴 ${befund}`);
+
   const bestanden =
-    deterministisch &&
-    treue.zaehler === treue.nenner &&
-    metriken["3.1"].erfuellt !== false &&
-    metriken["3.2"].erfuellt !== false &&
-    metriken["3.3"].erfuellt !== false &&
-    metriken["3.4"].erfuellt !== false &&
-    metriken["3.13"].erfuellt !== false;
+    deterministisch && treue.zaehler === treue.nenner && befunde.length === 0;
 
   return bestanden;
 }

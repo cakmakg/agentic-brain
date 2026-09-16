@@ -1,0 +1,227 @@
+{
+  "hinweis": "Der Datensatz fuer Metrik 3.13 (Unauthorized-Retrieval-Rate) in der Domaene besprechung. Er misst MEHR als der Datensatz von beispiel: dort stehen die Envelopes von Hand im Datensatz, hier steht das QUELLSYSTEM, und die Envelopes entstehen durch die echte Uebersetzung in src/domains/besprechung/acl.js. Gemessen wird damit die ganze Kette Quelle -> ACL-Uebersetzung -> Envelope -> Filter, nicht nur der Filter. Die erwarteten sichtbaren Dokumente sind AUS DEN BEIDEN REGELWERKEN UNTEN abgeleitet, nie aus einem beobachteten Lauf. Wer eine Erwartung an einen roten Lauf anpasst, hat die Messung abgeschafft.",
+
+  "regelwerk_quelle": [
+    "Q1. besitzerId = Organisator der Besprechung, zu der die Notiz gehoert.",
+    "Q2. erlaubtePersonen = Teilnehmer der Besprechung vereinigt mit den Einzelfreigaben der Notiz, ohne den Organisator (der ist schon Besitzer).",
+    "Q3. Ordnergruppen = sichtbarFuer des Ordners; erbt der Ordner (erbt !== false), zusaetzlich die aufgeloesten Gruppen des Elternordners. Die Kette endet an der Wurzel oder dort, wo erbt: false steht.",
+    "Q4. vertraulich: true -> sichtbarkeit 'privat', die Ordnergruppen werden VERWORFEN. Eine vertrauliche Notiz in einem offenen Ordner bleibt vertraulich.",
+    "Q5. sonst, enthalten die Ordnergruppen '*' -> sichtbarkeit 'oeffentlich'.",
+    "Q6. sonst, sind Ordnergruppen da -> 'gruppe' mit genau diesen Gruppen.",
+    "Q7. sonst -> 'privat'.",
+    "Q8. tenantId kommt aus der Quelle, nie aus dem Dokument."
+  ],
+
+  "regelwerk_filter": [
+    "F1. Mandantengrenze zuerst und absolut: envelope.tenantId !== principal.tenantId -> nie sichtbar, egal welche Stufe und egal welche Freigabe.",
+    "F2. Der Besitzer sieht sein Dokument auf JEDER Stufe.",
+    "F3. Eine Freigabe an diese Person (erlaubtePersonen) macht sichtbar — auch bei 'privat' (ADR-0012), aber niemals ueber die Mandantengrenze hinweg.",
+    "F4. sichtbarkeit 'oeffentlich' -> jeder Principal desselben Mandanten.",
+    "F5. sichtbarkeit 'gruppe' -> nur wer in erlaubteGruppen ist.",
+    "F6. sichtbarkeit 'privat' -> niemand ausser Besitzer und Freigegebenen.",
+    "F7. Principal nicht aufloesbar -> LEERES Ergebnis mit Grund, nicht ungefiltert (ADR-0008)."
+  ],
+
+  "herleitung_der_envelopes": {
+    "n-offen": "Ordner o-laufwerk traegt '*' und wird nicht gebrochen -> Q5 'oeffentlich'. Besprechung b-sprint: Organisator bruno (Q1), Teilnehmer [bruno, anna] -> erlaubtePersonen [anna] (Q2).",
+    "n-sprint": "Ordner o-technik hat erbt: false und sichtbarFuer ['technik'] -> die Kette endet dort, Gruppen sind genau ['technik'] (Q3) -> Q6 'gruppe'. Besprechung b-sprint -> Besitzer bruno, erlaubtePersonen [anna] plus Freigabe [dora] = [anna, dora].",
+    "n-archiv": "DER VERERBUNGSFALL. Ordner o-technik-archiv traegt SELBST keine Gruppe (sichtbarFuer []), erbt aber von o-technik -> aufgeloest ['technik'] (Q3) -> Q6 'gruppe'. Besprechung b-archiv: Organisator frank, Teilnehmer nur [frank] -> erlaubtePersonen []. Damit haengt die Sichtbarkeit dieser Notiz AUSSCHLIESSLICH an der geerbten Gruppe.",
+    "n-leitung": "Ordner o-leitung, erbt: false, sichtbarFuer ['leitung'] -> Q6 'gruppe' ['leitung']. Besprechung b-leitung -> Besitzer clara, Teilnehmer nur [clara] -> erlaubtePersonen [].",
+    "n-vertraulich": "DER VORRANGFALL. Liegt im Ordner o-technik (Gruppe technik), ist aber vertraulich -> Q4 schlaegt Q6, sichtbarkeit 'privat' und erlaubteGruppen []. Besprechung b-leitung -> Besitzer clara; Freigabe an anna -> erlaubtePersonen [anna]. Waere Q4 nach Q6 gepruegt, saehe die ganze Gruppe technik diese Notiz."
+  },
+
+  "quellsystem": {
+    "tenantId": "t1",
+    "quelle": "notizlaufwerk",
+    "ordner": [
+      {
+        "ordnerId": "o-laufwerk",
+        "name": "Laufwerk",
+        "elternId": null,
+        "sichtbarFuer": ["*"]
+      },
+      {
+        "ordnerId": "o-technik",
+        "name": "Technik",
+        "elternId": "o-laufwerk",
+        "erbt": false,
+        "sichtbarFuer": ["technik"]
+      },
+      {
+        "ordnerId": "o-technik-archiv",
+        "name": "Archiv",
+        "elternId": "o-technik",
+        "sichtbarFuer": []
+      },
+      {
+        "ordnerId": "o-leitung",
+        "name": "Leitung",
+        "elternId": "o-laufwerk",
+        "erbt": false,
+        "sichtbarFuer": ["leitung"]
+      }
+    ],
+    "besprechungen": [
+      {
+        "besprechungId": "b-sprint",
+        "titel": "Sprintplanung",
+        "datum": "2026-09-01",
+        "organisatorId": "bruno",
+        "teilnehmer": ["bruno", "anna"]
+      },
+      {
+        "besprechungId": "b-archiv",
+        "titel": "Rueckblick",
+        "datum": "2026-08-01",
+        "organisatorId": "frank",
+        "teilnehmer": ["frank"]
+      },
+      {
+        "besprechungId": "b-leitung",
+        "titel": "Leitungsrunde",
+        "datum": "2026-09-02",
+        "organisatorId": "clara",
+        "teilnehmer": ["clara"]
+      }
+    ],
+    "notizen": [
+      {
+        "notizId": "n-offen",
+        "besprechungId": "b-sprint",
+        "ordnerId": "o-laufwerk",
+        "titel": "Ankuendigung Rollout",
+        "text": "Offene Punkte zum Rollout im Ueberblick. Diese Fassung ist fuer alle im Mandanten bestimmt.",
+        "freigegebenAn": [],
+        "vertraulich": false
+      },
+      {
+        "notizId": "n-sprint",
+        "besprechungId": "b-sprint",
+        "ordnerId": "o-technik",
+        "titel": "Sprintplanung Technik",
+        "text": "Offene Punkte zum Rollout aus der Sprintplanung der Gruppe Technik.",
+        "freigegebenAn": ["dora"],
+        "vertraulich": false
+      },
+      {
+        "notizId": "n-archiv",
+        "besprechungId": "b-archiv",
+        "ordnerId": "o-technik-archiv",
+        "titel": "Archiv Rueckblick",
+        "text": "Offene Punkte zum Rollout aus dem Archiv der Gruppe Technik.",
+        "freigegebenAn": [],
+        "vertraulich": false
+      },
+      {
+        "notizId": "n-leitung",
+        "besprechungId": "b-leitung",
+        "ordnerId": "o-leitung",
+        "titel": "Leitungsrunde",
+        "text": "Offene Punkte zum Rollout aus Sicht der Leitung.",
+        "freigegebenAn": [],
+        "vertraulich": false
+      },
+      {
+        "notizId": "n-vertraulich",
+        "besprechungId": "b-leitung",
+        "ordnerId": "o-technik",
+        "titel": "Vertrauliche Notiz",
+        "text": "Offene Punkte zum Rollout, vertraulich und nur fuer die Beteiligten.",
+        "freigegebenAn": ["anna"],
+        "vertraulich": true
+      }
+    ]
+  },
+
+  "principale": {
+    "anna": { "tenantId": "t1", "benutzerId": "anna", "gruppen": [] },
+    "bruno": {
+      "tenantId": "t1",
+      "benutzerId": "bruno",
+      "gruppen": ["technik"]
+    },
+    "clara": {
+      "tenantId": "t1",
+      "benutzerId": "clara",
+      "gruppen": ["leitung"]
+    },
+    "dora": { "tenantId": "t1", "benutzerId": "dora", "gruppen": [] },
+    "egon": { "tenantId": "t2", "benutzerId": "egon", "gruppen": ["technik"] },
+    "dora-fremd": { "tenantId": "t2", "benutzerId": "dora", "gruppen": [] },
+    "kaputt": { "tenantId": "t1" }
+  },
+
+  "faelle": [
+    {
+      "id": "BA-1",
+      "gruppe": "acl-freigabe-und-teilnahme",
+      "hinweis": "Anna ist in KEINER Gruppe. Sie sieht n-offen ueber F4, n-sprint ueber F3 (Teilnehmerin von b-sprint, Q2) und n-vertraulich ueber F3 (Einzelfreigabe) — obwohl das Dokument 'privat' ist. Genau das ist ADR-0012. n-archiv und n-leitung fallen an F5.",
+      "principal": "anna",
+      "anfrage": "Offene Punkte Rollout",
+      "erwartet": {
+        "sichtbareDokumente": ["n-offen", "n-sprint", "n-vertraulich"],
+        "grund": null
+      }
+    },
+    {
+      "id": "BA-2",
+      "gruppe": "acl-vererbung",
+      "hinweis": "PFLICHTFALL fuer die Vererbung. Bruno ist in der Gruppe technik: n-sprint ueber F2 (er ist Organisator) und n-archiv ueber F5 mit einer GEERBTEN Gruppe — o-technik-archiv traegt selbst keine. Wuerde die Kette nicht gelaufen, fehlte n-archiv. n-vertraulich faellt an F6 (Q4 hat die Gruppe verworfen), n-leitung an F5.",
+      "principal": "bruno",
+      "anfrage": "Offene Punkte Rollout",
+      "erwartet": {
+        "sichtbareDokumente": ["n-archiv", "n-offen", "n-sprint"],
+        "grund": null
+      }
+    },
+    {
+      "id": "BA-3",
+      "gruppe": "acl-vertraulich-schlaegt-ordner",
+      "hinweis": "Clara ist in leitung: n-leitung und n-vertraulich ueber F2 (Organisatorin von b-leitung), n-offen ueber F4. n-sprint und n-archiv fallen an F5 — die Gruppe technik hat sie nicht.",
+      "principal": "clara",
+      "anfrage": "Offene Punkte Rollout",
+      "erwartet": {
+        "sichtbareDokumente": ["n-leitung", "n-offen", "n-vertraulich"],
+        "grund": null
+      }
+    },
+    {
+      "id": "BA-4",
+      "gruppe": "acl-nur-einzelfreigabe",
+      "hinweis": "Dora ist in keiner Gruppe, in keiner Besprechung und besitzt nichts. Sie sieht n-sprint AUSSCHLIESSLICH ueber die Einzelfreigabe (F3) und n-offen ueber F4. Dieser Fall ist der Gegenbeweis zur Pseudo-Gruppen-Alternative aus ADR-0012: doras Gruppenliste ist leer.",
+      "principal": "dora",
+      "anfrage": "Offene Punkte Rollout",
+      "erwartet": {
+        "sichtbareDokumente": ["n-offen", "n-sprint"],
+        "grund": null
+      }
+    },
+    {
+      "id": "BA-5",
+      "gruppe": "acl-cross-tenant",
+      "hinweis": "PFLICHTFALL. Egon ist in t2 und in der Gruppe technik — derselbe Gruppenname wie n-sprint und n-archiv. Waere die Mandantengrenze nicht die erste Pruefung, kaemen beide hier durch. In t2 liegt kein Dokument, also ist die Erwartung leer — aber mit grund null: der Principal IST aufloesbar, er darf nur nichts sehen.",
+      "principal": "egon",
+      "anfrage": "Offene Punkte Rollout",
+      "erwartet": { "sichtbareDokumente": [], "grund": null }
+    },
+    {
+      "id": "BA-6",
+      "gruppe": "acl-cross-tenant-freigabe",
+      "hinweis": "PFLICHTFALL zu ADR-0012. Dieselbe benutzerId wie dora, aber im Mandanten t2. n-sprint traegt 'dora' in erlaubtePersonen. Wuerde F3 vor F1 geprueft — oder die Mandantengrenze bei einer Freigabe als Ausnahme behandelt —, flosse n-sprint hier ab. Eine Ausnahme darf die Mandantengrenze nie aufheben.",
+      "principal": "dora-fremd",
+      "anfrage": "Offene Punkte Rollout",
+      "erwartet": { "sichtbareDokumente": [], "grund": null }
+    },
+    {
+      "id": "BA-7",
+      "gruppe": "acl-fail-closed",
+      "hinweis": "PFLICHTFALL. Der Principal traegt keinen Benutzer und keine Gruppenliste, ist also nicht aufloesbar. Erwartung ist LEER MIT GRUND (F7) — nicht ungefiltert und nicht stillschweigend leer. Der Unterschied zu BA-5 ist genau dieser Grund: dort 'darf nichts sehen', hier 'ist gar nicht aufloesbar'.",
+      "principal": "kaputt",
+      "anfrage": "Offene Punkte Rollout",
+      "erwartet": {
+        "sichtbareDokumente": [],
+        "grund": "principal-nicht-aufloesbar"
+      }
+    }
+  ]
+}

@@ -621,3 +621,798 @@ node --test tests/context.test.js
 
 Stand 2026-09-09, nach Etappe 2: 🟢 `tests/context.test.js` gruen, darunter beide genannten
 Faelle.
+
+---
+
+## ADR-0010 — Die Vertikale ist „Besprechungsnotiz → Aktionspunkt → Ticket", die Quelle ist ein geteiltes Notizenlaufwerk
+
+**Datum:** 2026-09-10
+**Status:** Angenommen
+
+### Kontext
+
+Seit dem 2026-09-08 stand in `.gehirn/themen.md` die einzige Produktentscheidung, die dieses
+Repo nie getroffen hatte: **welche Vertikale?** Etappe 2 hat sie erfolgreich umgangen — der
+ACL-Filter braucht einen Principal, und in Schicht A kommt der aus Fixtures (ADR-0009).
+Etappe 3 kann sie nicht mehr umgehen. Ontologie, Berechtigungsmodell der Quelle, Connector
+und die Liste der Aktionstypen leiten sich alle aus ihr ab; `PRODUCT.md` trug bis heute neun
+Vorlagenmarken und war ohne sie nicht zu füllen.
+
+`docs/roadmap.md` §5 setzt dafür eine harte Bedingung: **eine** Quelle, und zwar die mit dem
+schwersten Berechtigungsmodell. „Drei einfache Connectoren lehren zusammen weniger als ein
+schwerer."
+
+Zur Wahl standen drei Kandidaten aus `themen.md`: Besprechungsnotiz → Aktion → Ticket ·
+Ticket-Triage · Kunden-Onboarding.
+
+### Entscheidung
+
+Wir nehmen **Besprechungsnotiz → Aktionspunkt → Ticket** als Vertikale, und als Quelle ein
+**geteiltes Notizenlaufwerk** mit drei übereinanderliegenden Berechtigungsmechanismen:
+Ordner-Vererbung, Freigabe an einzelne Personen, Teilnehmerliste der Besprechung.
+
+### Begründung
+
+Den Ausschlag gab das Berechtigungsmodell, nicht der Anwendungsfall.
+
+**Ticket-Triage** hat die einfachste ACL: Projektmitgliedschaft plus ein privates Kennzeichen.
+Das ist genau das Modell, das `envelope.js` heute schon abbildet — ein Connector dagegen hätte
+nichts gelehrt und die Begründung aus §5 leerlaufen lassen.
+
+**Kunden-Onboarding** hat eine schwere ACL, aber eine, deren Regeln aus einem Organigramm
+kommen und nicht aus einem Regelwerk. `EVALS.md` §4 verlangt, dass Erwartungen **aus Regeln
+abgeleitet** werden; ein Gebietsmodell hätte Fixtures erzwungen, die aus einer erfundenen
+Firma stammen statt aus einer Regel.
+
+Das Notizenlaufwerk trägt alle drei Härten, die ein Enterprise-Berechtigungsmodell schwer
+machen, und jede davon ist als **Regel** formulierbar:
+
+- **Vererbung ist ein Join.** Ein Ordner erbt die Sichtbarkeit seines Elternordners. Wer die
+  Kette nicht bis zur Wurzel läuft, liest zu wenig oder zu viel — und beides fällt erst auf,
+  wenn es zu spät ist.
+- **Eine Freigabe an eine Person ist eine Ausnahme.** Sie hebt die Ordnerregel für genau ein
+  Dokument und genau eine Person auf. Ausnahmen sind die Stelle, an der Filter falsch werden.
+- **Eine Teilnehmerliste ändert sich.** Genau deshalb liefert diese Quelle den Entzugstest
+  natürlich mit, den `docs/roadmap.md` als Tor für Etappe 3 nennt: Teilnehmer aus der
+  Besprechung entfernt → die Notiz darf binnen eines Synchronisationszyklus nicht mehr
+  auffindbar sein.
+
+Dazu ein zweiter, kleinerer Grund: der Ablauf passt ohne Verrenkung auf den Graphen, der seit
+Etappe 1 steht. Aktionspunkte aus einer Notiz zu ziehen ist ein produzierender Knoten, sie
+gegen einen Ausgabevertrag zu halten ist das QA-Tor, ein Ticket anzulegen ist die
+Außenwirkung, die hinter der HITL-Kante und der Aktions-Queue liegt. Wir prüfen damit die
+These aus ADR-0004 ernsthaft: **eine zweite Domäne ändert null Zeilen im Kern.**
+
+### Konsequenzen
+
+**Leichter:** `PRODUCT.md` ist füllbar. Die Ontologie hat einen Gegenstand. Der Entzugstest
+und damit Metrik 3.14 haben einen natürlichen Fall statt eines konstruierten.
+
+**Schwerer:** Das heutige Envelope-Modell reicht nicht. Eine Freigabe an eine **Person** ist
+in `oeffentlich | gruppe | privat` nicht ausdrückbar — das ist der Auslöser von ADR-0012.
+
+**Eingehandelt:** Die Quelle ist in Schicht A eine **Fixture-Quelle**, kein Netzzugriff. Das
+ist keine Bequemlichkeit, sondern die Bedingung von K5 und des Determinismus: ein Connector,
+der ein Netz braucht, nimmt `npm run evals` beides. Was diese Etappe damit **nicht** zeigt,
+ist das Aushandeln eines echten Protokolls — sie zeigt, dass ein Berechtigungsmodell korrekt
+in die Envelope übersetzt wird und ein Entzug sich ausbreitet.
+
+**Nicht entschieden:** ob die Demo nach dem Postgres-Adapter auf `memory` bleibt (K5). Diese
+Frage fällt erst, wenn ein zweiter Adapter existiert — sie vorher zu entscheiden hieße, ohne
+den Sachverhalt zu entscheiden. Sie bleibt aktives Thema bis Etappe 3c.
+
+### Prüfkriterium
+
+```bash
+grep -c "VORLAGE\|<!-- " PRODUCT.md   # erwartet: 0
+grep -rn "besprechung" src/kernel/    # erwartet: keine Ausgabe
+```
+
+Stand 2026-09-10, nach Etappe 3a: 🟢 `PRODUCT.md` meldet 0 Vorlagenmarken, die Trennlinie ist leer.
+
+---
+
+## ADR-0011 — Ein Connector liefert eine vollständige Momentaufnahme; die Synchronisation ersetzt eine Quelle atomar
+
+**Datum:** 2026-09-10
+**Status:** Angenommen
+
+### Kontext
+
+ADR-0009 vererbt die Berechtigung auf **jeden** Chunk und benennt den Preis in seinem eigenen
+Konsequenzen-Abschnitt: ändert sich die Berechtigung, müssen alle Chunks nachgezogen werden.
+`docs/roadmap.md` macht daraus das Tor von Etappe 3 und schreibt den Grund dazu: eine
+veraltete, vermeintlich gelöschte Kopie ist ein echter Leckvektor.
+
+Damit steht die Frage, wie ein Connector den Speicher aktuell hält. Die naheliegende Antwort
+der Branche ist ein **Delta-Sync**: die Quelle meldet, was sich geändert hat, der Speicher
+zieht nach.
+
+### Entscheidung
+
+Ein Connector liefert mit `hole()` eine **vollständige Momentaufnahme** dessen, was die Quelle
+gerade freigibt — jedes Dokument samt bereits erfasster Envelope. `synchronisiere` chunkt
+diese Momentaufnahme und übergibt sie dem Speicher als **atomaren Ersatz der ganzen Quelle**
+(`store.ersetzeQuelle(quelle, chunks)`). Es gibt keinen Pfad, auf dem einzelne Dokumente
+nachgezogen werden.
+
+### Begründung
+
+Bei einem Delta-Sync hängt die Entzugszusage an der **Korrektheit des Deltas**. Ein Entzug ist
+aber genau der Fall, den eine Quelle am leichtesten verschweigt: ein gelöschtes Dokument
+erzeugt oft kein Ereignis, eine entzogene Berechtigung fast nie. Der Fehler ist dann still —
+die alte Kopie bleibt liegen und wird weiter ausgeliefert, während jede Prüfung grün meldet.
+Das ist derselbe Ausfall, um den dieses Repo gebaut ist: **es läuft weiter, misst aber nichts
+mehr.**
+
+Beim atomaren Ersatz ist die Zusage **strukturell** statt abgeleitet. Ein Dokument, das die
+Momentaufnahme nicht mehr enthält, verschwindet — nicht weil jemand ein Löschereignis richtig
+verarbeitet hat, sondern weil es nicht mehr da ist. Ein Dokument mit enger gewordener
+Berechtigung kommt mit der neuen Envelope zurück, weil es die alte nirgends mehr gibt. Das ist
+dieselbe Denkweise wie in ADR-0008: der unberechtigte Chunk wird nicht weggeworfen, er
+entsteht gar nicht erst.
+
+Zweitens hält es den Port klein. Ein Delta-Sync bräuchte einen **Leseweg für Metadaten** —
+was liegt gerade zu dieser Quelle im Speicher? —, um vergleichen zu können. `store/index.js`
+hält heute fest, dass es **genau einen** Leseweg gibt und dass ein zweiter die Abkürzung wäre,
+über die jedes Leck später hereinkäme. Diese Entscheidung erspart den zweiten Leseweg.
+
+### Konsequenzen
+
+**Leichter:** Entzug und Löschung brauchen keinen eigenen Mechanismus, keine Grabsteine, keine
+Ereignisverarbeitung. Metrik 3.14 misst eine Eigenschaft der Struktur, nicht die Sorgfalt
+eines Diffs.
+
+**Schwerer:** Jeder Zyklus bettet alles neu ein. Mit dem Hash-Embedding aus ADR-0007 kostet
+das nichts. Mit einem echten Embedding (Etappe 3d) kostet es Geld je Zyklus, und dann wird der
+Delta-Sync zur ernsthaften Frage — **er braucht dann eine eigene ADR**, die ausdrücklich
+benennt, dass die Entzugszusage dabei von der Struktur in eine Ableitung wandert.
+
+> **Nachtrag 2026-09-11 — die Frage ist gefallen, und zwar anders als hier erwartet:
+> ADR-0016.** Der Delta-Sync bleibt verworfen. Teuer ist nicht der Ersatz, sondern der
+> Einbettungsaufruf — also wird genau der zwischengespeichert, nach Art und Text. Ein Vektor
+> trägt keine Berechtigung; ein Chunk täte es. Diese ADR bleibt damit unverändert gültig: die
+> Momentaufnahme ist vollständig, der Ersatz atomar, die Entzugszusage strukturell.
+
+**Eingehandelt:** „Atomar" gilt hier innerhalb eines Prozesses. Ein verteilter Speicher braucht
+dafür eine Transaktion; der `memory`-Adapter bekommt sie geschenkt, der Postgres-Adapter muss
+sie ausdrücklich herstellen. Das ist eine Anforderung an Etappe 3c und steht hier, damit sie
+dort nicht übersehen wird.
+
+**Grenze der Messung:** Schicht A misst **Zyklen, keine Sekunden**. Die Sekundenzahl aus dem
+Roadmap-Tor („innerhalb von N Sekunden") hängt am Zeitplan, mit dem der Connector läuft — und
+einen Zeitplan gibt es noch nicht. 3.14 misst deshalb: liefert die Suche nach **einem**
+Synchronisationszyklus noch einen Chunk des entzogenen Dokuments?
+
+### Prüfkriterium
+
+```bash
+node --test tests/connectors.test.js
+# erwartet: gruen — darunter "ein Dokument, das die Momentaufnahme nicht mehr enthaelt,
+# ist nach der Synchronisation verschwunden" und
+# "ersetzeQuelle laesst Chunks anderer Quellen unberuehrt"
+```
+
+Stand 2026-09-10, nach Etappe 3b: 🟢 `tests/connectors.test.js` 11/11 gruen, darunter beide genannten Faelle.
+
+---
+
+## ADR-0012 — Die Envelope wächst um `erlaubtePersonen`; eine Freigabe an eine Person ist kein Sonderfall der Gruppe
+
+**Datum:** 2026-09-10
+**Status:** Angenommen
+
+### Kontext
+
+Die in ADR-0010 gewählte Quelle kennt drei Berechtigungsmechanismen. Zwei davon bildet
+`envelope.js` heute ab: Ordner-Vererbung wird zu `erlaubteGruppen`, ein vertrauliches Dokument
+zu `sichtbarkeit: "privat"`. Der dritte nicht: eine **Freigabe an eine einzelne Person** — der
+geteilte Link, die nachträglich eingeladene Teilnehmerin — hat in `oeffentlich | gruppe |
+privat` keinen Platz.
+
+`envelope.js` beschreibt ausdrücklich ein **allgemeines** Berechtigungsmodell und keine
+Ontologie. Die Frage ist deshalb nicht, ob die Domäne dieses Feld will, sondern ob
+„Freigabe an eine Person" allgemein genug ist, um im Kern zu stehen.
+
+### Entscheidung
+
+Die Envelope bekommt ein **optionales** Feld `erlaubtePersonen: string[]`, und `darfSehen`
+bekommt eine Regel dafür: nach der Mandantengrenze, gleichrangig mit dem Besitzer, **vor** den
+Sichtbarkeitsstufen.
+
+### Begründung
+
+Die naheliegende Alternative war, ohne Kernänderung auszukommen und je Dokument eine
+**Pseudo-Gruppe** zu erzeugen (`notiz:<id>:freigabe`), in die die freigegebenen Personen
+gelegt werden. Das funktioniert und ist genau der Grund, warum es abgelehnt wird: es
+verschiebt die Kosten dorthin, wo sie niemand sieht. Die Gruppenliste des Principals wächst
+dann mit der Zahl der Dokumente, auf die er je einzeln freigegeben wurde — im Betrieb als
+_group explosion_ bekannt. Der Filter bliebe formal unverändert und würde in der Praxis
+langsam und unlesbar.
+
+Die Regel steht **vor** den Sichtbarkeitsstufen, weil eine Freigabe eine Ausnahme ist: sie
+soll `privat` aufheben können, sonst hätte sie keinen Zweck. Sie steht **nach** der
+Mandantengrenze, weil keine Ausnahme diese Grenze aufheben darf — dieselbe Ordnung, die
+`filter.js` seit ADR-0008 begründet.
+
+Dass das Feld **optional** ist, ist Absicht und zugleich der Beweis, dass die Änderung nichts
+Bestehendes bewegt: `erlaubtePersonen ?? []` lässt jede heute existierende Envelope
+unverändert gültig. Die sechs ACL-Fälle aus Etappe 2 und ihre Erwartungen bleiben Zeile für
+Zeile dieselben.
+
+### Konsequenzen
+
+**Leichter:** Das Berechtigungsmodell trägt jetzt die drei Mechanismen, an denen echte
+Quellen scheitern — Vererbung, Gruppe, Ausnahme. Die Domäne übersetzt, sie erfindet nicht.
+
+**Schwerer:** Der Filter hat eine Regel mehr, und jede Regel ist eine Stelle, an der er falsch
+sein kann. Bezahlt wird das mit Fällen: sowohl „Freigabe greift" als auch „Freigabe hebt die
+Mandantengrenze **nicht** auf" sind Pflichtfälle im Datensatz, nicht Kür.
+
+**Eingehandelt:** Eine Berechtigung, die an einer Person hängt, ist die teuerste Art von
+Berechtigung — sie lässt sich nicht durch das Entfernen aus einer Gruppe zurücknehmen,
+sondern nur dokumentweise. Genau deshalb ist der Entzug einer Personen-Freigabe ein
+Pflichtfall von 3.14.
+
+### Prüfkriterium
+
+```bash
+node --test tests/retrieval.test.js
+# erwartet: gruen — darunter "eine Freigabe an eine Person hebt privat auf"
+# und "eine Freigabe an eine Person hebt die Mandantengrenze NICHT auf"
+npm run evals
+# erwartet: 3.13 weiterhin 0.0 % — das Feld darf die Zahl nicht bewegen
+```
+
+Stand 2026-09-10, nach Etappe 3b: 🟢 beide Faelle in `tests/retrieval.test.js` gruen; `npm run evals` meldet 3.13 unveraendert 0,0 % (0/10 in `beispiel`, 0/16 in `besprechung`).
+
+---
+
+## ADR-0013 — K5 bleibt grün: die Voreinstellung bleibt `memory`, Postgres tritt daneben
+
+**Datum:** 2026-09-10
+**Status:** Angenommen
+
+### Kontext
+
+`docs/roadmap.md` hat diese Entscheidung von Anfang an für Etappe 3c vorgesehen und
+ausdrücklich verlangt, dass sie **per Entscheidung fällt, nicht aus Versehen**. Sie wurde
+in ADR-0010 bewusst nicht vorweggenommen: solange es keinen zweiten Adapter gab, hätte man
+ohne den Sachverhalt entschieden.
+
+Jetzt gibt es ihn. `src/kernel/context/store/postgres.js` läuft, und dieselbe Eval-Suite
+liefert gegen ihn dieselben Zahlen wie gegen `memory`. Damit steht die Frage an, die K5
+stellt: läuft `clone → install → demo` weiterhin ohne Infrastruktur?
+
+### Entscheidung
+
+**Ja.** `memory` bleibt die Voreinstellung für `npm run demo`, `npm test` und
+`npm run evals`. Der Postgres-Adapter wird **ausdrücklich verlangt** — über
+`STORE_ADAPTER=postgres`, `--store=postgres` oder `npm run evals:postgres` — und nie
+geraten. K5 bleibt unverändert grün.
+
+### Begründung
+
+Die Alternative wäre gewesen, die Demo auf den „echten" Pfad umzustellen, weil er
+realistischer ist. Das kostet drei Dinge auf einmal, und alle drei sind Zusagen aus
+`docs/roadmap.md` §2: die Messung wäre nicht mehr kostenlos, nicht mehr deterministisch und
+nicht mehr in CI lauffähig. Realismus in der Demo ist das nicht wert — die Vertikale hat mit
+`npm run demo:besprechung` ohnehin einen eigenen Befehl, der den vollständigen Ablauf zeigt.
+
+Der zweite Grund ist stärker als der erste und war vorher nicht sichtbar: **die Trennung
+misst jetzt etwas.** Zwei Konfigurationen desselben Datensatzes, die dieselben Zahlen liefern
+müssen, sind ein schärferes Instrument als eine. Ein Unterschied zwischen ihnen ist ein
+Defekt mit genau einer möglichen Ursache — dem Adapter. Stellte man alles auf Postgres um,
+verlöre man diesen Vergleich und hätte dafür nichts gewonnen.
+
+Dass die Trennung wirklich trägt, ist keine Behauptung: `context/aufbau.js` lädt die
+Adapterfabriken **dynamisch**. Ohne `STORE_ADAPTER=postgres` wird `pg` nicht einmal geladen —
+im Abdeckungsbericht von `npm test` taucht `postgres.js` gar nicht erst auf.
+
+### Konsequenzen
+
+**Leichter:** K5 bleibt, was es war. Ein Klon des Repos braucht weiterhin nur Node. Die
+Schicht-A-Messung bleibt kostenlos und CI-fähig.
+
+**Schwerer:** Es gibt jetzt **zwei** gemessene Konfigurationen und damit zwei Berichte je
+Domäne und Tag. Der Dateiname trägt deshalb den Adapternamen, und der Bericht trägt das Feld
+`storeAdapter`. Ohne das wäre ein Lauf, bei dem `STORE_ADAPTER` still verschluckt wurde, von
+einem echten Postgres-Lauf nicht zu unterscheiden — und er meldete grün.
+
+**Eingehandelt, und es ist die wichtigste Zeile dieser ADR:** der Postgres-Pfad wird nur
+gemessen, wenn jemand ihn ausdrücklich fährt. Eine CI ohne Docker misst ihn **nicht**. Das
+ist eine bewusste Lücke, keine übersehene: sie zu schließen hieße, Docker zur Voraussetzung
+jedes Laufs zu machen — also K5 aufzugeben, nur über einen Umweg. Wer den Postgres-Lauf zur
+Bedingung eines Merge machen will, braucht dafür eine eigene Entscheidung und einen
+CI-Dienst, der eine Datenbank stellt.
+
+### Prüfkriterium
+
+```bash
+npm run demo                       # ohne DATABASE_URL, ohne Docker
+npm test                           # meldet "skipped 6", nicht "fail"
+npm run evals                      # Store: memory
+npm run evals:postgres             # Store: postgres — dieselben Zahlen
+```
+
+Stand 2026-09-10, nach Etappe 3c: 🟢 `npm run demo` Exit 0 ohne Infrastruktur ·
+`npm test` 185 bestanden, **6 uebersprungen**, 0 gefallen · beide Eval-Laeufe in **jeder**
+Metrik identisch (3.13 = 0 %, 3.14 = 0 %, Vertragstreue 28/28 und 32/32).
+
+---
+
+## ADR-0014 — Die ACL-Regeln haben EINE Quelle und ZWEI Kompilate
+
+**Datum:** 2026-09-10
+**Status:** Angenommen
+
+### Kontext
+
+ADR-0008 verlangt, dass der ACL-Filter **in die Abfrage kompiliert** wird. Für den
+`memory`-Adapter heißt das ein JavaScript-Prädikat, das beim Durchsuchen angelegt wird. Für
+Postgres heißt dasselbe etwas völlig anderes: eine `WHERE`-Bedingung mit gebundenen
+Parametern.
+
+Damit steht die Frage, die jeden zweiten Adapter betrifft: wo leben die Regeln?
+
+### Entscheidung
+
+Die vier Zugangsregeln und die Mandantengrenze stehen **einmal**, in
+`src/kernel/retrieval/filter.js`, als Liste. Jede Regel trägt **beide Kompilate** in
+derselben Deklaration — `js: (p, e) => …` und `sql: (p, binde) => …`, direkt untereinander.
+`darfSehen` und `kompiliereFilterSql` bauen daraus, keiner von beiden formuliert eine eigene
+Regel. Auch die Spaltennamen stehen dort; der Adapter baut sein Schema aus ihnen.
+
+### Begründung
+
+Drei Alternativen standen zur Wahl, und die naheliegendste ist die gefährlichste.
+
+**(a) Zwei getrennte Implementierungen** — die ACL-Logik im Filter, die `WHERE`-Bedingung im
+Postgres-Adapter. Sie driften auseinander, und zwar unbemerkt: 3.13 misst je Adapter nur
+seine eigene Hälfte, und beide melden 0 %, während sie Verschiedenes bedeuten. Abgelehnt.
+
+**(b) In Postgres nachgelagert filtern** — alles holen, dann das JS-Prädikat anwenden. Damit
+gäbe es nur eine Implementierung, aber ADR-0008 wäre gebrochen: der unberechtigte Chunk
+verlässt die Datenbank. Genau das, was jene ADR ausschließt. Abgelehnt.
+
+**(c) Ein kleiner Ausdrucksbaum** und zwei Interpreter — formal die reinste Lösung und
+wirklich nur eine Quelle. Bei vier Regeln ist sie Überbau, und sie verschiebt das Problem:
+der Interpreter selbst kann falsch sein, und ihn prüft dann nichts.
+
+Gewählt wurde die Fassung, die **Nachbarschaft mit Messung** verbindet. Die zwei Kompilate
+stehen nebeneinander, in einem Blick prüfbar — aber Nachbarschaft ist kein Beweis. Der Beweis
+ist, dass sie **gegeneinander gemessen** werden:
+
+- ein Differenztest fährt dieselben Dokumente, dieselbe Frage und fünf Principale durch
+  beide Adapter und vergleicht die Chunk-Ids **in ihrer Reihenfolge**
+  (`tests/integration/postgres.test.js`);
+- dieselbe Eval-Suite läuft gegen beide Adapter und muss dieselben Zahlen liefern.
+
+Dass die Spaltennamen bei den Regeln stehen und nicht im Adapter, folgt derselben Logik:
+liefe das Schema unabhängig von der Bedingung, wäre ein Tippfehler in einem Spaltennamen ein
+**leeres Suchergebnis** — und ein leeres Ergebnis sieht in 3.13 makellos aus.
+
+### Konsequenzen
+
+**Leichter:** Eine neue Zugangsregel ist ein Eintrag mit zwei Zeilen. Ein Adapter kann keine
+eigene ACL-Regel erfinden: der Port reicht ihm die fertigen Kompilate und den Principal
+ausdrücklich **nicht**.
+
+**Schwerer:** Wer eine Regel hinzufügt, muss an beide Kompilate denken. Eine Regel mit nur
+einem `js` verschwände im SQL-Pfad still — deshalb prüft ein Test, dass jede Regel beide
+Funktionen trägt. Das ist der billigste Teil der Absicherung und der, der am ehesten gebraucht
+wird.
+
+**Nebenbei gefallen:** die geordnete `if`-Kette wurde zur Normalform
+`Mandant UND (A ODER B ODER C ODER D)`. Die Umformung ist gleichwertig — `privat` und
+„unbekannt" trugen nie zu einer Erlaubnis bei — und macht die Reihenfolge der vier Regeln
+bedeutungslos. Die Mandantengrenze steht bewusst **außerhalb** der Disjunktion, weil sie ein
+UND ist.
+
+**Eingehandelt:** Der SQL-Pfad wird nur gemessen, wenn jemand gegen Postgres fährt
+(ADR-0013). Bis dahin trägt ihn allein die Nachbarschaft der beiden Zeilen — und die ist,
+wie oben gesagt, kein Beweis. Wer den SQL-Pfad ändert, ohne den Postgres-Lauf zu fahren, hat
+nichts geprüft.
+
+### Prüfkriterium
+
+Die Mutationsprobe, und sie prüft beide Hälften auf einmal: die Mandantengrenze **nur** im
+SQL-Kompilat aushebeln (`MANDANTENGRENZE.sql` gibt `true` zurück), dann beide Läufe fahren.
+
+```bash
+npm run evals -- besprechung        # muss GRUEN bleiben  (JS-Prädikat unberührt)
+npm run evals:postgres -- besprechung   # muss ROT werden (SQL-Bedingung kaputt)
+node --test tests/integration/postgres.test.js   # Differenztest
+```
+
+Stand 2026-09-10, nach Etappe 3c: 🟢 ausgefuehrt. Unter der Mutation blieb der memory-Lauf
+bei 3.13 = 0,0 % (32/32 vertragstreu), der Postgres-Lauf sprang auf **33,3 % (8/24)** mit
+Rueckgabewert 1, und die beiden Cross-Tenant-Faelle BA-5 und BA-6 meldeten ihr Leck
+namentlich. Danach zurueckgenommen. Der Differenztest ist gruen: beide Adapter liefern fuer
+fuenf Principale dieselben Chunk-Ids in derselben Reihenfolge.
+
+---
+
+## ADR-0015 — Das Embedding ist ein Port mit zwei Adaptern; der echte heißt Voyage
+
+**Datum:** 2026-09-10
+**Status:** Angenommen
+
+### Kontext
+
+Bis Etappe 3d bettete das Repo Text mit einer FNV-1a-Hash-Funktion über 64 Dimensionen ein.
+Das war nie als Suchqualität gemeint, sondern als **Platzhalter mit einer Eigenschaft**:
+deterministisch, kostenlos, netzfrei — also tauglich für Schicht A und für K5. Er hat seine
+Aufgabe erfüllt und trägt sie weiter.
+
+Was er **nicht** kann: Bedeutung. „Rollout verschoben" und „Einführung vertagt" liegen für
+ihn beliebig weit auseinander, weil sie kein Wort teilen. Jede Aussage dieses Repos über
+Retrieval-Qualität war bis hierher eine Aussage über Wortüberlappung.
+
+Der Auslöser für die Entscheidung war eine Feststellung, die den naheliegenden Weg versperrt:
+**Anthropic bietet kein Embedding-Modell an.** Die eigene Dokumentation sagt es wörtlich —
+„Anthropic does not offer its own embedding model" — und verweist auf Voyage AI. In einem
+Repo, das sonst ausschließlich Anthropic anspricht, ist ein zweiter Anbieter also keine
+Vorliebe, sondern die dokumentierte Empfehlung des ersten.
+
+Damit stellten sich drei Fragen auf einmal, und nur die mittlere ist die eigentliche:
+
+1. Welcher Anbieter?
+2. **Ersetzt** der echte den Hash — oder tritt er **daneben**?
+3. Was passiert mit der Zusage 3.13 = 0 %, wenn die Vektoren sich ändern?
+
+### Entscheidung
+
+**Ein Port `kernel/context/embedding/` mit zwei Adaptern.** `hash` bleibt die Voreinstellung;
+`voyage` ist opt-in über `EMBEDDING_ADAPTER=voyage`. Der Port schreibt drei Dinge vor:
+`name`, `dimensionen` und `einbetteViele(texte, art)`. Die Wahl trifft `aufbau.js` — derselbe
+Kompositionswurzel, der schon den Store-Adapter wählt.
+
+**Der Port kennt zwei Arten: `dokument` und `anfrage`.** Ein echtes Retrieval-Modell bettet
+die Frage anders ein als den Text, den sie finden soll; Voyage nennt das `input_type`. Der
+Hash-Adapter ignoriert die Unterscheidung — er ist symmetrisch —, aber der **Port** kennt sie
+von Anfang an. Sie erst mit dem zweiten Adapter einzuführen hätte jede Aufrufstelle im Repo
+angefasst, und zwar genau in der Etappe, in der man am wenigsten anfassen will.
+
+**Der Port nimmt Listen, nicht einzelne Texte.** `einbetteViele` ist die Pflichtmethode,
+`einbette` nur die Bequemlichkeit darüber. Ein Dokument mit 300 Chunks wären sonst 300
+Netzaufrufe, und die Anbieter rechnen je Aufruf ab.
+
+**Der Port prüft die Antwort seines Adapters**: bekannte Art, Anzahl gleich Anzahl, jeder
+Vektor in der versprochenen Breite. Ein Adapter, der zu wenige Vektoren liefert, verschiebt
+sonst still die Zuordnung von Chunk zu Vektor.
+
+### Alternativen
+
+**Den Hash ersetzen statt danebenstellen.** Verworfen, und zwar zweimal begründet. Erstens
+K5: `clone → install → demo` muss ohne Infrastruktur laufen, und ein Netzaufruf mit
+Schlüsselzwang bricht das. Zweitens Schicht A: sie ist deterministisch und kostenlos, weil
+sie es sein muss — eine Suite, die je Lauf Geld kostet und je Lauf leicht andere Zahlen
+liefert, wird nicht mehr gefahren. Genau dieselbe Begründung trägt schon ADR-0007 für das
+LLM; hier ist sie nur auf das Embedding angewandt.
+
+**Die Breite aus der ersten Antwort raten.** Verworfen. Die Zahl steht im Vertrag mit dem
+Postgres-Schema (`vector(n)`), und ein Schema von einer Antwort abhängig zu machen, die noch
+nicht da ist, dreht die Reihenfolge um. Sie wird deshalb ausdrücklich mitgeführt, und der
+Postgres-Adapter **prüft** beim Start, dass die vorhandene Tabelle dieselbe Breite hat.
+
+**Ein npm-Paket für Voyage.** Es gibt keins für Node, und es bräuchte auch keins: Voyage hat
+eine HTTP-API, Node bringt `fetch` mit. Ein Paket für einen einzigen POST wäre eine
+Abhängigkeit, die `npm audit` mitträgt, ohne etwas beizutragen.
+
+**Ohne Schlüssel still auf `hash` zurückfallen.** Ausdrücklich verworfen — das ist der
+gefährlichste der drei. Ein Lauf, der `EMBEDDING_ADAPTER=voyage` bekommt und `hash` fährt,
+schreibt `voyage` in den Bericht und misst etwas anderes. Der Adapter wirft stattdessen.
+
+### Konsequenzen
+
+**Gewonnen.** Die Behauptung „der Adapter ist austauschbar" ist prüfbar geworden: derselbe
+Ingest, derselbe Speicher, derselbe Filter laufen mit einem 1024-dimensionalen Embedding
+durch (`tests/embedding.test.js`, letzter Test). Und der teuerste Fehler dieses Adapters —
+eine vertauschte Antwort — ist abgefangen: die Antwort wird **nach `index` sortiert**, nicht
+in der Reihenfolge geglaubt, in der sie eintrifft.
+
+> Warum gerade der: eine vertauschte Antwort liefert die **richtige Anzahl** Vektoren. Die
+> Prüfung im Port greift also nicht, und keine Metrik dieses Repos auch nicht. Jeder Chunk
+> trüge den Vektor eines anderen, und es sähe aus wie schlechte Suchqualität — der teuerste
+> Ausfall ist immer der, der wie ein bekanntes Problem aussieht.
+
+**Vorhergesagt, bevor jemand misst.** 3.13 darf sich durch ein anderes Embedding **nicht**
+bewegen, und zwar aus einem Grund, der in der Reihenfolge liegt: der ACL-Filter läuft in
+beiden Adaptern **vor** der Bewertung. Kein Vektor kann einen unerlaubten Chunk in die
+Treffermenge heben, weil er dort nie zur Auswahl steht. Bewegt sich 3.13 doch, dann hing eine
+Berechtigung an der Sortierung — und das wäre der Befund, nicht das Embedding.
+
+Der **Nenner** von 3.13 darf sich dagegen sehr wohl ändern: ein dichtes Embedding gibt mehr
+Chunks einen Wert über null als ein spärlicher Hash. `0/16` und `0/20` sind beide 0 %.
+
+**Eingehandelt.** Ein zweiter Anbieter und ein zweiter Schlüssel im Betrieb. Und eine
+Kostenstelle, die pro Ingest zählt — deshalb der Stapel und deshalb `hash` als Voreinstellung.
+
+**Noch offen.** Wer den Embedding-Adapter wechselt, muss neu ingestieren: alte Vektoren einer
+anderen Breite sind nicht vergleichbar. Der Postgres-Adapter sagt das mit einer lesbaren
+Meldung, migriert aber **nicht** von selbst — die Tabelle zu verwerfen ist ein Datenverlust,
+und den entscheidet kein Adapter im Vorbeigehen.
+
+### Prüfkriterium
+
+Zwei Befehle. Der erste ist netzfrei und prüft die Mechanik des Ports, der zweite prüft die
+Zusage oben — und **braucht einen Schlüssel**:
+
+```bash
+node --test tests/embedding.test.js      # Port, Stapel, input_type, Reihenfolge
+npm run evals -- besprechung             # hash: 3.13 muss 0,0 % bleiben
+
+EMBEDDING_ADAPTER=voyage npm run evals -- besprechung   # braucht VOYAGE_API_KEY
+```
+
+Stand 2026-09-10, nach Etappe 3d:
+
+- **Netzfreier Teil: 🟢 ausgeführt.** 12/12 in `tests/embedding.test.js`; die gesamte Suite
+  202/208 (6 übersprungen, ohne `DATABASE_URL`). Seit ADR-0016 sind es **21/21** und
+  217 insgesamt — die Zahlen dieses Absatzes sind der Stand vom 2026-09-10, absichtlich
+  nicht nachgezogen: sie belegen den Lauf, der damals stattgefunden hat. Die Mutationsprobe an der wertvollsten
+  Stelle — die Sortierung nach `index` entfernt — färbte genau die zwei Tests rot, die sie
+  soll, und wurde zurückgenommen. Jede Zahl aus Etappe 3c ist nach dem Umbau auf den Port
+  **unverändert** geblieben, gegen beide Store-Adapter.
+- **Voyage-Teil: 🔴 nicht ausgeführt.** `VOYAGE_API_KEY` ist in dieser Umgebung nicht gesetzt.
+  Der Adapter ist geschrieben und gegen ein Testdouble geprüft, das die dokumentierte
+  Antwortform nachbildet — aber **ob Voyage wirklich so antwortet, weiß dieses Repo nicht.**
+  Ein Testdouble beweist die eigene Logik, nicht die fremde. Bis der Lauf oben durchläuft,
+  ist der zweite Adapter gebaut und **nicht gemessen**; „austauschbar" gilt bis dahin nur
+  gegenüber dem breiten Testadapter, nicht gegenüber Voyage.
+
+---
+
+## ADR-0016 — Die vollständige Momentaufnahme bleibt; gespart wird am Einbettungsaufruf, nicht am Ersatz
+
+**Datum:** 2026-09-11
+**Status:** Angenommen
+
+### Kontext
+
+ADR-0011 hat den Delta-Sync verworfen und die Frage zugleich terminiert: „Mit einem echten
+Embedding (Etappe 3d) kostet es Geld je Zyklus, und dann wird der Delta-Sync zur ernsthaften
+Frage — **er braucht dann eine eigene ADR**." Mit ADR-0015 steht der zweite Adapter, also ist
+der Termin da. Das ist diese ADR.
+
+Die Lage, in Zahlen: `synchronisiere` holt je Zyklus die vollständige Momentaufnahme, chunkt
+sie und ersetzt die ganze Quelle. Bei `hash` kostet das nichts. Bei `voyage` kostet jeder
+Zyklus die vollständige Einbettung — auch für Text, der sich seit dem letzten Zyklus um kein
+Zeichen bewegt hat. Ein Notizenlaufwerk, das stündlich synchronisiert wird, bezahlt dasselbe
+Dokument vierundzwanzig Mal am Tag.
+
+Der Vorschlag, der sich damit aufdrängt, ist der Delta-Sync, und er wäre falsch gelesen. Die
+Frage lautet nicht „Momentaufnahme oder Delta?", sondern: **was genau ist eigentlich teuer?**
+
+### Entscheidung
+
+**Die Momentaufnahme bleibt vollständig und der Ersatz atomar — ADR-0011 wird nicht
+angerührt.** Gespart wird an genau einer Stelle: dem Einbettungsaufruf. Vor jedem Adapter
+liegt ein Zwischenspeicher (`kernel/context/embedding/zwischenspeicher.js`), der Vektoren nach
+**Art und Text** hält. Ein zweiter Zyklus über unveränderte Dokumente erreicht den Adapter
+nicht mehr.
+
+### Begründung
+
+**Die Trennlinie liegt zwischen Vektor und Envelope, und nur dort.**
+
+Ein Vektor ist eine reine Funktion des Textes. Er trägt **keine** Berechtigung — die steht in
+der Envelope, und die kommt in jedem Zyklus frisch aus der Momentaufnahme. Einen Vektor
+wiederzuverwenden heißt deshalb: eine Rechnung nicht zweimal bezahlen. Ein **Dokument**
+wiederzuverwenden hieße: eine alte Berechtigung behalten. Das eine ist erlaubt, das andere
+ist der Leckvektor, um den dieses Repo gebaut ist.
+
+Genau daran scheitert der Delta-Sync und genau daran scheitert der Zwischenspeicher nicht.
+Beim Delta-Sync hängt die Entzugszusage an der Korrektheit eines Deltas, und ein Entzug ist
+der Fall, den eine Quelle am leichtesten verschweigt (ADR-0011). Beim Zwischenspeicher hängt
+sie an nichts Neuem: `ersetzeQuelle` läuft unverändert über die vollständige Chunkliste, ein
+Dokument, das aus der Momentaufnahme fällt, verschwindet weiterhin **strukturell** — sein
+Vektor liegt dann zwar noch im Zwischenspeicher, aber ein Vektor ohne Chunk ist niemandes
+Treffer.
+
+**Der Preis wird an der richtigen Stelle bezahlt.** Teuer ist nicht der Ersatz — der ist eine
+Speicheroperation und kostet Millisekunden. Teuer ist der Netzaufruf an ein Modell. Der
+Delta-Sync hätte die billige Hälfte optimiert und dafür die teure Zusage aufgegeben.
+
+**Metrik 3.14 misst weiter dasselbe.** Sie zählt, ob nach **einem** Synchronisationszyklus
+noch ein Chunk eines entzogenen Dokuments auffindbar ist. Am Zyklus ändert sich nichts, nur
+daran, wie viel er kostet.
+
+### Alternativen
+
+**Delta-Sync, wie die Branche ihn baut.** Verworfen, und zwar aus demselben Grund wie in
+ADR-0011 — die Begründung ist nicht schwächer geworden, sondern stärker: der Zwischenspeicher
+nimmt dem Delta-Sync sein einziges verbliebenes Argument. Er war nie wegen der Latenz
+attraktiv, sondern wegen der Kosten, und die Kosten sind jetzt anders gelöst.
+
+**Den Zwischenspeicher zwischen Store und Adapter legen** (also Chunks speichern statt
+Vektoren). Verworfen — das wäre genau der Delta-Sync, nur unter anderem Namen: ein
+zwischengespeicherter Chunk trägt seine Envelope mit, und ab da hängt die Entzugszusage
+daran, dass jemand ihn richtig entwertet.
+
+**Einen Hash über den Text als Schlüssel.** Verworfen. Ein Hash kann kollidieren, und eine
+Kollision hieße: ein Chunk trägt den Vektor eines anderen — bei **richtiger Anzahl**, also
+unterhalb jeder Prüfung des Ports und jeder Metrik dieses Repos. Chunks sind auf
+`CHUNK_LAENGE` begrenzt; der Text selbst ist als Schlüssel bezahlbar, und er kollidiert nicht.
+
+**Die Art aus dem Schlüssel lassen.** Verworfen, und das ist der Fehler, der am teuersten
+gewesen wäre. Ein echtes Retrieval-Modell ist asymmetrisch (Voyage: `input_type`). Ohne die
+Art bekäme die Frage den Dokumentvektor, und die Suche liefe in einem Raum, für den das
+Modell nicht trainiert wurde. Es sähe aus wie schlechte Suchqualität, nicht wie ein Defekt.
+
+**Den Zwischenspeicher als Option führen, nur für `voyage`.** Verworfen. Die Zusage „ein
+zweiter Zyklus über unveränderte Dokumente fragt den Adapter nicht noch einmal" soll eine
+Eigenschaft des **Systems** sein, keine der Konfiguration — sonst gilt sie in dem Lauf nicht,
+in dem sie jemand vergessen hat. Für einen deterministischen Adapter ändert er nichts
+Beobachtbares; abschalten lässt er sich mit `EMBEDDING_CACHE_MAX=0`.
+
+### Konsequenzen
+
+**Gewonnen.** Ein Synchronisationszyklus über unveränderte Dokumente kostet null
+Einbettungen. Die Entzugszusage bleibt dort, wo ADR-0011 sie hingelegt hat: in der Struktur.
+Und die Frage aus `docs/roadmap.md` §10 ist beantwortet, ohne eine Zusage einzutauschen.
+
+**Eingehandelt: Speicher gegen Geld.** Der Zwischenspeicher hält Vektoren im Prozess. 5000
+Einträge sind bei `voyage-4` (1024 Dimensionen) rund 40 MB. Die Zahl steht in
+`EMBEDDING_CACHE_MAX`.
+
+**Die Grenze, wörtlich.** Die Verdrängung ist FIFO. Ist die Arbeitsmenge **größer** als `max`,
+ist jeder Eintrag verdrängt, bevor er wiederverwendet wird — die Trefferquote fällt dann auf
+**null**, nicht auf „etwas weniger". Wer eine große Quelle fährt, hebt die Zahl oder zahlt
+jeden Zyklus voll. Ein LRU verhielte sich bei diesem Zugriffsmuster (ein Durchlauf über
+dieselbe Menge je Zyklus) genauso.
+
+**Zweite Grenze: der Speicher ist prozesslokal.** Ein Neustart verwirft ihn, und zwei Prozesse
+teilen ihn nicht. Das ist bewusst: ein geteilter Vektorspeicher wäre ein zweiter Leseweg neben
+`store/index.js`, und der ist in ADR-0011 aus gutem Grund abgelehnt. Wer ihn überleben lassen
+will, braucht eine eigene Entscheidung.
+
+**Noch offen.** Ein Dokument, dessen **Text** gleich bleibt und dessen **Envelope** sich
+ändert, wird nicht neu eingebettet — richtig so, der Vektor hängt nicht an der Berechtigung.
+Aber dieser Satz ist nur wahr, solange keine Berechtigung je in den einzubettenden Text
+gerät. Wer den Chunk-Text jemals um Metadaten anreichert, hebt diese ADR auf.
+
+### Prüfkriterium
+
+Drei Befehle, alle netzfrei:
+
+```bash
+node --test tests/embedding.test.js   # 21/21, darunter die Kapitalprobe
+npm test                              # die Zahlen dürfen sich NICHT bewegen
+npm run evals                         # ebenso: jede Metrik identisch
+```
+
+Stand 2026-09-11, ausgeführt:
+
+- **`node --test tests/embedding.test.js` → 21/21, 0 gefallen.** Die Kapitalprobe fährt drei
+  Zyklen: der zweite über unveränderte Dokumente erhöht `gefragt` um **null**, der dritte
+  entfernt `d2` aus der Momentaufnahme und die Suche findet **keinen** Chunk mehr davon —
+  obwohl sein Vektor noch im Zwischenspeicher liegt. Der vierte Zyklus mit neuem Text
+  kostet wieder, sonst wäre der Speicher taub statt sparsam.
+- **Vier Mutationen, vier Mal rot, alle zurückgenommen.** Art aus dem Schlüssel entfernt →
+  „`dokument` und `anfrage` teilen KEINEN Eintrag" fällt. Teiltreffer auf `neue[0]` statt
+  `neue[j]` gelegt → vier Tests fallen. Verdrängung abgeschaltet → die Kapazitätsprobe fällt.
+  Prüfung der Teilantwort entfernt → ihr Test fällt. Eine Zusicherung, die nie rot wird,
+  misst nichts.
+- **`npm test` → 211 bestanden, 6 übersprungen, 0 gefallen** (vorher 202/6/0: +9 neue Tests,
+  keine bewegte Zahl), Zeilendeckung 93,28 %.
+- **`npm run evals` → jede Metrik identisch zum Lauf vor dieser Etappe.** 3.13 = 0 % (0/10
+  und 0/16), 3.14 = 0 % (0/6), 28/28 und 32/32, beide Durchgänge identisch. Das ist das Tor:
+  eine Ersparnis, die eine Zahl bewegt, ist keine Ersparnis, sondern eine Änderung.
+- **`npm run demo` und `npm run demo:besprechung` → Rückgabewert 0**, ohne Schlüssel, ohne
+  Docker. ESLint unverändert **15 Warnungen / 0 Fehler**.
+
+---
+
+## ADR-0017 — Eine Pflichtmetrik muss gemessen sein; die Ausnahme benennt die Domäne
+
+**Datum:** 2026-09-16
+**Status:** Angenommen
+
+### Kontext
+
+Das Urteil des Harness stand seit Etappe 2 in `evals/runners/policy.js` und lautete sechsmal
+`metriken["3.x"].erfuellt !== false`. Dazu passte `kennzahl()` in `evals/metrics/index.js`:
+ein Nenner von null ergibt `erfuellt: null`, denn eine ungemessene Metrik ist „weder bestanden
+noch gefallen". Beides für sich richtig — zusammen eine Lücke.
+
+Denn `null !== false` ist wahr. Eine Metrik, deren Fälle aus dem Golden-Datensatz
+**verschwinden**, fällt auf Nenner null, wird `null` und kommt durch. Der Lauf endet mit
+Rückgabewert 0.
+
+Damit war die Messung gegen **Verschlechterung** geschützt und gegen **Abschaffung** nicht.
+Eine entfernte Mandantenprüfung trieb 3.13 am 2026-09-09 auf 37,5 % und den Lauf auf
+Rückgabewert 1 — das ist belegt. Gelöschte Leckfälle dagegen lieferten weiter grün. Von den
+beiden Wegen, eine Zusage loszuwerden, war nur der laute verschlossen.
+
+Das ist genau der Ausfall, gegen den dieses Repo gebaut ist: nicht der Absturz, sondern
+„es läuft weiter, misst aber nichts mehr".
+
+### Entscheidung
+
+**Jede Pflichtmetrik muss gemessen UND erfüllt sein. Eine Ausnahme ist gültig, wenn die
+Domäne sie benennt.**
+
+1. Neues Pflichtfeld `ungemessen` im Eval-Adapter jeder Domäne (`evals/domains/index.js`),
+   ein Objekt `{ "3.14": "Grund" }`. Keine Ausnahmen heißt `{}` — auch das eine Aussage.
+2. Das Urteil prüft je Pflichtmetrik (3.1, 3.2, 3.3, 3.4, 3.13, 3.14):
+   `erfuellt === true`, oder `erfuellt === null` **und** in `ungemessen` erklärt.
+3. **Eine Erklärung, die nicht mehr zutrifft, ist selbst ein Befund.** Steht eine Metrik in
+   `ungemessen` und hat trotzdem einen Nenner über null, wird der Lauf rot.
+4. Jeder Befund nennt die Metrik, ihren Nenner und den Grund. Ein Urteil, das nur „rot" sagt,
+   verschiebt die Arbeit nur.
+
+### Begründung
+
+**Die Asymmetrie war das Problem, nicht der Schwellenwert.** Kaputtmachen fiel auf, Abschaffen
+nicht. Wer eine unbequeme Zusage loswerden wollte, brauchte den Filter nicht anzufassen — es
+genügte, die Fälle zu löschen, die sie prüfen. Beide Wege müssen gleich laut sein.
+
+**Ein pauschales `=== true` wäre falsch gewesen.** Die Domäne `beispiel` hat keinen Connector
+(ADR-0004); ihr 3.14 ist mit Nenner 0 **zu Recht** ungemessen. Ein pauschaler Schwellenwert
+hätte erzwungen, ihr einen Schein-Connector zu geben oder eine Ausnahme in den Runner zu
+schreiben. Das erste verfälscht die Referenzdomäne, das zweite setzt Domänenwissen in den
+Kern — die teuerste Entscheidung dieses Repos.
+
+**Deshalb steht die Ausnahme bei der Domäne.** Ob eine Zusage hier messbar ist, ist eine
+Aussage über die Domäne, nicht über die Mechanik des Harness. Dieselbe Linie wie
+`src/kernel` / `src/domains`, eine Ebene höher — und dieselbe Begründung wie die explizite
+Liste `DOMAENEN` statt eines Verzeichnis-Scans.
+
+**Eine Erklärung muss verfallen können.** Bekäme `beispiel` eines Tages einen Connector, bliebe
+der Eintrag stehen und deckte von da an genau den Ausfall wieder zu, gegen den er geschrieben
+wurde. Eine Ausnahme, die ihre Begründung überlebt, ist schlimmer als keine: sie sieht geprüft
+aus.
+
+### Alternativen
+
+**Pauschal `erfuellt === true`.** Verworfen, siehe oben: es hätte `beispiel` bestraft, obwohl
+deren ungemessenes 3.14 der ehrliche Wert ist.
+
+**Einen erwarteten Nenner je Metrik festschreiben.** Verworfen. Eine feste Zahl koppelt das
+Urteil an die Größe des Datensatzes: jeder **hinzugefügte** Fall machte den Lauf rot. Eine
+Regel, die Wachstum bestraft, wird umgangen statt befolgt.
+
+**Den Nenner gegen den letzten Bericht halten.** Verworfen. Dann ist der vorige Lauf der
+Richter, und eine langsame Erosion über viele Läufe bliebe unsichtbar — jeder Schritt wäre
+klein genug. Außerdem setzte es voraus, dass der Bericht im Repo liegt; dass das bis zum
+2026-09-16 nicht der Fall war, ist ein eigener Befund desselben Tages.
+
+**Nur eine Prüfung im `projekt-doktor` (§9).** Verworfen als alleinige Maßnahme: sie meldet 🟡
+und lässt den Rückgabewert unberührt. Eine CI kann darauf nicht aufsetzen, und ein Mensch muss
+sie von Hand aufrufen. Sie bleibt als zweite, weichere Sicht bestehen.
+
+### Konsequenzen
+
+- **Jede neue Domäne trägt ein Feld mehr.** Fehlt `ungemessen`, wirft `ladeAdapter` — laut,
+  nicht still. Das ist der Preis und zugleich der Zweck.
+- **`beispiel` trägt genau einen Eintrag** (3.14), `besprechung` keinen.
+- **Teilweises Löschen bleibt ungedeckt.** Verschwinden drei von fünf Leckfällen, sinkt der
+  Nenner von 16 auf 10 und bleibt über null — der Lauf bleibt grün. Dagegen hilft keine
+  Metrik, sondern eine Sperre auf den Golden-Dateien und ein zweites Augenpaar am Diff. Das
+  gehört in die Zwangs-Schicht, nicht hierher, und ist offen.
+- **`ladeAdapter` und `PFLICHTFELDER` stehen weiterhin in keinem Test.** Ein Test bräuchte
+  eine Naht für eine erfundene Domäne; die gibt es nicht. Bekannt und benannt.
+
+### Prüfkriterium
+
+Der Befehl, von dem aus diese ADR geschrieben wurde: **Fälle löschen, der Lauf muss rot
+werden.** Am 2026-09-16 ausgeführt, drei Mutationen, Dateien danach über `sha1sum` unverändert
+zurück:
+
+```bash
+npm run evals                                  # unveraendert: Rueckgabewert 0
+# retrieval.faelle der Domaene besprechung geleert:
+#   🔴 3.13: ungemessen (Nenner 0) und in adapter.ungemessen nicht erklaert
+#   Vertragstreue bleibt 25/25 gruen — rot kommt allein aus diesem Urteil
+# entzug.faelle geleert:
+#   🔴 3.14: ungemessen (Nenner 0) und in adapter.ungemessen nicht erklaert
+# Erklaerung auf die falsche Metrik gesetzt:
+#   🔴 3.13: als ungemessen erklaert, ist aber gemessen (Nenner 10) — veraltet
+#   🔴 3.14: ungemessen (Nenner 0) und in adapter.ungemessen nicht erklaert
+```
+
+Vor dieser Entscheidung war **jede** dieser drei Mutationen grün. Dazu steht das Instrument
+selbst seit demselben Tag unter Test (`tests/metriken.test.js`, fünf Fälle, drei Mutationen
+belegt): `npm test` 222 bestanden, 0 gefallen, Abdeckung 96,40 %.

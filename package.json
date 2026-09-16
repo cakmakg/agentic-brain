@@ -9,8 +9,10 @@
     "start": "node src/bin/serve.js",
     "dev": "node --watch src/bin/serve.js",
     "demo": "node src/bin/demo.js",
-    "test": "node --test --test-force-exit --experimental-test-coverage --test-coverage-lines=80 --test-coverage-exclude=\"tests/**\" --test-coverage-exclude=src/adapters/http/server.js --test-coverage-exclude=src/bin/*.js \"tests/**/*.test.js\"",
-    "evals": "node evals/runners/policy.js"
+    "demo:besprechung": "node src/bin/demo-besprechung.js",
+    "test": "node --test --test-force-exit --experimental-test-coverage --test-coverage-lines=80 --test-coverage-exclude=\"tests/**\" --test-coverage-exclude=src/bin/*.js \"tests/**/*.test.js\"",
+    "evals": "node evals/runners/policy.js",
+    "evals:postgres": "node evals/runners/policy.js --store=postgres"
   },
   "dependencies": {
     "@langchain/anthropic": "1.5.9",
@@ -18,6 +20,7 @@
     "@langchain/langgraph": "1.4.14",
     "express": "^4.21.0",
     "express-rate-limit": "^7.4.0",
+    "pg": "8.23.0",
     "zod": "3.25.76"
   },
   "overrides": {

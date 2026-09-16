@@ -6,11 +6,18 @@ Wissen wird samt seinen Berechtigungen aufgenommen, berechtigungstreu abgefragt 
 
 Der Anspruch: nicht nur die Arbeit zählt als Beweis, sondern **wie sie gemessen wurde**.
 
-> **Stand 2026-09-09.** Agent Runtime und der Kern der Governance stehen und sind gemessen —
-> `npm test` 98/98, Schicht A 20/20. Kontext, Retrieval und Connectoren sind **leer**.
-> Die Identität steht als ADR-0001 in [`DECISIONS.md`](DECISIONS.md), die Reihenfolge der
-> Etappen in [`docs/roadmap.md`](docs/roadmap.md). `PRODUCT.md` trägt noch einen
-> Vorlagenkasten — es hält die Struktur, noch nicht die Antworten.
+> **Stand 2026-09-11.** Alle sechs Ebenen stehen und sind gemessen — `npm test` 211 bestanden
+> (6 übersprungen ohne Datenbank), Schicht A 28/28 und 32/32. **Chunk-Speicher und Embedding
+> sind je ein Port mit zwei Adaptern** (`memory`/`postgres`, `hash`/`voyage`), und dieselbe
+> Messung liefert dieselben Zahlen.
+> Die Vertikale ist entschieden (ADR-0010): **Besprechungsnotiz → Aktionspunkt → Ticket**.
+> Zwei Zahlen tragen die zentrale Zusage: **3.13 Unauthorized-Retrieval-Rate = 0 %** und
+> **3.14 Latenz des Berechtigungsentzugs = 0 %**, beide belegt durch Mutationsproben.
+> Offen: **der Voyage-Lauf selbst** — der Adapter ist gebaut und gegen ein Testdouble geprüft,
+> aber ohne Schlüssel nie gegen den echten Dienst gelaufen —, dazu echte Identitäten.
+> Die Entscheidungen stehen in
+> [`DECISIONS.md`](DECISIONS.md), die Reihenfolge der Etappen in
+> [`docs/roadmap.md`](docs/roadmap.md), der Umfang in [`PRODUCT.md`](PRODUCT.md).
 
 ---
 
@@ -19,13 +26,46 @@ Der Anspruch: nicht nur die Arbeit zählt als Beweis, sondern **wie sie gemessen
 ```bash
 npm install
 npm run demo     # der komplette Ablauf auf der Konsole, ohne HTTP, ohne API-Schlüssel
-npm test         # 98 Tests, Mock-Modus, Abdeckungsgrenze 80 %
-npm run evals    # Schicht A: Richtlinien und Routing messen, deterministisch
+npm test         # Mock-Modus, Abdeckungsgrenze 80 %
+npm run evals    # Schicht A: Richtlinien, Routing und Autorisierung messen
 ```
 
 Ohne `ANTHROPIC_API_KEY` läuft alles im **Mock-Modus**: Ende zu Ende, kostenlos,
 deterministisch. Das ist kein Notbehelf, sondern das Fundament — Tests und Messungen
-bauen darauf.
+bauen darauf. **Und ohne jede Infrastruktur:** kein Docker, keine Datenbank. Das ist
+Erfolgskriterium K5, und es gilt auch nach dem Postgres-Adapter (ADR-0013).
+
+Die Vertikale in einem Befehl — Connector, Berechtigungsfilter, Entzug, HITL, Ticket:
+
+```bash
+npm run demo:besprechung
+```
+
+Der zweite Store-Adapter wird **ausdrücklich verlangt**, nie geraten:
+
+```bash
+docker compose up -d          # pgvector auf localhost:55433, ohne Volume
+DATABASE_URL=postgresql://agentic:agentic@localhost:55433/agentic npm run evals:postgres
+```
+
+Er muss **dieselben Zahlen** liefern wie der Lauf ohne ihn. Tut er es nicht, ist das ein
+Defekt mit genau einer möglichen Ursache — dem Adapter.
+
+Ebenso das Embedding: `hash` ist die Voreinstellung und trägt Mock-Modus, CI und K5 allein.
+Ein echtes Modell tritt daneben und wird ausdrücklich verlangt (ADR-0015):
+
+```bash
+VOYAGE_API_KEY=… EMBEDDING_ADAPTER=voyage npm run evals -- besprechung
+```
+
+**Dieser Lauf hat noch nicht stattgefunden.** Ohne Schlüssel ist der Voyage-Adapter gegen ein
+Testdouble geprüft, nicht gegen Voyage — ein Testdouble beweist die eigene Logik, nicht die
+fremde. Was der Befehl zeigen soll, wenn er läuft: **3.13 bleibt 0 %.** Bewegt er sie, hing
+eine Berechtigung an der Sortierung, und das wäre der Befund.
+
+Ein zweiter Synchronisationszyklus über unveränderte Dokumente kostet dabei **null**
+Einbettungen — die Momentaufnahme bleibt trotzdem vollständig, weil ein Vektor keine
+Berechtigung trägt (ADR-0016).
 
 ---
 
@@ -39,15 +79,19 @@ START → guardrail → orchestrator ⇄ {bearbeiter, pruefer, ablage}
 
 Vier Zusagen, jede an einen Prüfbefehl gebunden:
 
-| Zusage                                            | Wo sie im Code steht                                                   | Wo sie geprüft wird                     |
-| ------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------- |
-| Ohne menschliche Freigabe wirkt nichts nach außen | `src/kernel/agent/build.js` (fail-closed-Kante)                        | `tests/workflow.test.js`                |
-| Kein Agent ruft je selbst eine externe API        | `src/kernel/action/queue.js`                                           | `tests/actionQueue.test.js`             |
-| Ein Neustart verliert keine wartende Genehmigung  | `src/kernel/agent/checkpointer.js` · `src/kernel/persistence/store.js` | `tests/integration/persistence.test.js` |
-| Routing ist deterministisch und terminiert        | `src/kernel/agent/routing.js`                                          | `npm run evals`                         |
+| Zusage                                            | Wo sie im Code steht                                                       | Wo sie geprüft wird                                    |
+| ------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Ohne menschliche Freigabe wirkt nichts nach außen | `src/kernel/agent/build.js` (Kante) · `src/adapters/http/server.js` (Rand) | `tests/workflow.test.js` · `tests/httpAdapter.test.js` |
+| Kein Agent ruft je selbst eine externe API        | `src/kernel/action/queue.js`                                               | `tests/actionQueue.test.js`                            |
+| Ein Neustart verliert keine wartende Genehmigung  | `src/kernel/agent/checkpointer.js` · `src/kernel/persistence/store.js`     | `tests/integration/persistence.test.js`                |
+| Routing ist deterministisch und terminiert        | `src/kernel/agent/routing.js`                                              | `npm run evals`                                        |
 
 **Fail-closed heißt wörtlich fail-closed:** alles, was nicht exakt `true` ist — auch
 `null` — endet bei `END`. Eine Ablehnung stellt nicht zu und reiht nichts ein.
+
+**Das gilt auch am Rand:** der HTTP-Adapter wandelt nichts um. Nur ein JSON-Boolean `true` ist
+eine Genehmigung; jeder andere Wert wird mit **400** abgelehnt. Bis zum 2026-09-14 galt das
+nicht — `{"approved": "false"}` genehmigte (`Boolean("false")` ist `true`).
 
 ---
 

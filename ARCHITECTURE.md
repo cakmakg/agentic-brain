@@ -14,19 +14,27 @@ Zwei Schichten, eine Naht:
 - **`src/domains/<domäne>/` — BEDEUTUNG.** Welche Agenten es gibt, in welcher Reihenfolge die
   Bremsen greifen, welche Muster als Bedrohung gelten, welche Aktionen erlaubt sind.
 
-Die Naht hat genau **vier feine Stellen** — dort reicht die Domäne dem Kern etwas an:
+Die Naht hat genau **sechs feine Stellen** — dort reicht die Domäne dem Kern etwas an. Die
+ersten vier standen mit dem Gerüst, die letzten beiden kamen mit den Ebenen ② und ①:
 
-| Stelle        | Kern liefert                         | Domäne liefert                       |
-| ------------- | ------------------------------------ | ------------------------------------ |
-| Routing       | `createRouter` (das Verfahren)       | die Bremsen, in ihrer Reihenfolge    |
-| Guardrail     | `createGuardrail` (die Regex-Engine) | die Muster und ihre Gewichte         |
-| Aktions-Queue | `createActionQueue` (die Mechanik)   | Whitelist und Validierer             |
-| State         | Kernfelder + `buildState`            | die eigenen Felder samt Reducer-Wahl |
+| Stelle         | Kern liefert                         | Domäne liefert                        |
+| -------------- | ------------------------------------ | ------------------------------------- |
+| Routing        | `createRouter` (das Verfahren)       | die Bremsen, in ihrer Reihenfolge     |
+| Guardrail      | `createGuardrail` (die Regex-Engine) | die Muster und ihre Gewichte          |
+| Aktions-Queue  | `createActionQueue` (die Mechanik)   | Whitelist und Validierer              |
+| State          | Kernfelder + `buildState`            | die eigenen Felder samt Reducer-Wahl  |
+| Chunk-Speicher | `createStore` (Port) + `baueStore`   | — reine Mechanik, die Domäne schweigt |
+| Connector      | `createConnector` (Port)             | das Berechtigungsmodell der Quelle    |
 
-**Prüfkriterium:** eine zweite Domäne ändert **null Zeilen** unter `src/kernel/`.
+Die letzte ist die teuerste: ein Connector ist zu einem Zehntel Holen und zu neun Zehnteln
+Berechtigungserfassung — und die neun liegen in `domains/<domäne>/acl.js`, nicht im Kern.
+
+**Prüfkriterium:** eine zweite Domäne ändert **null Zeilen** unter `src/kernel/`. Seit dem
+2026-09-10 ist das kein Selbstversprechen mehr, sondern an `besprechung` geprüft.
 
 ```bash
-grep -rn "beispiel" src/kernel/    # muss leer bleiben
+grep -rn "beispiel" src/kernel/       # muss leer bleiben
+grep -rn "besprechung" src/kernel/    # muss leer bleiben
 ```
 
 Ohne dieses Kriterium wandert Domänenwissen still in den Kern — und die dritte Domäne kostet
@@ -98,12 +106,22 @@ die Summe der Zeilen.
 
 ## 6. Entscheidungen, die noch offen sind
 
-| Frage                                                          | Blockiert heute                 | Fällt in                   |
-| -------------------------------------------------------------- | ------------------------------- | -------------------------- |
-| **Welche Vertikale?** Ontologie, ACL-Modell, erster Connector  | die Ebenen ①–③ mit echten Daten | `docs/roadmap.md` Etappe 3 |
-| K5 (`clone → install → demo` ohne Infrastruktur) nach Postgres | nichts                          | Etappe 3, per ADR          |
-| Vollständige TypeScript-Migration                              | nichts                          | offen                      |
-| Darf ein zweiter Kanal (MCP) `approve` anbieten?               | nichts                          | Etappe 6, per ADR          |
+| Frage                                                   | Blockiert heute | Fällt in                    |
+| ------------------------------------------------------- | --------------- | --------------------------- |
+| Bettet Voyage 3.13 anders? — ungemessen, kein Schlüssel | nichts          | sobald ein Schlüssel da ist |
+| `express` 4 → 5 wegen der zwei mittleren Befunde        | nichts          | offen, per eigener ADR      |
+| Vollständige TypeScript-Migration                       | nichts          | offen                       |
+| Darf ein zweiter Kanal (MCP) `approve` anbieten?        | nichts          | Etappe 6, per ADR           |
+
+Vier Fragen sind gefallen und stehen deshalb nicht mehr hier: **die Vertikale** (ADR-0010),
+**K5 nach dem Postgres-Adapter** (ADR-0013, K5 bleibt grün), **echtes Embedding statt Hash**
+(ADR-0015 — ein Port mit zwei Adaptern statt eines Tauschs) und **Delta-Sync statt
+Momentaufnahme** (ADR-0016 — die Momentaufnahme bleibt, der Einbettungsaufruf wird
+zwischengespeichert).
+
+Was von der Embedding-Frage übrig ist, steht oben und ist bewusst schmal formuliert: 3.13 wird
+sich nach ADR-0015 **nicht** bewegen, weil der ACL-Filter vor der Bewertung läuft — aber
+gemessen ist das nicht, solange kein Schlüssel da ist. Eine Vorhersage ist kein Lauf.
 
 Fällt eine dieser Fragen, wandert sie als ADR nach `DECISIONS.md` und wird hier auf einen
 Verweis gekürzt. Eine Frage, die an zwei Orten offen steht, wird zweimal beantwortet.
@@ -112,20 +130,25 @@ Verweis gekürzt. Eine Frage, die an zwei Orten offen steht, wird zweimal beantw
 
 Seit dem Umbau am 2026-09-09 tragen die Verzeichnisse unter `src/kernel/` die Namen der sechs
 Ebenen (ADR-0002). Dieser Baum ist der **Vertrag**; `docs/roadmap.md` sagt nur, in welcher
-**Reihenfolge** er gefüllt wird. `NEU` steht für einen Ort, der heute leer ist — die Ebenen
-①–③ existieren noch nicht.
+**Reihenfolge** er gefüllt wird. `NEU` steht für einen Ort, der heute leer ist. Seit dem
+2026-09-10 sind **alle sechs Ebenen belegt** und der Speicher hat **zwei Adapter**
+(Etappe 3b und 3c); offen ist nur noch der zweite Außenkanal.
 
 ```
 src/
   kernel/                    MECHANIK · kennt keine Domäne
-    connectors/              ① NEU · holt aus einer Quelle, erfasst ihr Berechtigungsmodell
-                                     (Etappe 3; nach Etappe 2 noch leer — ADR-0005)
-    context/                 ② envelope.js · embedding.js · aufbau.js
+    connectors/index.js      ① Port — was eine Quelle können muss (ADR-0011)
+      synchronisation.js         ein Zyklus: Momentaufnahme → Chunks → Quelle ersetzen
+    context/                 ② envelope.js · aufbau.js (wählt BEIDE Adapterpaare)
       ingest/pipeline.js         Chunking und Envelope-Vererbung (ADR-0009)
       store/index.js             Port — kennt seine Adapter NICHT (ADR-0006)
       store/memory.js            Adapter · trägt Mock-Modus, CI und K5 allein
-      store/postgres.js          NEU · Adapter, Etappe 3
-    retrieval/               ③ filter.js · reine Logik, kein IO (ADR-0008)
+      store/postgres.js          Adapter · pgvector, Transaktion, opt-in (ADR-0013)
+      embedding/index.js         Port — `dokument` und `anfrage` (ADR-0015)
+      embedding/hash.js          Adapter · deterministisch, netzfrei, Voreinstellung
+      embedding/voyage.js        Adapter · echtes Modell, opt-in, kein npm-Paket
+      embedding/zwischenspeicher.js  liegt VOR jedem Adapter · spart Aufrufe (ADR-0016)
+    retrieval/               ③ filter.js · reine Logik, kein IO (ADR-0008, ADR-0012)
       suche.js                   hybride Suche — beide Pfade gefiltert
     agent/                   ④ build · routing · runner · schema · reducers · checkpointer
     action/                  ⑤ queue
@@ -139,14 +162,46 @@ src/
   domains/<domäne>/          BEDEUTUNG · der Kern kennt diese Dateien nicht
     domain.js                die Naht: stateFields, brakes, guardrailRules, nodes
     agents/*.js · prompts.js · actions.js
-    ontology.js              NEU · Entitäten, Relationen, Aktionstypen
-    acl.js                   NEU · Berechtigungsmodell der Quelle → Principal
-    connectors/<quelle>.js   NEU
+    ontology.js              Entitäten, Relationen, Aktionstypen (ab `besprechung`)
+    vertrag.js               der Ausgabevertrag als reine Funktion — drei Leser, eine Quelle
+    acl.js                   Berechtigungsmodell der Quelle → Envelope des Kerns
+    connectors/<quelle>.js   der Connector dieser Quelle
 
   adapters/                  AUSSENKONTAKT
     http/server.js
     mcp/server.js            NEU, später · bietet KEIN approve an
 ```
+
+**Der Port hat seit dem 2026-09-10 zwei Adapter, und erst das beweist ihn.** `store/index.js`
+sagte es selbst: ein Adapter beweist keine Grenze. `memory` trägt Mock-Modus, CI und K5
+(ADR-0013); `postgres` trägt den Produktionspfad. Der Port ist dabei die **asynchrone
+Grenze** — jede Methode gibt ein Promise zurück, auch die des `memory`-Adapters. Beide
+Adapter filtern mit demselben Regelwerk in zwei Kompilaten (ADR-0014), und dass sie dasselbe
+bedeuten, ist gemessen und nicht behauptet: dieselbe Eval-Suite gegen beide, plus ein
+Differenztest.
+
+**Zwei Ports, dieselbe Bauart — und der zweite ist bewusst gleich gebaut wie der erste.**
+Seit dem 2026-09-10 wählt `aufbau.js` nicht mehr nur den Store, sondern auch das Embedding
+(ADR-0015). Beide Ports haben denselben Zuschnitt: Voreinstellung netzfrei und kostenlos,
+zweiter Adapter opt-in über eine Umgebungsvariable, Import erst beim Bauen. Der
+Embedding-Port kennt dabei **zwei Arten** — `dokument` und `anfrage` —, weil ein echtes
+Retrieval-Modell die Frage anders einbettet als den Text, den sie finden soll. Der
+Hash-Adapter ignoriert die Unterscheidung; der Port kennt sie trotzdem von Anfang an, sonst
+hätte ihre Einführung später jede Aufrufstelle angefasst.
+
+> Die zwei Ports berühren sich an genau einer Zahl: der Breite. `vector(n)` im
+> Postgres-Schema muss zu `embedding.dimensionen` passen, und der Postgres-Adapter **prüft**
+> das beim Start statt es zu hoffen. Ein Adapterwechsel ohne neuen Ingest ist damit ein
+> lesbarer Fehler und kein stiller.
+
+**Ebene ① ist die dünnste Datei mit der größten Wirkung.** Ein Connector ist zu einem Zehntel
+Holen und zu neun Zehnteln Berechtigungserfassung — und die liegt in der **Domäne**
+(`acl.js`), nicht hier. Der Kern beschreibt nur die Form: eine vollständige Momentaufnahme mit
+bereits erfasster Envelope, die eine Quelle **atomar** ersetzt. Warum kein Delta-Sync:
+ADR-0011 — und warum auch der Preis eines echten Embeddings daran nichts ändert: ADR-0016.
+Teuer ist nicht der Ersatz, sondern der Einbettungsaufruf, und der wird zwischengespeichert.
+Der Unterschied, an dem das hängt: ein **Vektor** trägt keine Berechtigung, ein **Chunk**
+trägt eine. Deshalb darf man Vektoren wiederverwenden und Chunks nicht.
 
 **Zwei Zuordnungen, hergeleitet und nicht geraten.** `checkpointer.js` liegt in `agent/`, weil
 Durable Execution zur Agent Runtime gehört und nicht zur Infrastruktur. `trace`, `eventBus`

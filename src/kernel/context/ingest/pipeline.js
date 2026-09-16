@@ -11,7 +11,7 @@
 // entsteht — `pruefeEnvelope` wirft, bevor der erste Chunk gebaut wird.
 
 import { erbeEnvelope, pruefeEnvelope } from "../envelope.js";
-import { einbetten, terme } from "../embedding.js";
+import { terme } from "../embedding/index.js";
 
 // Zeichen je Chunk. Klein gehalten, damit ein Testdokument mehrere Chunks
 // ergibt — sonst prüfte „die Envelope wird vererbt" nie mehr als einen Fall.
@@ -39,27 +39,43 @@ export function teile(text, laenge = CHUNK_LAENGE) {
 // deterministisch: derselbe Ingest ergibt dieselben Ids. Ohne das wäre die
 // stabile Trefferreihenfolge im Adapter nicht stabil, und der
 // Determinismus-Nachweis der Schicht A fiele.
-export function verarbeiteDokument({ envelope, text }) {
+export async function verarbeiteDokument({ envelope, text }, embedding) {
   pruefeEnvelope(envelope);
+  if (!embedding) {
+    throw new Error(
+      "verarbeiteDokument: ohne Embedding kein Chunk. Nimm `store.embedding` — der Speicher traegt das Verfahren, mit dem er gebaut wurde.",
+    );
+  }
 
-  return teile(text).map((stueck, i) => ({
+  const stuecke = teile(text);
+
+  // EIN Aufruf fuer alle Stuecke, nicht einer je Stueck. Bei einem Modell
+  // hinter einem Netz waere das der Unterschied zwischen einem Aufruf und
+  // zehn — und die Anbieter rechnen je Aufruf ab (ADR-0015).
+  //
+  // `"dokument"` und nicht `"anfrage"`: ein echtes Retrieval-Modell bettet
+  // beides verschieden ein. Der Hash ignoriert die Unterscheidung; sie steht
+  // hier trotzdem, weil sie sonst beim Adaptertausch fehlen wuerde.
+  const vektoren = await embedding.einbetteViele(stuecke, "dokument");
+
+  return stuecke.map((stueck, i) => ({
     chunkId: `${envelope.dokumentId}#${i}`,
     text: stueck,
     // DIE VERERBUNG. Eine eigene Funktion, damit sie ein benannter Schritt ist
     // und nicht als Spread irgendwo verschwindet (ADR-0009).
     envelope: erbeEnvelope(envelope),
-    vektor: einbetten(stueck),
+    vektor: vektoren[i],
     terme: new Set(terme(stueck)),
   }));
 }
 
 // Mehrere Dokumente in einen Speicher. Der Speicher ist ein Port; welcher
 // Adapter dahinter liegt, weiß diese Datei nicht.
-export function ingestiere(store, dokumente) {
+export async function ingestiere(store, dokumente) {
   let n = 0;
   for (const dok of dokumente) {
-    const chunks = verarbeiteDokument(dok);
-    store.schreibe(chunks);
+    const chunks = await verarbeiteDokument(dok, store.embedding);
+    await store.schreibe(chunks);
     n += chunks.length;
   }
   return n;

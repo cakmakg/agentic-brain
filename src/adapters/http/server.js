@@ -71,12 +71,23 @@ app.post("/api/run", authMiddleware, workflowLimiter, async (req, res) => {
 });
 
 // HITL-Entscheidung.
+//
+// NUR ein JSON-Boolean `true` ist eine Genehmigung. Jeder andere Wert wird
+// ABGELEHNT, nicht umgewandelt: `Boolean("false")` ist `true`, und mit der
+// frueheren Umwandlung genehmigte ein Client, der `{"approved": "false"}`
+// sendete. Die Kante im Kern prueft auf exakt `true` (`agent/build.js`) — der
+// Rand darf den Wert davor nicht zurechtbiegen, sonst gilt die Zusage im Kern
+// und nicht am Rand. Dieselbe Regel gilt fuer jeden spaeteren Kanal.
 app.post("/api/approve", authMiddleware, approveLimiter, async (req, res) => {
   const { threadId, approved } = req.body || {};
   if (!threadId)
     return res.status(400).json({ error: "threadId erforderlich" });
+  if (typeof approved !== "boolean")
+    return res
+      .status(400)
+      .json({ error: "approved muss ein JSON-Boolean sein (true oder false)" });
   res.json({ ok: true });
-  resolveApproval({ threadId, approved: Boolean(approved) }).catch((e) =>
+  resolveApproval({ threadId, approved }).catch((e) =>
     console.error("Genehmigungsfehler:", e.message),
   );
 });

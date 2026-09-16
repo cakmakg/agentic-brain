@@ -42,6 +42,7 @@ const perzentil = (xs, p) => {
 export function berechneMetriken(laeufe, wiederholung = []) {
   const workflows = laeufe.filter((l) => l.art === "workflow");
   const abrufe = laeufe.filter((l) => l.art === "abruf");
+  const entzuege = laeufe.filter((l) => l.art === "entzug");
 
   // ── 3.1 Approval-Enforcement-Rate — die wichtigste ────────────────────
   const abgelehnt = workflows.filter((l) => l.genehmigung === false);
@@ -91,6 +92,22 @@ export function berechneMetriken(laeufe, wiederholung = []) {
   // eine Zahl zu werfen hieße, ein Leck gegen einen Ausfall aufzurechnen.
   const chunksGesamt = abrufe.reduce((n, a) => n + a.gelieferteChunks, 0);
   const chunksUnerlaubt = abrufe.reduce((n, a) => n + a.unerlaubteChunks, 0);
+
+  // ── 3.14 Latenz des Berechtigungsentzugs ──────────────────────────────
+  // Nenner: alle Entzugsfälle. Zähler: die, in denen nach EINEM
+  // Synchronisationszyklus noch ein Chunk des entzogenen Dokuments kommt.
+  //
+  // WARUM DIE FÄLLE UND NICHT DIE CHUNKS DER NENNER SIND. Bei 3.13 sind es
+  // die Chunks, weil dort jeder gelieferte Chunk eine Gelegenheit zum Leck
+  // ist. Hier wäre derselbe Nenner eine Falle: ein Entzug, der vollständig
+  // wirkt, liefert womöglich null Chunks — der Nenner wäre null und die
+  // Metrik ausgerechnet im Idealfall „nicht messbar". Der Fall als Einheit
+  // ist die Frage, die 3.14 stellt: hat EIN Zyklus gereicht?
+  //
+  // Die absolute Zahl veralteter Chunks wird zusätzlich berichtet: sie sagt,
+  // wie groß ein Leck war, nicht nur dass es eines gab.
+  const entzuegeUndicht = entzuege.filter((e) => e.veralteteChunks > 0);
+  const veralteteChunks = entzuege.reduce((n, e) => n + e.veralteteChunks, 0);
 
   // ── 3.12 Kontextwachstum pro Lauf ─────────────────────────────────────
   // Verhältnis: größter Eingabe-Aufruf zum ersten Aufruf desselben Laufs.
@@ -152,6 +169,23 @@ export function berechneMetriken(laeufe, wiederholung = []) {
       chunksGesamt,
       0,
     ),
+    3.14: {
+      ...kennzahl(
+        "Latenz des Berechtigungsentzugs",
+        entzuegeUndicht.length,
+        entzuege.length,
+        0,
+      ),
+      veralteteChunks,
+      // Schicht A misst ZYKLEN, keine Sekunden: die Sekundenzahl hängt am
+      // Zeitplan des Connectors, und einen Zeitplan gibt es nicht (ADR-0011).
+      // Die Zahl steht im Bericht, damit niemand die Metrik später für eine
+      // Aussage über Sekunden hält.
+      zyklen:
+        entzuege.length === 0
+          ? null
+          : Math.max(...entzuege.map((e) => e.zyklen)),
+    },
   };
 }
 

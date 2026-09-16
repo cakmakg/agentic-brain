@@ -13,8 +13,16 @@
 // misst Etappe 3 als 3.14 (Latenz des Berechtigungsentzugs).
 //
 // DIESE DATEI KENNT KEINE DOMÄNE. Sie beschreibt ein allgemeines
-// Berechtigungsmodell — Mandant, Sichtbarkeit, Gruppen, Besitzer —, keine
-// Ontologie. Welche Quelle welches Modell mitbringt, entscheidet die Domäne.
+// Berechtigungsmodell — Mandant, Sichtbarkeit, Gruppen, Besitzer, Freigaben —,
+// keine Ontologie. Welche Quelle welches Modell mitbringt, entscheidet die
+// Domäne.
+//
+// ADR-0012 hat das Modell um `erlaubtePersonen` erweitert: eine Freigabe an
+// eine EINZELNE Person, wie sie ein geteilter Link oder eine nachträglich
+// eingeladene Teilnehmerin erzeugt. Sie ist kein Sonderfall der Gruppe. Die
+// Alternative — je Dokument eine Pseudo-Gruppe — hätte den Filter formal
+// unverändert gelassen und die Gruppenliste des Principals mit der Zahl der
+// Einzelfreigaben wachsen lassen (group explosion).
 
 // Die drei Sichtbarkeiten. Bewusst wenige und bewusst überschneidungsfrei:
 // jede Stufe ist echt enger als die vorige, damit „darf sehen" eine Ordnung
@@ -62,6 +70,28 @@ export function pruefeEnvelope(envelope) {
       'envelope: Sichtbarkeit "gruppe" ohne erlaubteGruppen — das wäre "privat".',
     );
   }
+
+  // `erlaubtePersonen` ist OPTIONAL und steht deshalb nicht in PFLICHTFELDER
+  // (ADR-0012). Das ist die Stelle, an der die Erweiterung beweist, dass sie
+  // nichts Bestehendes bewegt: jede vor dem 2026-09-10 geschriebene Envelope
+  // bleibt unverändert gültig, und die sechs ACL-Fälle aus Etappe 2 liefern
+  // Zeile für Zeile dasselbe Ergebnis.
+  //
+  // Eine Freigabe hebt die STUFE auf, nicht die Stufenregel: ein Dokument, das
+  // nur an einzelne Personen geht, ist `privat` mit Freigaben — nicht
+  // `gruppe`. Sonst gäbe es zwei Schreibweisen für denselben Zustand, und das
+  // ist der Anfang von Drift (dieselbe Begründung wie eine Zeile höher).
+  if (envelope.erlaubtePersonen !== undefined) {
+    const ungueltig =
+      !Array.isArray(envelope.erlaubtePersonen) ||
+      envelope.erlaubtePersonen.some((p) => typeof p !== "string" || p === "");
+    if (ungueltig) {
+      throw new Error(
+        "envelope: erlaubtePersonen muss eine Liste nichtleerer Zeichenketten sein.",
+      );
+    }
+  }
+
   return envelope;
 }
 
@@ -76,6 +106,12 @@ export function erbeEnvelope(dokumentEnvelope) {
     dokumentId: dokumentEnvelope.dokumentId,
     sichtbarkeit: dokumentEnvelope.sichtbarkeit,
     erlaubteGruppen: [...(dokumentEnvelope.erlaubteGruppen ?? [])],
+    // Auch die Einzelfreigaben werden vererbt, und zwar als KOPIE. Würde die
+    // Liste geteilt, änderte ein späterer Entzug am Dokument still die
+    // Envelope jedes bereits geschriebenen Chunks — der Entzug sähe dann
+    // korrekt aus, ohne dass je synchronisiert wurde. Genau die Illusion, die
+    // Metrik 3.14 aufdecken soll.
+    erlaubtePersonen: [...(dokumentEnvelope.erlaubtePersonen ?? [])],
     besitzerId: dokumentEnvelope.besitzerId,
   };
 }

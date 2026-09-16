@@ -141,6 +141,21 @@ Deshalb liegt die Zusage **im Kern**, nicht in einer Domäne:
 Geprüft in `tests/workflow.test.js` und `tests/integration/persistence.test.js` — der zweite
 über eine echte Prozessgrenze, mit PID-Vergleich.
 
+**Und die Zusage gilt auch am Rand.** Die Kante prüft richtig, aber sie sieht nur, was ankommt:
+bis zum 2026-09-14 wandelte der HTTP-Adapter `approved` vorher mit `Boolean()` um, und
+`Boolean("false")` ist `true` — ein Client, der `"false"` als Zeichenkette sendete, genehmigte.
+Geprüft war der Kern, nicht der Rand. Seither gilt für **jeden** Kanal, der eine Genehmigung
+entgegennimmt:
+
+- Nur ein JSON-Boolean `true` ist eine Genehmigung.
+- Jeder Nicht-Boolean — `"true"`, `"false"`, `1`, `0`, `null`, ein fehlendes Feld — wird mit
+  **400 abgelehnt**, nicht umgewandelt. Dieselbe Lehre wie in Schicht 3 beim API-Schlüssel:
+  **fail-closed heißt ablehnen, nicht zurechtbiegen.**
+
+Geprüft in `tests/httpAdapter.test.js` über echte HTTP-Anfragen, mit den Gegenproben `false`
+(stellt nicht zu) und `true` (stellt zu). Der Adapter ist seither **nicht mehr** von der
+Abdeckungsmessung ausgenommen — die Ausnahme war der Grund, warum kein Test die Lücke fing.
+
 ---
 
 ## Geheimnisse

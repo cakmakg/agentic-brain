@@ -60,4 +60,24 @@ export const adapter = {
   retrieval: JSON.parse(
     fs.readFileSync(path.join(hier, "golden", "acl.json"), "utf8"),
   ),
+
+  // Der Datensatz für Metrik 3.14 — hier ausdrücklich LEER. `beispiel` ist
+  // die Referenzdomäne des Gerüsts (ADR-0004) und hat keinen Connector: ihre
+  // Dokumente stehen als Fixtures im Datensatz, es gibt keine Quelle, aus der
+  // etwas entzogen werden könnte.
+  //
+  // Die leere Fallliste ist eine AUSSAGE, kein Versehen. Die Nenner-Probe
+  // meldet 3.14 für diese Domäne als „nicht messbar" statt als 0 % — und das
+  // ist der ehrliche Wert. Ein weggelassenes Feld hätte dasselbe Ergebnis
+  // gehabt und dabei ausgesehen, als sei es geprüft worden.
+  entzug: { faelle: [] },
+
+  // Welche Pflichtmetrik hier nicht messbar ist — und warum (ADR-0017). Was
+  // nicht hier steht, muss gemessen und erfüllt sein, sonst endet der Lauf rot.
+  // Damit wird aus der leeren Fallliste oben eine geprüfte Aussage statt einer
+  // Behauptung im Kommentar: verschwänden die Retrieval-Fälle, fiele 3.13 auf
+  // „ungemessen" und der Lauf würde rot, weil 3.13 hier NICHT steht.
+  ungemessen: {
+    3.14: "keine Connector-Quelle (ADR-0004) — nichts, das entzogen werden kann",
+  },
 };

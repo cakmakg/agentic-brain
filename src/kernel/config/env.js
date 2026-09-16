@@ -28,6 +28,47 @@ export const env = {
   // Kommen später mehrere hinzu, ändert sich keine einzige Abfrage.
   tenantId: process.env.TENANT_ID || "default",
 
+  // ── Der Chunk-Speicher (ab Etappe 3c) ──────────────────────────────────
+  // Welcher Store-Adapter laeuft. Voreinstellung `memory`: das ist die Zusage
+  // K5 (ADR-0013) — `clone -> install -> demo` und die gesamte Schicht-A-
+  // Messung laufen ohne jede Infrastruktur. `postgres` wird ausdruecklich
+  // verlangt, nie geraten.
+  storeAdapter: process.env.STORE_ADAPTER || "memory",
+
+  // ── Das Embedding (ab Etappe 3d) ───────────────────────────────────────
+  // Welcher Embedding-Adapter laeuft. Voreinstellung `hash`: deterministisch,
+  // kostenlos, ohne Schluessel — das traegt Schicht A und K5 (ADR-0015).
+  // `voyage` wird ausdruecklich verlangt und kostet je Aufruf Geld.
+  embeddingAdapter: process.env.EMBEDDING_ADAPTER || "hash",
+
+  // Der Schluessel des Voyage-Adapters. Anthropic bietet KEIN eigenes
+  // Embedding-Modell an und empfiehlt Voyage AI; das ist der Grund, warum
+  // hier ein zweiter Anbieter steht. Leer heisst: der Adapter wirft, statt
+  // ohne Schluessel zu starten. Gehoert in `.env`, nie in den Quellcode.
+  voyageApiKey: process.env.VOYAGE_API_KEY || "",
+  voyageModell: process.env.VOYAGE_MODEL || "voyage-4",
+  // Die Vektorbreite. `voyage-4` kann 256, 512, 1024 (Vorgabe) und 2048; die
+  // kuerzeren sind Praefixe der laengeren. Die Zahl steht im Vertrag mit dem
+  // Postgres-Schema (`vector(n)`) — ein Wechsel braucht eine neue Tabelle.
+  voyageDimensionen: Number(process.env.VOYAGE_DIMENSION || 1024),
+
+  // Wie viele Vektoren der Zwischenspeicher haelt (ADR-0016). Er spart genau
+  // das, was Geld kostet: den Einbettungsaufruf fuer Text, der sich seit dem
+  // letzten Synchronisationszyklus nicht bewegt hat. Die Momentaufnahme
+  // bleibt vollstaendig, die Entzugszusage bleibt strukturell (ADR-0011).
+  //
+  // 5000 Eintraege sind bei voyage-4 (1024 Dimensionen, float64) rund 40 MB.
+  // Wer eine groessere Quelle faehrt, hebt die Zahl — bei einer Arbeitsmenge
+  // ueber `max` faellt die Trefferquote auf null, nicht auf „etwas weniger".
+  // `0` schaltet ihn ab: dann zahlt jeder Zyklus voll.
+  embeddingCacheMax: Number(process.env.EMBEDDING_CACHE_MAX ?? 5000),
+
+  // Die Verbindung des Postgres-Adapters. Leer heisst: es gibt keine, und der
+  // Adapter wirft, statt eine zu raten. Ein Lauf gegen die falsche Datenbank
+  // ist schlimmer als einer, der nicht startet. Gehoert in `.env`, nie in den
+  // Quellcode.
+  databaseUrl: process.env.DATABASE_URL || "",
+
   // Wohin der dauerhafte Zustand geschrieben wird. Überschreibbar wie
   // TRACE_DIR in governance/trace.js — Tests und der Harness zeigen damit
   // auf ein frisches Verzeichnis, sonst schleppt ein Lauf den vorigen mit und

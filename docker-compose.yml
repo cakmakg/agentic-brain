@@ -1,0 +1,43 @@
+# ── docker-compose.yml ────────────────────────────────────────────────────
+# Ein Postgres mit pgvector, ausschließlich für den zweiten Store-Adapter
+# (ADR-0006, Etappe 3c). Er ist NICHT Voraussetzung für irgendetwas anderes
+# in diesem Repo:
+#
+#   npm test · npm run evals · npm run demo   laufen ohne diese Datei (K5).
+#
+# Gebraucht wird er nur für den ausdrücklich angeforderten Lauf gegen
+# Postgres:
+#
+#   docker compose up -d
+#   STORE_ADAPTER=postgres npm run evals
+#
+# DAS PASSWORT HIER IST KEIN GEHEIMNIS. Es gehört zu einem Container, der auf
+# localhost lauscht und dessen Daten bei jedem `down -v` verschwinden. Ein
+# echtes Ziel — etwa eine gehostete Instanz — wird über DATABASE_URL gesetzt
+# und steht in `.env`, nie hier und nie im Quellcode.
+#
+# Der Port ist bewusst 55433 und nicht 5432: ein lokal laufendes Postgres soll
+# nicht stillschweigend verwendet werden. Ein Lauf, der versehentlich gegen
+# die falsche Datenbank misst, ist schlimmer als einer, der nicht startet.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: agentic-postgres
+    environment:
+      POSTGRES_USER: agentic
+      POSTGRES_PASSWORD: agentic
+      POSTGRES_DB: agentic
+    ports:
+      - "55433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentic -d agentic"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    tmpfs:
+      # Kein Volume: der Zustand soll den Container NICHT überleben. Ein Lauf,
+      # der gealterte Zeilen eines früheren Laufs mitmisst, ist kein
+      # Determinismus-Nachweis mehr — dieselbe Begründung wie beim frischen
+      # STATE_DIR des Harness.
+      - /var/lib/postgresql/data

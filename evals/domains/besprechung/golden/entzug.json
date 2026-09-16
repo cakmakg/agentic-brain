@@ -1,0 +1,96 @@
+{
+  "hinweis": "Der Datensatz fuer Metrik 3.14 (Latenz des Berechtigungsentzugs). Er benutzt DASSELBE Quellsystem und DIESELBEN Principale wie acl.json — bewusst keine zweite Kopie: zwei Quellsysteme in zwei Dateien laufen auseinander, und dann misst 3.14 etwas anderes als 3.13. Jeder Fall laeuft auf einer FRISCHEN Quelle; die Faelle sehen einander nicht.",
+
+  "ablauf": "Je Fall: (1) Synchronisationszyklus, (2) Suche als Principal -> muss 'vorher' entsprechen, (3) der Entzug wird in der QUELLE vorgenommen — der Speicher weiss davon noch nichts, (4) EIN weiterer Synchronisationszyklus, (5) Suche als derselbe Principal -> muss 'nachher' entsprechen. Was jetzt noch kommt und nicht in 'nachher' steht, ist ein VERALTETER Chunk und geht in den Zaehler von 3.14.",
+
+  "grenze": "Schicht A misst ZYKLEN, keine Sekunden. Die Sekundenzahl aus dem Roadmap-Tor haengt am Zeitplan, mit dem der Connector laeuft, und einen Zeitplan gibt es noch nicht (ADR-0011). Was hier gemessen wird, ist: reicht EIN Zyklus, damit der Entzug wirkt?",
+
+  "regelwerk": [
+    "E1. Der Entzug wirkt erst mit dem naechsten Zyklus. Zwischen Schritt 3 und 4 ist der Speicher bewusst veraltet — das ist die Luecke, die gemessen wird, kein Defekt.",
+    "E2. Ein Dokument, das die Momentaufnahme nicht mehr enthaelt, ist nach dem Zyklus verschwunden (ADR-0011). Es gibt keinen Loeschpfad, der es uebersehen koennte.",
+    "E3. Eine enger gewordene Berechtigung kommt mit der NEUEN Envelope zurueck, weil es die alte nirgends mehr gibt.",
+    "E4. 'vorher' ist Teil der Erwartung und wird geprueft. Ein Fall, in dem das Dokument schon vorher unsichtbar war, belegt nichts und muss als Abweichung auffallen.",
+    "E5. Mindestens ein Fall darf sich NICHT aendern (EZ-6). Ohne ihn wuerde ein Speicher, der bei jedem Zyklus alles verwirft, 3.14 = 0 % melden und makellos aussehen."
+  ],
+
+  "faelle": [
+    {
+      "id": "EZ-1",
+      "gruppe": "entzug-teilnehmer",
+      "hinweis": "PFLICHTFALL, und der natuerliche Fall dieser Vertikale: eine Teilnehmerliste aendert sich. Anna sieht n-sprint ausschliesslich, weil sie Teilnehmerin von b-sprint ist (Q2). Wird sie entfernt, faellt die Notiz weg. n-offen bleibt: es gehoert zwar zu derselben Besprechung, ist aber 'oeffentlich' — der Entzug einer Teilnahme darf eine oeffentliche Notiz nicht mitnehmen. n-vertraulich bleibt: es haengt an der Einzelfreigabe, nicht an der Teilnahme.",
+      "principal": "anna",
+      "anfrage": "Offene Punkte Rollout",
+      "vorher": {
+        "sichtbareDokumente": ["n-offen", "n-sprint", "n-vertraulich"]
+      },
+      "entzug": {
+        "art": "teilnehmer-entfernen",
+        "besprechungId": "b-sprint",
+        "personId": "anna"
+      },
+      "nachher": { "sichtbareDokumente": ["n-offen", "n-vertraulich"] }
+    },
+    {
+      "id": "EZ-2",
+      "gruppe": "entzug-einzelfreigabe",
+      "hinweis": "PFLICHTFALL zu ADR-0012. Eine Berechtigung, die an einer PERSON haengt, laesst sich nicht durch das Entfernen aus einer Gruppe zuruecknehmen — nur dokumentweise. Dora ist in keiner Gruppe; n-sprint haengt fuer sie allein an der Freigabe. Wird die entzogen, bleibt nur n-offen.",
+      "principal": "dora",
+      "anfrage": "Offene Punkte Rollout",
+      "vorher": { "sichtbareDokumente": ["n-offen", "n-sprint"] },
+      "entzug": {
+        "art": "freigabe-entziehen",
+        "notizId": "n-sprint",
+        "personId": "dora"
+      },
+      "nachher": { "sichtbareDokumente": ["n-offen"] }
+    },
+    {
+      "id": "EZ-3",
+      "gruppe": "entzug-loeschung",
+      "hinweis": "PFLICHTFALL. Der Leckvektor, der ohne jeden Angriff auftritt: die Notiz ist in der Quelle geloescht, die eingebettete Kopie liegt noch im Speicher. Genau das nennt docs/roadmap.md als Tor von Etappe 3. Bei einem Delta-Sync haengt dieser Fall daran, dass die Quelle ein Loeschereignis meldet — sie tut es oft nicht.",
+      "principal": "bruno",
+      "anfrage": "Offene Punkte Rollout",
+      "vorher": { "sichtbareDokumente": ["n-archiv", "n-offen", "n-sprint"] },
+      "entzug": { "art": "notiz-loeschen", "notizId": "n-sprint" },
+      "nachher": { "sichtbareDokumente": ["n-archiv", "n-offen"] }
+    },
+    {
+      "id": "EZ-4",
+      "gruppe": "entzug-ordnergruppe",
+      "hinweis": "Der Entzug wirkt UEBER DIE VERERBUNGSKETTE hinweg. Der Gruppe technik wird die Sichtbarkeit auf o-technik entzogen. Damit verliert auch o-technik-archiv seine geerbte Gruppe, und n-archiv wird nach Q7 'privat' (Besitzer ist frank, nicht bruno) — bruno verliert es. n-sprint verliert ebenfalls seine Gruppe, bleibt bruno aber erhalten, weil er der BESITZER ist (F2). Ein Entzug, der auch den Besitzer ausschliesst, waere falsch.",
+      "principal": "bruno",
+      "anfrage": "Offene Punkte Rollout",
+      "vorher": { "sichtbareDokumente": ["n-archiv", "n-offen", "n-sprint"] },
+      "entzug": {
+        "art": "ordnergruppe-entziehen",
+        "ordnerId": "o-technik",
+        "gruppe": "technik"
+      },
+      "nachher": { "sichtbareDokumente": ["n-offen", "n-sprint"] }
+    },
+    {
+      "id": "EZ-5",
+      "gruppe": "entzug-vererbung-brechen",
+      "hinweis": "Die Gegenrichtung zu EZ-4: nicht die Gruppe verschwindet, sondern die Vererbung. o-technik-archiv traegt selbst keine Gruppe; wird die Vererbung gebrochen, bleiben null Gruppen und n-archiv wird 'privat'. Beide Faelle zusammen belegen, dass die Kette wirklich gelaufen wird — einer allein liesse sich auch mit einer flachen Ordnerlogik gruen melden.",
+      "principal": "bruno",
+      "anfrage": "Offene Punkte Rollout",
+      "vorher": { "sichtbareDokumente": ["n-archiv", "n-offen", "n-sprint"] },
+      "entzug": { "art": "vererbung-brechen", "ordnerId": "o-technik-archiv" },
+      "nachher": { "sichtbareDokumente": ["n-offen", "n-sprint"] }
+    },
+    {
+      "id": "EZ-6",
+      "gruppe": "entzug-ohne-wirkung",
+      "hinweis": "PFLICHTFALL, und der wichtigste des Datensatzes. Es wird wirklich etwas entzogen — doras Freigabe auf n-sprint —, aber fuer BRUNO aendert sich nichts: er sieht n-sprint als Besitzer. Ohne diesen Fall wuerde ein Speicher, der bei jedem Zyklus einfach alles verwirft, 3.14 = 0 % melden und makellos aussehen. Die Gegenrichtung faengt hier die Vertragstreue ab, nicht 3.14.",
+      "principal": "bruno",
+      "anfrage": "Offene Punkte Rollout",
+      "vorher": { "sichtbareDokumente": ["n-archiv", "n-offen", "n-sprint"] },
+      "entzug": {
+        "art": "freigabe-entziehen",
+        "notizId": "n-sprint",
+        "personId": "dora"
+      },
+      "nachher": { "sichtbareDokumente": ["n-archiv", "n-offen", "n-sprint"] }
+    }
+  ]
+}

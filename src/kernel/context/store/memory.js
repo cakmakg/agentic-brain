@@ -14,11 +14,11 @@
 // wenn er nicht gesehen werden darf. Das ist die Übersetzung von „in die
 // Abfrage kompiliert" in einen Speicher, der keine Abfragesprache hat.
 
-import { einbetten, terme } from "../embedding.js";
+import { terme } from "../embedding/index.js";
 
 const skalarprodukt = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
 
-export function createMemoryAdapter() {
+export function createMemoryAdapter({ embedding } = {}) {
   let chunks = [];
 
   return {
@@ -27,6 +27,24 @@ export function createMemoryAdapter() {
     schreibe(neue) {
       for (const c of neue) chunks.push(c);
       return neue.length;
+    },
+
+    // ── Atomarer Ersatz einer Quelle (ADR-0011). ────────────────────────
+    // Die neue Liste wird ERST vollständig gebaut und DANN in einem einzigen
+    // Schritt zugewiesen. Es gibt keinen Augenblick, in dem der Speicher
+    // weder die alte noch die neue Momentaufnahme trägt — und damit keinen,
+    // in dem eine gleichzeitige Suche zu wenig fände.
+    //
+    // Im Arbeitsspeicher ist das geschenkt, weil die Zuweisung nicht
+    // unterbrochen wird. Der Postgres-Adapter (Etappe 3c) bekommt es NICHT
+    // geschenkt: er muss dieselbe Eigenschaft ausdrücklich mit einer
+    // Transaktion herstellen. Diese Zeile ist die Stelle, an der das steht,
+    // damit es dort nicht übersehen wird.
+    ersetzeQuelle(quelle, neue) {
+      const fremde = chunks.filter((c) => c.envelope.quelle !== quelle);
+      const entfernt = chunks.length - fremde.length;
+      chunks = fremde.concat(neue);
+      return { entfernt, geschrieben: neue.length };
     },
 
     zaehle: () => chunks.length,
@@ -44,8 +62,10 @@ export function createMemoryAdapter() {
     // Chunks, das Prädikat steht an ihrem Anfang, und beide Bewertungen
     // entstehen erst danach. Ein Chunk, der nicht gesehen werden darf, wird
     // von keinem der beiden Pfade je berührt.
-    suche({ praedikat, anfrage, k }) {
-      const frageVektor = einbetten(anfrage);
+    async suche({ praedikat, anfrage, k }) {
+      // `"anfrage"` und nicht `"dokument"`: ein echtes Retrieval-Modell bettet
+      // die Frage anders ein als den Text, den sie finden soll (ADR-0015).
+      const frageVektor = await embedding.einbette(anfrage, "anfrage");
       const frageTerme = new Set(terme(anfrage));
       const bewertet = [];
 

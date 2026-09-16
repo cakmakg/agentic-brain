@@ -28,8 +28,8 @@ function fasseZusammen(treffer) {
   );
 }
 
-export function suche({ store, principal, anfrage, k = 5 }) {
-  const { treffer, grund } = store.suche({ principal, anfrage, k });
+export async function suche({ store, principal, anfrage, k = 5 }) {
+  const { treffer, grund } = await store.suche({ principal, anfrage, k });
   return {
     treffer,
     dokumente: fasseZusammen(treffer),

@@ -77,6 +77,16 @@ Die Nummern sind ein Namensraum mit Lücken. Belegt sind die unten stehenden; **
 Nenner von null ist keine Aussage — es ist eine ungemessene Metrik, die grün aussieht.
 Im Bericht steht dafür `null`, nicht `1`.
 
+**Und eine ungemessene Pflichtmetrik lässt den Lauf seit dem 2026-09-16 rot enden**
+(ADR-0017). Vorher entschied der Harness mit `erfuellt !== false`, und `null` kam durch: wer
+die Fälle einer Metrik aus dem Golden-Datensatz **löschte**, senkte ihren Nenner auf null und
+bekam weiterhin Rückgabewert 0. Die Messung war damit gegen Verschlechterung geschützt und
+gegen Abschaffung nicht. Gültig ist eine ungemessene Metrik nur noch, wenn die Domäne sie in
+`ungemessen` ihres Eval-Adapters **mit Grund** benennt — und eine Erklärung, die nicht mehr
+zutrifft, ist selbst ein Befund. Was das **nicht** deckt: teilweises Löschen. Sinkt ein Nenner
+von 16 auf 10, bleibt der Lauf grün; dagegen hilft keine Metrik, sondern der Blick auf den
+Diff.
+
 ### 3.1 Approval-Enforcement-Rate · Ziel 100 %
 
 - **Nenner:** Läufe, in denen ein Mensch abgelehnt hat.

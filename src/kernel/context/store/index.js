@@ -11,16 +11,34 @@
 // in CI. Der `memory`-Adapter trägt Mock-Modus, CI und K5 allein; pgvector
 // tritt in Etappe 3 DANEBEN. Ehrlich dazugesagt: ein Adapter beweist kein Port.
 // Erst der zweite zeigt, ob die Grenze richtig liegt.
+//
+// DER PORT IST DIE ASYNCHRONE GRENZE (seit Etappe 3c). Jede Methode hier gibt
+// ein Promise zurück, auch wenn der `memory`-Adapter synchron antwortet —
+// `await` auf einen Nicht-Promise kostet nichts. Der Grund steht im Wort
+// „Port": ein Speicher hinter einem Netz kann nicht synchron antworten, und
+// eine Signatur, die das erst beim zweiten Adapter lernt, zwingt genau dann
+// zu einem Umbau, wenn ohnehin alles neu ist. Die Umstellung wurde deshalb
+// VOR dem Postgres-Adapter gemacht, allein, mit dem Tor „alle Zahlen
+// identisch" — dieselbe Disziplin wie beim Ebenenumbau in Etappe 0b.
 
-import { kompiliereFilter } from "../../retrieval/filter.js";
+import {
+  kompiliereFilter,
+  kompiliereFilterSql,
+} from "../../retrieval/filter.js";
 
 // Was ein Adapter mitbringen muss. Dieselbe Idee wie die Pflichtfelder in
 // `registry.js`: ein fehlendes Stück muss LAUT sein, nicht still zu einem
 // leeren Ergebnis führen — ein Speicher, der schweigend nichts findet, ist von
 // einem korrekt filternden Speicher nicht zu unterscheiden.
-const PFLICHTMETHODEN = ["schreibe", "suche", "zaehle", "leere"];
+const PFLICHTMETHODEN = [
+  "schreibe",
+  "ersetzeQuelle",
+  "suche",
+  "zaehle",
+  "leere",
+];
 
-export function createStore(adapter) {
+export function createStore(adapter, embedding) {
   for (const methode of PFLICHTMETHODEN) {
     if (typeof adapter?.[methode] !== "function") {
       throw new Error(
@@ -29,15 +47,58 @@ export function createStore(adapter) {
     }
   }
 
+  if (!embedding?.dimensionen) {
+    throw new Error(
+      "createStore: ohne Embedding kein Speicher — der Vektor eines Chunks entsteht beim Ingest, nicht beim Suchen.",
+    );
+  }
+
   return {
     name: adapter.name ?? "unbenannt",
 
+    // Der Speicher traegt das Embedding, mit dem er gebaut wurde. Damit
+    // muessen `ingestiere` und `synchronisiere` es nicht durch jede Signatur
+    // reichen — und es ist ausgeschlossen, dass ein Dokument mit einem
+    // anderen Verfahren eingebettet wird als die Frage, die es finden soll.
+    // Zwei Verfahren in einem Speicher waeren keine schlechte Suche, sondern
+    // eine sinnlose: die Vektoren lebten in verschiedenen Raeumen.
+    embedding,
+
     // Schreiben geht ohne Principal: Ingest ist eine Systemhandlung, kein
     // Lesezugriff. Die Berechtigung reist in der Envelope mit (ADR-0009).
-    schreibe: (chunks) => adapter.schreibe(chunks),
+    schreibe: async (chunks) => adapter.schreibe(chunks),
 
-    zaehle: () => adapter.zaehle(),
-    leere: () => adapter.leere(),
+    // ── Der Schreibweg der Synchronisation (ADR-0011). ──────────────────
+    // Ersetzt ALLES, was zu dieser Quelle im Speicher liegt, durch die
+    // übergebene Momentaufnahme — in einem Schritt. Dadurch ist der Entzug
+    // strukturell: ein Dokument, das nicht mehr in der Momentaufnahme steht,
+    // verschwindet, weil es nicht mehr da ist, und nicht weil jemand ein
+    // Löschereignis richtig verarbeitet hat.
+    //
+    // Die Prüfung steht HIER im Port und nicht im Adapter, damit sie für
+    // jeden Adapter gilt: ein Connector, der Chunks mit fremder Quelle
+    // liefert, würde sonst in den Namensraum einer anderen Quelle schreiben —
+    // und beim nächsten Zyklus jener Quelle spurlos verschwinden oder
+    // fälschlich überleben. Laut statt still.
+    async ersetzeQuelle(quelle, chunks) {
+      for (const c of chunks) {
+        if (c?.envelope?.quelle !== quelle) {
+          throw new Error(
+            `ersetzeQuelle: Chunk "${c?.chunkId}" traegt die Quelle "${c?.envelope?.quelle}", ersetzt wird aber "${quelle}".`,
+          );
+        }
+      }
+      return adapter.ersetzeQuelle(quelle, chunks);
+    },
+
+    zaehle: async () => adapter.zaehle(),
+    leere: async () => adapter.leere(),
+
+    // OPTIONAL, deshalb nicht in PFLICHTMETHODEN: ein Speicher im
+    // Arbeitsspeicher hat nichts zu schließen. Ein Adapter mit
+    // Verbindungspool hat es sehr wohl — ohne diesen Aufruf endete ein
+    // Eval-Lauf nie von selbst.
+    schliesse: async () => adapter.schliesse?.(),
 
     // ── Der einzige Leseweg. ────────────────────────────────────────────
     // Hier steht die fail-closed-Kante des Retrievals, und sie steht VOR dem
@@ -47,7 +108,7 @@ export function createStore(adapter) {
     //
     // Es gibt bewusst KEINEN zweiten Leseweg ohne Principal. Ein solcher wäre
     // die Abkürzung, über die jedes Leck später hereinkäme.
-    suche({ principal, anfrage, k = 5 }) {
+    async suche({ principal, anfrage, k = 5 }) {
       const praedikat = kompiliereFilter(principal);
       if (!praedikat) {
         // Unterscheidbar protokolliert: „nicht auflösbar" ist etwas anderes
@@ -55,8 +116,14 @@ export function createStore(adapter) {
         // Unterschied nicht sieht, sucht den falschen Fehler (ADR-0008).
         return { treffer: [], grund: "principal-nicht-aufloesbar" };
       }
+      // BEIDE Kompilate desselben Regelwerks (ADR-0014). Der Adapter nimmt,
+      // was zu ihm passt: `memory` das Prädikat, `postgres` die Bedingung.
+      // Der Principal selbst wird NICHT durchgereicht — ein Adapter soll
+      // keine eigene ACL-Regel formulieren können, sondern nur eine
+      // anwenden.
+      const sqlFilter = (ab) => kompiliereFilterSql(principal, ab);
       return {
-        treffer: adapter.suche({ praedikat, anfrage, k }),
+        treffer: await adapter.suche({ praedikat, sqlFilter, anfrage, k }),
         grund: null,
       };
     },

@@ -12,10 +12,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { darfSehen, kompiliereFilter } from "../src/kernel/retrieval/filter.js";
+import {
+  darfSehen,
+  kompiliereFilter,
+  kompiliereFilterSql,
+  ZUGANGSREGELN,
+  MANDANTENGRENZE,
+  SPALTEN,
+} from "../src/kernel/retrieval/filter.js";
 import { suche } from "../src/kernel/retrieval/suche.js";
 import { createStore } from "../src/kernel/context/store/index.js";
 import { createMemoryAdapter } from "../src/kernel/context/store/memory.js";
+import { createEmbedding } from "../src/kernel/context/embedding/index.js";
+import { createHashAdapter } from "../src/kernel/context/embedding/hash.js";
 import { baueStore } from "../src/kernel/context/aufbau.js";
 import { ingestiere } from "../src/kernel/context/ingest/pipeline.js";
 
@@ -35,6 +44,11 @@ const wer = (over = {}) => ({
   gruppen: [],
   ...over,
 });
+
+// Der Speicher traegt sein Embedding (ADR-0015). In den Tests wird es
+// ausdruecklich gebaut, damit sichtbar bleibt, dass Dokument- und Fragevektor
+// aus demselben Verfahren stammen.
+const hashEmbedding = () => createEmbedding(createHashAdapter());
 
 // ── Die ACL-Regel, Fall für Fall ─────────────────────────────────────────
 
@@ -79,6 +93,34 @@ test("ACL: privat — niemand außer dem Besitzer", () => {
   assert.equal(darfSehen(wer({ gruppen: ["finanz"] }), e), false);
 });
 
+// ── Die Einzelfreigabe (ADR-0012) ────────────────────────────────────────
+// Zwei Fälle, und beide sind Pflicht. Der erste zeigt, dass die Ausnahme
+// wirkt; der zweite, dass sie an genau einer Grenze endet. Nur der erste zu
+// prüfen hieße, die gefährlichere Hälfte ungeprüft zu lassen.
+
+test("ACL: eine Freigabe an eine Person hebt privat auf", () => {
+  const e = env({ sichtbarkeit: "privat", erlaubtePersonen: ["u2"] });
+  assert.equal(darfSehen(wer({ benutzerId: "u2" }), e), true);
+  // Und nur für DIESE Person, nicht für die halbe Belegschaft.
+  assert.equal(darfSehen(wer({ benutzerId: "u3" }), e), false);
+});
+
+test("ACL: eine Freigabe an eine Person hebt die Mandantengrenze NICHT auf", () => {
+  // Dieselbe benutzerId, anderer Mandant. Würde die Freigabe vor der
+  // Mandantenprüfung greifen — oder als Ausnahme auch von ihr befreien —,
+  // flösse hier ein Dokument ab. Eine Ausnahme darf diese Grenze nie aufheben.
+  const e = env({ sichtbarkeit: "oeffentlich", erlaubtePersonen: ["u2"] });
+  assert.equal(darfSehen(wer({ tenantId: "t2", benutzerId: "u2" }), e), false);
+});
+
+test("ACL: ohne erlaubtePersonen verhält sich alles wie vorher", () => {
+  // Der Beweis, dass ADR-0012 nichts Bestehendes bewegt: eine Envelope ohne
+  // das Feld ist unverändert gültig, und `?? []` fängt auch `null`.
+  const ohne = env({ sichtbarkeit: "privat" });
+  assert.equal(darfSehen(wer(), ohne), false);
+  assert.equal(darfSehen(wer(), { ...ohne, erlaubtePersonen: null }), false);
+});
+
 test("ACL: eine unbekannte Sichtbarkeit führt NICHT zu Großzügigkeit", () => {
   // Käme sie je in den Speicher, wäre er beschädigt — dann ist "nichts" richtig.
   assert.equal(darfSehen(wer(), { ...env(), sichtbarkeit: "erfunden" }), false);
@@ -93,37 +135,170 @@ test("ACL: ein unauflösbarer Principal sieht nichts, und der Filter ist null", 
   assert.equal(typeof kompiliereFilter(wer()), "function");
 });
 
+// ── Das SQL-Kompilat (ADR-0014) ──────────────────────────────────────────
+// Dieselben Regeln, zweites Kompilat. Diese Tests brauchen KEINE Datenbank —
+// sie prüfen die erzeugte Bedingung. Ob sie in Postgres auch das Richtige
+// TUT, prüft die Eval-Suite gegen den Postgres-Adapter; das ist die andere
+// Hälfte und keine der beiden ersetzt die andere.
+
+test("SQL: jede Zugangsregel traegt BEIDE Kompilate", () => {
+  // Der wichtigste Test dieser Gruppe. Fügt jemand eine Regel mit nur einem
+  // `js` hinzu, verliert das SQL-Kompilat sie STILL — und das Leck entsteht
+  // ausschließlich im Postgres-Adapter, wo es niemand sucht.
+  for (const regel of [...ZUGANGSREGELN, MANDANTENGRENZE]) {
+    assert.equal(typeof regel.js, "function", `${regel.name}: js fehlt`);
+    assert.equal(typeof regel.sql, "function", `${regel.name}: sql fehlt`);
+    assert.equal(typeof regel.name, "string");
+  }
+});
+
+test("SQL: ein unaufloesbarer Principal ergibt null — wie beim Praedikat", () => {
+  // Beide Kompilierer müssen bei demselben Eingang null liefern, sonst wirkt
+  // die fail-closed-Kante im Port je nach Adapter anders.
+  for (const kaputt of [null, undefined, { tenantId: "t1" }, {}]) {
+    assert.equal(kompiliereFilter(kaputt), null);
+    assert.equal(kompiliereFilterSql(kaputt), null);
+  }
+});
+
+// Schließt die Klammer, die an `von` aufgeht, erst am Ende der Zeichenkette?
+// Das ist die Frage, an der die Operatorrangfolge hängt — und sie lässt sich
+// nicht mit einer Regex beantworten, weil die Regeln selbst geklammert sind.
+function klammerReichtBisEnde(text, von) {
+  if (text[von] !== "(") return false;
+  let tiefe = 0;
+  for (let i = von; i < text.length; i++) {
+    if (text[i] === "(") tiefe++;
+    else if (text[i] === ")") {
+      tiefe--;
+      if (tiefe === 0) return i === text.length - 1;
+    }
+  }
+  return false;
+}
+
+test("SQL: die Mandantengrenze steht als UND VOR der geklammerten Disjunktion", () => {
+  // Ohne das äußere Klammerpaar bände AND stärker als OR und die
+  // Mandantengrenze gälte nur für die ERSTE Zugangsregel — ein
+  // Cross-Tenant-Leck aus reiner Operatorrangfolge, das in jedem Test mit nur
+  // einem Mandanten grün bleibt.
+  //
+  // Die erste Fassung dieses Tests prüfte „beginnt nach AND eine Klammer und
+  // endet die Zeichenkette auf einer". Beides bleibt wahr, wenn man die äußere
+  // Klammer entfernt, weil die Regeln ihre eigenen mitbringen — die
+  // Mutationsprobe zeigte den Test grün, obwohl der Defekt drin war. Deshalb
+  // wird hier wirklich GEZÄHLT, wo die geöffnete Klammer wieder zugeht.
+  const { where } = kompiliereFilterSql(wer());
+  const trenner = " AND ";
+  const schnitt = where.indexOf(trenner);
+
+  assert.ok(schnitt > 0, "die Mandantengrenze muss vorne stehen");
+  assert.match(
+    where.slice(0, schnitt),
+    new RegExp("^" + SPALTEN.tenantId + " = \\$\\d+$"),
+    "vor dem UND steht ausschließlich die Mandantengrenze",
+  );
+  assert.ok(
+    klammerReichtBisEnde(where, schnitt + trenner.length),
+    "die ganze Disjunktion muss in EINEM Klammerpaar stehen",
+  );
+  // Und die Disjunktion enthält wirklich alle Regeln.
+  assert.equal(where.split(" OR ").length, ZUGANGSREGELN.length);
+});
+
+test("SQL: kein Wert steht in der Zeichenkette, alle sind gebunden", () => {
+  // Der Principal ist bis Etappe 4 eine BEHAUPTUNG des Aufrufers (ADR-0009).
+  // Wer ihn interpoliert, hat eine Injektion gebaut.
+  const boese = {
+    tenantId: "t1' OR '1'='1",
+    benutzerId: "anna'; DROP TABLE chunks; --",
+    gruppen: ["finanz'"],
+  };
+  const { where, params } = kompiliereFilterSql(boese);
+  assert.ok(!where.includes("DROP TABLE"), "der Wert darf nicht im SQL stehen");
+  assert.ok(!where.includes("1'='1"));
+  assert.ok(params.includes(boese.benutzerId), "er gehört in die Parameter");
+  assert.ok(params.includes(boese.tenantId));
+});
+
+test("SQL: der Parameterindex laesst sich versetzen", () => {
+  // Der Adapter vergibt vor dem Filter schon Parameter (Anfragevektor,
+  // Termliste). Ohne Versatz kollidierten die Nummern lautlos.
+  const a = kompiliereFilterSql(wer());
+  const b = kompiliereFilterSql(wer(), 4);
+  assert.match(a.where, /\$1\b/);
+  assert.match(b.where, /\$4\b/);
+  assert.ok(!b.where.includes("$1"));
+  assert.deepEqual(a.params, b.params);
+});
+
+test("SQL: gebunden wird genau einmal je Wert, in Reihenfolge", () => {
+  const { where, params } = kompiliereFilterSql(
+    wer({ tenantId: "t9", benutzerId: "u9", gruppen: ["g1", "g2"] }),
+  );
+  assert.deepEqual(params, ["t9", "u9", "u9", ["g1", "g2"]]);
+  // Jeder Platzhalter, den die Bedingung nennt, existiert auch.
+  for (const treffer of where.matchAll(/\$(\d+)/g)) {
+    assert.ok(Number(treffer[1]) <= params.length);
+  }
+});
+
 // ── Der Port ─────────────────────────────────────────────────────────────
 
 test("Port: ein unvollständiger Adapter wird LAUT abgelehnt", () => {
   // Ein Speicher, der schweigend nichts findet, ist von einem korrekt
   // filternden Speicher nicht zu unterscheiden.
-  assert.throws(() => createStore({ schreibe: () => {} }), /suche/);
+  //
+  // JEDE Pflichtmethode einzeln, nicht nur die erste fehlende: prüfte der
+  // Test nur ein unvollständiges Objekt, verschöbe das Hinzufügen einer
+  // weiteren Pflichtmethode still, welche Methode überhaupt geprüft wird.
+  // Genau das ist beim Hinzufügen von `ersetzeQuelle` (ADR-0011) passiert.
+  for (const fehlt of [
+    "schreibe",
+    "ersetzeQuelle",
+    "suche",
+    "zaehle",
+    "leere",
+  ]) {
+    const adapter = createMemoryAdapter({ embedding: hashEmbedding() });
+    delete adapter[fehlt];
+    assert.throws(
+      () => createStore(adapter, hashEmbedding()),
+      new RegExp(fehlt),
+    );
+  }
 });
 
-test("Port: bei unauflösbarem Principal wird der Adapter GAR NICHT gefragt", () => {
+test("Port: bei unauflösbarem Principal wird der Adapter GAR NICHT gefragt", async () => {
   // Der wertvollste Test der Datei: fail-closed VOR dem Speicher, nicht darin.
   let gefragt = 0;
-  const store = createStore({
-    name: "zaehler",
-    schreibe: () => 0,
-    zaehle: () => 0,
-    leere: () => {},
-    suche: () => {
-      gefragt++;
-      return [];
+  const store = createStore(
+    {
+      name: "zaehler",
+      schreibe: () => 0,
+      ersetzeQuelle: () => ({ entfernt: 0, geschrieben: 0 }),
+      zaehle: () => 0,
+      leere: () => {},
+      suche: () => {
+        gefragt++;
+        return [];
+      },
     },
-  });
+    hashEmbedding(),
+  );
 
-  const r = store.suche({ principal: null, anfrage: "irgendwas" });
+  const r = await store.suche({ principal: null, anfrage: "irgendwas" });
   assert.equal(gefragt, 0, "der Adapter darf nicht aufgerufen worden sein");
   assert.deepEqual(r.treffer, []);
   assert.equal(r.grund, "principal-nicht-aufloesbar");
 });
 
-test("Aufbau: ein unbekannter Adaptername wirft, statt still auf memory zu fallen", () => {
-  assert.throws(() => baueStore("pgvector"), /unbekannter Store-Adapter/);
-  assert.equal(baueStore().name, "memory");
+test("Aufbau: ein unbekannter Adaptername wirft, statt still auf memory zu fallen", async () => {
+  await assert.rejects(
+    () => baueStore("pgvector"),
+    /unbekannter Store-Adapter/,
+  );
+  assert.equal((await baueStore("memory")).name, "memory");
 });
 
 // ── Hybride Suche, beide Pfade ───────────────────────────────────────────
@@ -154,15 +329,16 @@ const dokumente = [
   },
 ];
 
-function frischerStore() {
-  const s = createStore(createMemoryAdapter());
-  ingestiere(s, dokumente);
+async function frischerStore() {
+  const embedding = hashEmbedding();
+  const s = createStore(createMemoryAdapter({ embedding }), embedding);
+  await ingestiere(s, dokumente);
   return s;
 }
 
-test("Suche: der Cross-User-Fall — das private Dokument taucht NICHT auf", () => {
-  const { dokumente: gefunden } = suche({
-    store: frischerStore(),
+test("Suche: der Cross-User-Fall — das private Dokument taucht NICHT auf", async () => {
+  const { dokumente: gefunden } = await suche({
+    store: await frischerStore(),
     principal: wer(),
     anfrage: "Quartalszahlen Umsatz",
     k: 20,
@@ -172,9 +348,9 @@ test("Suche: der Cross-User-Fall — das private Dokument taucht NICHT auf", () 
   assert.ok(!ids.includes("geheim-1"), "das private darf NICHT auftauchen");
 });
 
-test("Suche: der Cross-Tenant-Fall — der fremde Mandant taucht NICHT auf", () => {
-  const { dokumente: gefunden } = suche({
-    store: frischerStore(),
+test("Suche: der Cross-Tenant-Fall — der fremde Mandant taucht NICHT auf", async () => {
+  const { dokumente: gefunden } = await suche({
+    store: await frischerStore(),
     principal: wer(),
     anfrage: "Quartalszahlen Umsatz",
     k: 20,
@@ -182,11 +358,11 @@ test("Suche: der Cross-Tenant-Fall — der fremde Mandant taucht NICHT auf", () 
   assert.ok(!gefunden.map((d) => d.dokumentId).includes("fremder-mandant"));
 });
 
-test("Suche: der Besitzer findet sein privates Dokument sehr wohl", () => {
+test("Suche: der Besitzer findet sein privates Dokument sehr wohl", async () => {
   // Gegenprobe. Ohne sie könnte der Filter einfach alles ablehnen und alle
   // Leck-Tests blieben grün — eine Messung, die nichts misst.
-  const { dokumente: gefunden } = suche({
-    store: frischerStore(),
+  const { dokumente: gefunden } = await suche({
+    store: await frischerStore(),
     principal: wer({ benutzerId: "chef" }),
     anfrage: "Quartalszahlen Umsatz",
     k: 20,
@@ -194,12 +370,12 @@ test("Suche: der Besitzer findet sein privates Dokument sehr wohl", () => {
   assert.ok(gefunden.map((d) => d.dokumentId).includes("geheim-1"));
 });
 
-test("Suche: BEIDE Pfade filtern — auch ein reiner Stichworttreffer bleibt draußen", () => {
+test("Suche: BEIDE Pfade filtern — auch ein reiner Stichworttreffer bleibt draußen", async () => {
   // Der klassische halbe Leckfall: Vektorpfad gefiltert, Stichwortpfad nicht.
   // Die Anfrage ist wortgleich mit dem verbotenen Dokument, also schlägt der
   // lexikalische Pfad maximal an. Kommt es trotzdem nicht zurück, filtert er.
-  const { treffer } = suche({
-    store: frischerStore(),
+  const { treffer } = await suche({
+    store: await frischerStore(),
     principal: wer(),
     anfrage: "Quartalszahlen und Umsatz im dritten Quartal.",
     k: 20,
@@ -210,9 +386,9 @@ test("Suche: BEIDE Pfade filtern — auch ein reiner Stichworttreffer bleibt dra
   }
 });
 
-test("Suche: fail-closed liefert leer MIT Grund, nicht ungefiltert", () => {
-  const r = suche({
-    store: frischerStore(),
+test("Suche: fail-closed liefert leer MIT Grund, nicht ungefiltert", async () => {
+  const r = await suche({
+    store: await frischerStore(),
     principal: { tenantId: "t1" }, // unvollständig
     anfrage: "Quartalszahlen",
     k: 20,
@@ -222,17 +398,17 @@ test("Suche: fail-closed liefert leer MIT Grund, nicht ungefiltert", () => {
   assert.equal(r.grund, "principal-nicht-aufloesbar");
 });
 
-test("Suche: zwei Durchgänge liefern dieselbe Reihenfolge", () => {
+test("Suche: zwei Durchgänge liefern dieselbe Reihenfolge", async () => {
   // Ohne stabile Sortierung wäre der Determinismus-Nachweis der Schicht A
   // keiner mehr, sondern eine Aussage über die Einfügereihenfolge.
-  const store = frischerStore();
-  const a = suche({
+  const store = await frischerStore();
+  const a = await suche({
     store,
     principal: wer(),
     anfrage: "Quartalszahlen",
     k: 20,
   });
-  const b = suche({
+  const b = await suche({
     store,
     principal: wer(),
     anfrage: "Quartalszahlen",
