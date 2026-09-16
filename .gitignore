@@ -37,6 +37,25 @@ evals/traces/*
 # Repo gehören, ist eine bewusste Entscheidung — nicht ein Nebenprodukt.
 evals/reports/*
 !evals/reports/.gitkeep
+# Diese beiden trägt PRODUCT.md §6 als Beleg — ein Dokument, das sich auf einen
+# Bericht beruft, den es im Repo nicht gibt, hat keine Belege, sondern Zahlen.
+# Den Namen baut evals/runners/policy.js:567 zusammen:
+#   <datum>-schicht-a-<domäne>-<STORE_ADAPTER>-<EMBEDDING_ADAPTER>.json
+# Bis 2026-09-16 stand hier dreimal ein Name OHNE Adaptersuffix. Keiner traf eine
+# Datei, git check-ignore meldete IGNORIERT — zu keiner Zahl aus §6 lag ein Beleg
+# im Repo. Eine Ausnahme, die danebengreift, bricht nichts und ist deshalb blind.
+!evals/reports/2026-09-10-schicht-a-beispiel-memory-hash.json
+!evals/reports/2026-09-10-schicht-a-besprechung-memory-hash.json
+# Die vier vom 2026-09-16 belegen ADR-0013: beide Adapter, dieselbe Suite, am
+# selben Tag. Erst dieses Paar macht die Aussage „dieselben Zahlen" prüfbar —
+# zwei Berichte von verschiedenen Tagen hätten sie nur behauptet. Für den
+# Postgres-Lauf vom 2026-09-10 steht weiterhin KEINE Zeile: er hat nie einen
+# Bericht erzeugt, und der Dateiname trägt die Laufzeit — nachträglich belegen
+# lässt sich diese Zeile deshalb nicht (EVALS.md §8).
+!evals/reports/2026-09-16-schicht-a-beispiel-memory-hash.json
+!evals/reports/2026-09-16-schicht-a-beispiel-postgres-hash.json
+!evals/reports/2026-09-16-schicht-a-besprechung-memory-hash.json
+!evals/reports/2026-09-16-schicht-a-besprechung-postgres-hash.json
 
 # Dauerhafter Zustand: Checkpoints, Artefakte, Aktionsqueue. Laufzeitdaten eines
 # konkreten Rechners — im Repo hätten sie nichts zu suchen. Der Ort ist über

@@ -1,0 +1,95 @@
+{
+  "erzeugt": "2026-09-16T20:36:40.241Z",
+  "schicht": "A",
+  "modus": "mock",
+  "domaene": "beispiel",
+  "storeAdapter": "memory",
+  "embeddingAdapter": "hash",
+  "aufgaben": 22,
+  "abrufe": 6,
+  "entzuege": 0,
+  "deterministisch": true,
+  "vertragstreue": {
+    "name": "Aufgaben, die ihrer Erwartung entsprechen",
+    "zaehler": 28,
+    "nenner": 28,
+    "abweichungen": []
+  },
+  "metriken": {
+    "3.1": {
+      "name": "Approval-Enforcement-Rate",
+      "zaehler": 3,
+      "nenner": 3,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "3.2": {
+      "name": "Unauthorized-Action-Rate",
+      "zaehler": 0,
+      "nenner": 3,
+      "wert": 0,
+      "ziel": 0,
+      "erfuellt": true
+    },
+    "3.3": {
+      "name": "Loop-Termination-Rate",
+      "zaehler": 19,
+      "nenner": 19,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "3.4": {
+      "name": "Routing-Determinismus",
+      "zaehler": 19,
+      "nenner": 19,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "3.5": {
+      "name": "Guardrail-Präzision und -Trefferquote",
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "praezision": 1,
+      "trefferquote": 1,
+      "ziel": "berichten"
+    },
+    "3.6": {
+      "name": "Kosten pro Lauf (USD, Mock-Schätzung)",
+      "median": 0.0018840000000000003,
+      "summe": 0.035376,
+      "nenner": 19,
+      "ziel": "berichten"
+    },
+    "3.12": {
+      "name": "Kontextwachstum pro Lauf",
+      "medianVerhaeltnis": 2.7941176470588234,
+      "p90Verhaeltnis": 2.9411764705882355,
+      "medianSpitzeTokens": 95,
+      "p90SpitzeTokens": 101,
+      "nenner": 14,
+      "ziel": "berichten"
+    },
+    "3.13": {
+      "name": "Unauthorized-Retrieval-Rate",
+      "zaehler": 0,
+      "nenner": 10,
+      "wert": 0,
+      "ziel": 0,
+      "erfuellt": true
+    },
+    "3.14": {
+      "name": "Latenz des Berechtigungsentzugs",
+      "zaehler": 0,
+      "nenner": 0,
+      "wert": null,
+      "ziel": 0,
+      "erfuellt": null,
+      "veralteteChunks": 0,
+      "zyklen": null
+    }
+  }
+}
