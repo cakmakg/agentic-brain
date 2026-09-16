@@ -12,8 +12,8 @@ Dokumente mit der Wirklichkeit überein, droht ein Geheimnis ins Repo zu gelange
 Ziel ist es, **stille Ausfälle sichtbar zu machen** — nicht die lauten. Ein Absturz fällt
 ohnehin auf; ein Mechanismus, der weiterläuft und nichts mehr leistet, nicht.
 
-Die zentrale Regel dieses Projekts lautet: *Dass eine Datei existiert, ist kein Beweis; ein
-bestandener Prüfbefehl ist einer.* Dieses Skill ist die mechanische Form dieser Regel.
+Die zentrale Regel dieses Projekts lautet: _Dass eine Datei existiert, ist kein Beweis; ein
+bestandener Prüfbefehl ist einer._ Dieses Skill ist die mechanische Form dieser Regel.
 
 ## Arbeitsweise
 
@@ -157,12 +157,24 @@ es wird geglaubt.
 ### 13. Stehen Zahlen in Dokumenten ohne Beleg
 
 ```bash
-ls evals/reports/*.json 2>/dev/null | tail -3 || echo "KEIN BERICHT"
+git ls-files evals/reports/ | grep '\.json$' || echo "KEIN BERICHT IM REPO"
+grep -rhoE "[0-9]{4}-[0-9]{2}-[0-9]{2}-schicht-a-[a-z-]+\.json" *.md docs/*.md 2>/dev/null | sort -u | while read -r b; do git ls-files --error-unmatch "evals/reports/$b" >/dev/null 2>&1 && echo "ok   $b" || echo "TOT  $b"; done
 grep -nE "[0-9]+([,.][0-9]+)? ?%" README.md PRODUCT.md EVALS.md ARCHITECTURE.md 2>/dev/null | head -20
 ```
 
-🟡 jede gefundene Prozentzahl von Hand gegen den jüngsten Bericht halten. 🔴 eine Zahl,
-die in keinem Bericht steht — das ist genau der Fehler, gegen den dieses Projekt gebaut ist.
+🔴 `KEIN BERICHT IM REPO`, oder eine `TOT`-Zeile: ein Dokument beruft sich auf einen Bericht,
+den ein **Klon** des Repos nicht hat. 🟡 jede gefundene Prozentzahl von Hand gegen den
+jüngsten **verfolgten** Bericht halten.
+
+`ls` würde hier lügen — es zeigt die Berichte auf **dieser** Platte, nicht die im Repo. Am
+2026-09-16 lagen lokal 12 Berichte und im Repo 2: die Prüfung war grün, und trotzdem stand
+hinter keiner Zahl aus `PRODUCT.md` §6 ein Beleg, den ein Zweiter nachschlagen konnte.
+Deshalb `git ls-files`. Dieselbe Frage zweimal zu stellen ist Absicht: die erste Zeile zeigt,
+**was** belegt ist, die zweite, **was ein Dokument behauptet** — auseinander laufen können sie
+jederzeit, und genau dann ist diese Prüfung rot.
+
+**Grenze:** die zweite Zeile findet nur **vollständig** ausgeschriebene Dateinamen. Eine
+Abkürzung wie `…-besprechung-memory.json` trägt kein Datum und entgeht ihr.
 
 ---
 
@@ -192,10 +204,10 @@ grep -rnE "sk-ant-|api[_-]?key\s*[:=]\s*['\"][A-Za-z0-9_-]{20,}" src/ evals/ tes
 
 Genau eine Tabelle:
 
-| # | Prüfung | Ergebnis | Befund |
-| --- | --- | --- | --- |
-| 1 | Hook-Dateien | 🟢 | … |
-| … | … | … | … |
+| #   | Prüfung      | Ergebnis | Befund |
+| --- | ------------ | -------- | ------ |
+| 1   | Hook-Dateien | 🟢       | …      |
+| …   | …            | …        | …      |
 
 Darunter je 🔴 eine Korrekturzeile: **was zu tun ist**, in einem Satz, mit dem Befehl.
 
