@@ -30,13 +30,21 @@ export function createRunner(domain) {
   };
 
   // Startet einen Workflow. Läuft bis human_approval und hält dort an.
-  async function startWorkflow({ task, threadId }) {
+  //
+  // `principal` ist die Identität, in deren Namen der Lauf liest (ADR-0019,
+  // T1). Fehlt er, bleibt das Feld auf `null` — der Leseweg antwortet dann
+  // leer und mit Grund, statt ungefiltert. Eine Domäne ohne Leseweg (etwa
+  // `beispiel`) merkt von diesem Feld nichts.
+  async function startWorkflow({ task, threadId, principal = null }) {
     const config = { configurable: { thread_id: threadId } };
     const trace = startTrace({ runId: threadId, task });
     let interrupted = false;
 
     // stream: nach jedem fertigen Knoten kommt ein "update".
-    for await (const step of await app.stream({ task, threadId }, config)) {
+    for await (const step of await app.stream(
+      { task, threadId, principal },
+      config,
+    )) {
       uebergang(trace, threadId, step);
     }
 

@@ -163,3 +163,32 @@ test("Nenner-Probe: ohne Faelle ist eine Metrik ungemessen, nicht erfuellt", () 
   // still zu sein.
   assert.equal(m["3.13"].erfuellt !== false, true);
 });
+
+test("3.13 zaehlt auch den AGENTENPFAD — und nicht die Entzugsfaelle", () => {
+  // Seit T1 (ADR-0019) liest nicht nur der Abruf, sondern auch ein Agentenlauf.
+  // Beide gehoeren in denselben Nenner; der Entzugsfall NICHT, weil 3.14 seine
+  // Lieferungen phasenweise beurteilt.
+  const laeufe = [
+    { art: "abruf", gelieferteChunks: 4, unerlaubteChunks: 0 },
+    workflow("W1", { gelieferteChunks: 2, unerlaubteChunks: 1 }),
+    { art: "entzug", gelieferteChunks: 99, veralteteChunks: 0 },
+  ];
+
+  const m = berechneMetriken(laeufe);
+
+  assert.equal(m["3.13"].nenner, 6, "4 aus dem Abruf + 2 aus dem Agentenlauf");
+  assert.equal(m["3.13"].zaehler, 1, "das Leck des Agentenlaufs zaehlt");
+  assert.equal(m["3.13"].erfuellt, false);
+});
+
+test("3.13: ein Nenner ohne Zaehler wirft — eine NaN waere still durchgelaufen", () => {
+  // Der Defekt, der beim Bauen von T1 wirklich auftrat: ein Lauf meldete
+  // `gelieferteChunks` ohne `unerlaubteChunks`, und der Bericht trug
+  // „NaN % (NaN/70)". Eine NaN ist weder gruen noch rot — sie ist die
+  // schlimmste der drei Antworten.
+  assert.throws(
+    () => berechneMetriken([{ art: "abruf", id: "X1", gelieferteChunks: 3 }]),
+    /X1/,
+    "der Befund muss den Lauf NENNEN, sonst verschiebt er die Arbeit nur",
+  );
+});

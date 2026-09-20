@@ -18,6 +18,16 @@ import { terme } from "../embedding/index.js";
 
 const skalarprodukt = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
 
+// Absatzreihenfolge innerhalb eines Dokuments. `chunkId` ist
+// `<dokumentId>#<i>`; nach Zeichen sortiert stünde `#10` vor `#2`, und der
+// gezielte Abruf gäbe den Text eines Dokuments verdreht zurück. Der
+// Postgres-Adapter sortiert dieselbe Zahl mit `split_part(chunk_id, '#', 2)::int`
+// — nicht lexikalisch, sonst wäre die Reihenfolge ab dem zehnten Absatz eine
+// andere als hier, und genau solche stillen Unterschiede zwischen zwei
+// Adaptern misst dieses Repo.
+const nachAbsatz = (a, b) =>
+  Number(a.split("#").pop()) - Number(b.split("#").pop());
+
 export function createMemoryAdapter({ embedding } = {}) {
   let chunks = [];
 
@@ -62,7 +72,30 @@ export function createMemoryAdapter({ embedding } = {}) {
     // Chunks, das Prädikat steht an ihrem Anfang, und beide Bewertungen
     // entstehen erst danach. Ein Chunk, der nicht gesehen werden darf, wird
     // von keinem der beiden Pfade je berührt.
-    async suche({ praedikat, anfrage, k }) {
+    async suche({ praedikat, anfrage, k, dokumentId = null }) {
+      // ── Die gezielte Kippe (ADR-0019, T1) ─────────────────────────────
+      // Derselbe Filter, an derselben Stelle — nur wird danach nicht bewertet,
+      // sondern nach Absatz geordnet. Kein Einbettungsaufruf: es gibt keine
+      // Frage, und ein Vektor, den niemand vergleicht, kostet nur Geld.
+      if (dokumentId) {
+        return chunks
+          .filter(
+            (c) =>
+              praedikat(c.envelope) && c.envelope.dokumentId === dokumentId,
+          )
+          .sort((a, b) => nachAbsatz(a.chunkId, b.chunkId))
+          .map((chunk) => ({
+            chunkId: chunk.chunkId,
+            dokumentId: chunk.envelope.dokumentId,
+            text: chunk.text,
+            envelope: chunk.envelope,
+            // `null` und nicht 0: hier wurde nichts bewertet. Eine 0 wäre die
+            // Behauptung „ohne Relevanz", und die ist etwas anderes als
+            // „ungemessen" — derselbe Unterschied wie bei den Metriken.
+            wert: null,
+          }));
+      }
+
       // `"anfrage"` und nicht `"dokument"`: ein echtes Retrieval-Modell bettet
       // die Frage anders ein als den Text, den sie finden soll (ADR-0015).
       const frageVektor = await embedding.einbette(anfrage, "anfrage");

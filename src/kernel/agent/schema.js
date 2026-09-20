@@ -9,14 +9,25 @@
 // `humanApproval` steht bewusst im KERN und nicht in der Domäne: an ihm hängt
 // die fail-closed-Kante des Graphen. Die zentrale Zusage dieses Repos darf
 // nicht davon abhängen, dass eine Domäne daran denkt.
+//
+// `principal` steht seit T1 (ADR-0019) aus demselben Grund im Kern: an ihm
+// hängt der gefilterte Leseweg. Läge er bei der Domäne, könnte eine Domäne ihn
+// weglassen — und ihre Agenten läsen ungefiltert, ohne dass eine Zeile falsch
+// aussieht.
 
 import { Annotation } from "@langchain/langgraph";
-import { lastWins, sum, append } from "./reducers.js";
+import { lastWins, sum, append, einmalGesetzt } from "./reducers.js";
 
 const coreFields = {
   // Eingabe
   task: Annotation({ reducer: lastWins, default: () => "" }),
   threadId: Annotation({ reducer: lastWins, default: () => "" }),
+
+  // WER fragt. `null` heißt „niemand" und ist fail-closed: der Leseweg gibt
+  // dafür ein leeres Ergebnis mit Grund zurück, nicht alles (ADR-0008 F7).
+  // `einmalGesetzt`, damit die Identität innerhalb eines Laufs nicht tauschbar
+  // ist — auch nicht durch einen Knoten, der es gut meint.
+  principal: Annotation({ reducer: einmalGesetzt, default: () => null }),
 
   // Routing
   nextAgent: Annotation({ reducer: lastWins, default: () => "" }),

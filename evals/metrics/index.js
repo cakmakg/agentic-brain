@@ -83,15 +83,43 @@ export function berechneMetriken(laeufe, wiederholung = []) {
   const kosten = workflows.map((l) => l.kostenUsd);
 
   // ── 3.13 Unauthorized-Retrieval-Rate ──────────────────────────────────
-  // Nenner: ALLE zurückgegebenen Chunks über alle Abruf-Fälle.
+  // Nenner: ALLE zurückgegebenen Chunks über alle Fälle, die GELESEN haben —
+  // die Abruf-Fälle und, seit T1 (ADR-0019), die Agentenläufe.
   // Zähler: davon jene, deren Dokument der Principal nicht sehen darf.
+  //
+  // WARUM DER AGENTENPFAD DAZUGEHÖRT. Bis zum 2026-09-20 zählte nur der
+  // Abruf. Der Agentenpfad las damals gar nicht — und als er es tat, wäre er
+  // ohne diese Zeile weiter ungemessen geblieben: 3.13 hätte 0 % gemeldet,
+  // während ein Agent über eine fremde Notiz schreibt. Eine Zusage, die nur
+  // auf einem von zwei Wegen gemessen wird, ist auf dem anderen keine.
   //
   // Die Richtung ist Absicht: gezählt wird, was zu VIEL kam. Was zu WENIG kam,
   // ist kein Leck und gehört nicht in diese Zahl — es wäre ein kaputtes
   // Retrieval, und das fängt die Vertragstreue ab (`fehlend` unten). Beides in
   // eine Zahl zu werfen hieße, ein Leck gegen einen Ausfall aufzurechnen.
-  const chunksGesamt = abrufe.reduce((n, a) => n + a.gelieferteChunks, 0);
-  const chunksUnerlaubt = abrufe.reduce((n, a) => n + a.unerlaubteChunks, 0);
+  // Drin sind die Abruf-Fälle und die Agentenläufe: beide bringen die Erwartung
+  // „was darf dieser Principal sehen" mit. Die ENTZUGSFÄLLE bleiben draußen,
+  // obwohl auch sie liefern — ihre Lieferungen beurteilt 3.14 phasenweise
+  // (`vorher` / `nachher`), und dieselbe Evidenz in zwei Metriken hieße, dass
+  // ein einzelner Defekt zwei Zahlen bewegt. Dann ist keine der beiden mehr
+  // einer Ursache zuzuordnen.
+  const gelesen = [...abrufe, ...workflows].filter(
+    (l) => typeof l.gelieferteChunks === "number",
+  );
+
+  // Ein Nenner ohne Zähler ist keine Messung, sondern eine NaN — und eine NaN
+  // wandert still durch jede Prozentrechnung hindurch. Dieselbe Lehre wie
+  // ADR-0017: laut, nicht still.
+  const halb = gelesen.find((l) => typeof l.unerlaubteChunks !== "number");
+  if (halb) {
+    throw new Error(
+      `berechneMetriken: Lauf "${halb.id}" meldet gelieferteChunks ohne unerlaubteChunks — ` +
+        "ein Nenner ohne Zähler ist keine Messung.",
+    );
+  }
+
+  const chunksGesamt = gelesen.reduce((n, l) => n + l.gelieferteChunks, 0);
+  const chunksUnerlaubt = gelesen.reduce((n, l) => n + l.unerlaubteChunks, 0);
 
   // ── 3.14 Latenz des Berechtigungsentzugs ──────────────────────────────
   // Nenner: alle Entzugsfälle. Zähler: die, in denen nach EINEM

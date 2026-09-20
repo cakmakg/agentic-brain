@@ -187,6 +187,62 @@ function sucheSql(whereKlausel, limitPlatz) {
 `;
 }
 
+// ── Der gezielte Abruf (ADR-0019, T1) ────────────────────────────────────
+// Ein benanntes Dokument, vollständig, in Absatzreihenfolge — und derselbe
+// ACL-Filter an derselben Stelle: IN dem `WHERE`, das die Zeilen liest. Kein
+// `wert > 0` und kein `LIMIT`: hier entscheidet keine Relevanz, weder über die
+// Auswahl noch über die Länge.
+//
+// `$1` ist die Dokumentkennung, der Filter beginnt ab `$2`.
+//
+// `NULL::float8 AS wert` hält die Form der Zeile gleich mit der Suche. Die
+// Sortierung nimmt die ABSATZZAHL, nicht die Zeichenkette: `chunk_id` endet auf
+// `#<i>`, und lexikalisch stünde `#10` vor `#2` — der `memory`-Adapter sortiert
+// dieselbe Zahl.
+function gezieltSql(whereKlausel) {
+  return `
+    SELECT
+      chunk_id,
+      dokument_id,
+      inhalt,
+      quelle,
+      ${SPALTEN.tenantId},
+      ${SPALTEN.sichtbarkeit},
+      ${SPALTEN.erlaubteGruppen},
+      ${SPALTEN.erlaubtePersonen},
+      ${SPALTEN.besitzerId},
+      NULL::float8 AS wert
+    FROM chunks
+    WHERE dokument_id = $1 AND (${whereKlausel})
+    ORDER BY (split_part(chunk_id, '#', 2))::int ASC
+`;
+}
+
+// Eine Zeile wird zum Treffer. Die Envelope wird wieder zusammengesetzt, damit
+// der Aufrufer adapterunabhängig dasselbe sieht wie beim `memory`-Adapter —
+// deshalb steht diese Übersetzung an EINER Stelle und wird von beiden Kippen
+// benutzt. Zwei Kopien liefen auseinander, und der Unterschied wäre eine
+// Verhaltensänderung, die keine Metrik meldet.
+//
+// `wert` bleibt `null`, wenn die Zeile aus dem gezielten Abruf kommt:
+// `Number(null)` wäre 0, und 0 hieße „ohne Relevanz bewertet" statt
+// „nicht bewertet".
+const alsTreffer = (z) => ({
+  chunkId: z.chunk_id,
+  dokumentId: z.dokument_id,
+  text: z.inhalt,
+  envelope: {
+    tenantId: z[SPALTEN.tenantId],
+    quelle: z.quelle,
+    dokumentId: z.dokument_id,
+    sichtbarkeit: z[SPALTEN.sichtbarkeit],
+    erlaubteGruppen: z[SPALTEN.erlaubteGruppen],
+    erlaubtePersonen: z[SPALTEN.erlaubtePersonen],
+    besitzerId: z[SPALTEN.besitzerId],
+  },
+  wert: z.wert === null ? null : Number(z.wert),
+});
+
 export function createPostgresAdapter({ connectionString, embedding } = {}) {
   const url = connectionString || env.databaseUrl;
   if (!url) {
@@ -268,8 +324,19 @@ export function createPostgresAdapter({ connectionString, embedding } = {}) {
     // DER FILTER STEHT IM `WHERE` DER BEWERTENDEN UNTERABFRAGE, nicht darüber.
     // Damit wird ein unberechtigter Chunk nicht bewertet und nicht sortiert —
     // er verlässt die Datenbank nie (ADR-0008).
-    async suche({ sqlFilter, anfrage, k }) {
+    async suche({ sqlFilter, anfrage, k, dokumentId = null }) {
       await stelleSicher();
+
+      // Die gezielte Kippe: kein Einbettungsaufruf, keine Termliste, kein
+      // Limit — nur der Filter und die Absatzreihenfolge.
+      if (dokumentId) {
+        const filter = sqlFilter(2); // $1 ist die Dokumentkennung
+        const r = await pool.query(gezieltSql(filter.where), [
+          dokumentId,
+          ...filter.params,
+        ]);
+        return r.rows.map(alsTreffer);
+      }
 
       // `"anfrage"` und nicht `"dokument"`: ein echtes Retrieval-Modell
       // bettet die Frage anders ein als den Text, den sie finden soll
@@ -297,23 +364,7 @@ export function createPostgresAdapter({ connectionString, embedding } = {}) {
 
       const r = await pool.query(sql, params);
 
-      // Die Envelope wird wieder zusammengesetzt, damit der Aufrufer
-      // adapterunabhängig dasselbe sieht wie beim `memory`-Adapter.
-      return r.rows.map((z) => ({
-        chunkId: z.chunk_id,
-        dokumentId: z.dokument_id,
-        text: z.inhalt,
-        envelope: {
-          tenantId: z[SPALTEN.tenantId],
-          quelle: z.quelle,
-          dokumentId: z.dokument_id,
-          sichtbarkeit: z[SPALTEN.sichtbarkeit],
-          erlaubteGruppen: z[SPALTEN.erlaubteGruppen],
-          erlaubtePersonen: z[SPALTEN.erlaubtePersonen],
-          besitzerId: z[SPALTEN.besitzerId],
-        },
-        wert: Number(z.wert),
-      }));
+      return r.rows.map(alsTreffer);
     },
 
     // Optional im Port: ohne sie hielte der Verbindungspool den Prozess offen

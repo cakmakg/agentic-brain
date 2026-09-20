@@ -288,3 +288,64 @@ test(
     }
   },
 );
+
+// ── Der Differenztest der GEZIELTEN Kippe (T1, ADR-0019) ─────────────────
+// Dieselbe Frage wie oben, eine Ebene strenger: der gezielte Abruf hat in
+// beiden Adaptern eine EIGENE Implementierung — `memory` filtert in einer
+// Schleife, `postgres` in einem zweiten SQL. Zwei Implementierungen derselben
+// Regel sind genau die Stelle, an der ein Unterschied entsteht, den keine
+// Metrik meldet: der Agentenpfad liest ausschließlich über diese Kippe.
+//
+// Geprüft wird beides — dass der Berechtigte das ganze Dokument in
+// Absatzreihenfolge bekommt, und dass der Unberechtigte NICHTS bekommt.
+
+test(
+  "BEIDE Adapter liefern beim gezielten Abruf dasselbe Ergebnis",
+  nurMitDb,
+  async () => {
+    const mem = await baueStore("memory");
+    const chunks = await chunksAus(dokumente(), mem);
+    await mem.ersetzeQuelle("q-test", chunks);
+
+    const pg = await frischerPostgresStore();
+    try {
+      await pg.ersetzeQuelle("q-test", chunks);
+
+      const principale = [
+        wer(),
+        wer({ gruppen: ["technik"] }),
+        wer({ benutzerId: "chef" }),
+        wer({ tenantId: "t2", benutzerId: "u2" }),
+        { tenantId: "t1" }, // nicht auflösbar
+      ];
+
+      for (const principal of principale) {
+        for (const dokumentId of [
+          "d-oeffentlich",
+          "d-gruppe",
+          "d-privat",
+          "d-freigabe",
+        ]) {
+          const frage = { principal, dokumentId };
+          const a = await mem.suche(frage);
+          const b = await pg.suche(frage);
+
+          assert.deepEqual(
+            b.treffer.map((t) => t.chunkId),
+            a.treffer.map((t) => t.chunkId),
+            `${principal.tenantId}/${principal.benutzerId ?? "—"} auf ${dokumentId}: verschiedene Treffer`,
+          );
+          assert.equal(b.grund, a.grund);
+          // `null` und nicht 0: im gezielten Abruf wird nicht bewertet. Eine 0
+          // wäre die Behauptung „ohne Relevanz" — und `Number(null)` ist 0,
+          // also ist genau hier die Stelle, an der die zwei Adapter
+          // auseinanderlaufen könnten.
+          for (const t of b.treffer) assert.equal(t.wert, null);
+        }
+      }
+    } finally {
+      await pg.schliesse();
+      await mem.schliesse();
+    }
+  },
+);

@@ -28,8 +28,24 @@ function fasseZusammen(treffer) {
   );
 }
 
-export async function suche({ store, principal, anfrage, k = 5 }) {
-  const { treffer, grund } = await store.suche({ principal, anfrage, k });
+// `dokumentId` schaltet die gezielte Kippe des Lesewegs ein: ALLE sichtbaren
+// Chunks genau dieses Dokuments, in Absatzreihenfolge, ohne Relevanz und ohne
+// `k` (siehe `context/store/index.js`). Ein Agent, der eine benannte Notiz
+// bearbeitet, braucht genau das — sonst entschiede die Rangfolge darüber, ob
+// eine berechtigte Notiz „sichtbar" ist.
+export async function suche({
+  store,
+  principal,
+  anfrage = "",
+  k = 5,
+  dokumentId = null,
+}) {
+  const { treffer, grund } = await store.suche({
+    principal,
+    anfrage,
+    k,
+    dokumentId,
+  });
   return {
     treffer,
     dokumente: fasseZusammen(treffer),

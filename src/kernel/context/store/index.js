@@ -108,7 +108,28 @@ export function createStore(adapter, embedding) {
     //
     // Es gibt bewusst KEINEN zweiten Leseweg ohne Principal. Ein solcher wäre
     // die Abkürzung, über die jedes Leck später hereinkäme.
-    async suche({ principal, anfrage, k = 5 }) {
+    //
+    // ── ZWEI KIPPEN, EIN WEG (ADR-0019, T1) ─────────────────────────────
+    // Ohne `dokumentId`: die Relevanzsuche — die k besten SICHTBAREN Chunks
+    // zu einer Frage. Mit `dokumentId`: der gezielte Abruf — ALLE sichtbaren
+    // Chunks genau dieses Dokuments, in ihrer Reihenfolge, ohne Relevanz.
+    //
+    // WARUM DAS NICHT ZWEI METHODEN SIND. Die fail-closed-Kante darf nur an
+    // EINER Stelle stehen; eine zweite Lesemethode wäre eine zweite Stelle,
+    // an der man sie vergessen kann. Beide Kippen gehen durch dieselbe
+    // Kompilierung desselben Regelwerks.
+    //
+    // WARUM ES DIE ZWEITE KIPPE ÜBERHAUPT GIBT. Ein Agent, der eine BENANNTE
+    // Notiz bearbeiten soll, darf nicht davon abhängen, dass sie auch
+    // relevant genug bewertet wird: `memory` verwirft Chunks mit `wert = 0`,
+    // und ein Hash-Embedding (ADR-0007) sagt über Relevanz ohnehin nichts.
+    // Sonst entschied am Ende die Rangfolge über die Berechtigung — und eine
+    // berechtigte Notiz wäre „nicht sichtbar", weil sie schlecht bewertet
+    // wurde. Relevanz darf ORDNEN, ausschließen darf nur die ACL.
+    //
+    // `k` gilt nur in der ersten Kippe. Ein Dokument ist keine Rangliste; es
+    // abzuschneiden hieße, dem Agenten die Hälfte seiner Notiz zu geben.
+    async suche({ principal, anfrage = "", k = 5, dokumentId = null }) {
       const praedikat = kompiliereFilter(principal);
       if (!praedikat) {
         // Unterscheidbar protokolliert: „nicht auflösbar" ist etwas anderes
@@ -123,7 +144,13 @@ export function createStore(adapter, embedding) {
       // anwenden.
       const sqlFilter = (ab) => kompiliereFilterSql(principal, ab);
       return {
-        treffer: await adapter.suche({ praedikat, sqlFilter, anfrage, k }),
+        treffer: await adapter.suche({
+          praedikat,
+          sqlFilter,
+          anfrage,
+          k,
+          dokumentId,
+        }),
         grund: null,
       };
     },

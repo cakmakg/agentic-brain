@@ -17,12 +17,22 @@ export const prompts = {
       "Du ziehst aus einer Besprechungsnotiz die offenen Aktionspunkte. " +
       "Jeder Aktionspunkt nennt genau eine Handlung und genau eine verantwortliche Person. " +
       "Erfinde nichts, was nicht in der Notiz steht — ein erfundener Aktionspunkt wird zu einem echten Ticket.",
+    // ZWEI ARGUMENTE, UND DAS ZWEITE IST DER PUNKT VON T1 (ADR-0019). Bis
+    // dahin stand hier `Notiz: ${state.task}` — die Aufgabe des Fragenden als
+    // „Notiz" ausgegeben, obwohl nie eine Notiz gelesen wurde. `notiz` kommt
+    // jetzt aus dem gefilterten Leseweg: das Modell sieht genau den Text, den
+    // dieser Principal sehen darf, und sonst keinen.
+    //
     // Die Rückmeldung des Prüfers geht in die Revision. Eine Schleife, deren
     // Produzent die Kritik nie sieht, dreht sich nur.
-    user: (state) =>
-      state.gruende
-        ? `Notiz: ${state.task}\nÜberarbeite deine vorige Liste. Rückmeldung der Prüfung: ${state.gruende}`
-        : `Notiz: ${state.task}`,
+    user: (state, notiz = null) => {
+      const kopf = notiz
+        ? `Notiz ${notiz.id}:\n${notiz.text}\n\nAuftrag: ${state.task}`
+        : `Notiz: ${state.task}`;
+      return state.gruende
+        ? `${kopf}\nÜberarbeite deine vorige Liste. Rückmeldung der Prüfung: ${state.gruende}`
+        : kopf;
+    },
   },
 
   // Das QA-Tor. EIGENER Prompt, eigener Knoten, notfalls eigenes Modell:
