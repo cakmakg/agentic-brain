@@ -55,8 +55,34 @@ function schluesselAus({ threadId, actionType, payload }) {
     .slice(0, 32);
 }
 
-export function createActionQueue({ whitelist, validators, logName }) {
+export function createActionQueue({
+  whitelist,
+  validators,
+  befugnisse,
+  logName,
+}) {
   const erlaubt = new Set(whitelist);
+
+  // ── Die Politik wird beim BAU geprüft, nicht im Lauf (ADR-0020) ────────
+  // Bringt eine Domäne `befugnisse` mit, muss JEDER Typ ihrer Whitelist darin
+  // stehen — als Funktion oder als benannte Ausnahme. Ein fehlender Eintrag
+  // wäre sonst ein Typ, der die Prüfung still überspringt, und das sähe im
+  // Bericht wie „geprüft" aus. Dieselbe Linie wie `ungemessen` in ADR-0017:
+  // gemessen oder benannt, aber nicht vergessen.
+  if (befugnisse) {
+    for (const typ of erlaubt) {
+      const p = befugnisse[typ];
+      const gueltig =
+        typeof p === "function" || (typeof p === "string" && p.length > 0);
+      if (!gueltig) {
+        throw new Error(
+          `createActionQueue: der Aktionstyp "${typ}" steht auf der Whitelist, ` +
+            "hat aber keine Befugnis-Politik — erwartet wird eine Funktion oder " +
+            "eine benannte Ausnahme (nicht-leere Zeichenkette).",
+        );
+      }
+    }
+  }
   const queue = []; // { id, threadId, actionType, payload, status, attempts, idempotencyKey }
   const nachSchluessel = new Map(); // idempotencyKey -> id
   let _id = 0;
@@ -102,7 +128,16 @@ export function createActionQueue({ whitelist, validators, logName }) {
     }
   }
 
-  function enqueueAction({ threadId, actionType, payload, idempotencyKey }) {
+  // ASYNCHRON seit ADR-0020: eine Befugnis kann einen Lesezugriff verlangen.
+  // Jeder Aufrufer braucht ein `await` — eine Aktion, deren Einreihung niemand
+  // abwartet, ist eine Aktion ohne Beleg.
+  async function enqueueAction({
+    threadId,
+    actionType,
+    payload,
+    principal = null,
+    idempotencyKey,
+  }) {
     // TOR 1 bleibt das erste Tor: nicht auf der Whitelist → nicht einmal
     // schreiben. Die Dedup-Prüfung kommt DANACH, damit ein nicht erlaubter Typ
     // auch dann auffliegt, wenn er einen bekannten Schlüssel mitbringt.
@@ -111,6 +146,31 @@ export function createActionQueue({ whitelist, validators, logName }) {
         `actionType steht nicht auf der Whitelist: ${actionType}`,
       );
     }
+
+    // ── TOR 1b: die Befugnis (ADR-0020) ──────────────────────────────────
+    // WER löst aus, und darf er das an DIESEM Ziel? Die Frage steht vor der
+    // Dedup-Prüfung, aus demselben Grund wie TOR 1: ein bekannter
+    // Idempotenzschlüssel darf keine fehlende Befugnis durchreichen.
+    //
+    // Die Queue glaubt dem Graphen nicht. Dass ohne sichtbare Notiz kein
+    // Entwurf entsteht, ist eine Aussage über den Ablauf; hier wird sie
+    // unabhängig davon noch einmal gestellt.
+    const politik = befugnisse?.[actionType];
+    let befugnis = befugnisse ? null : "keine Politik";
+    if (typeof politik === "function") {
+      if (!(await politik({ principal, payload, threadId }))) {
+        throw new Error(
+          `Handlungsbefugnis fehlt: ${actionType} für ` +
+            `${principal?.benutzerId ?? "niemand"} am genannten Ziel.`,
+        );
+      }
+      befugnis = "geprueft";
+    } else if (typeof politik === "string") {
+      // Benannte Ausnahme. Sie steht IN der Aktion, damit im Bericht nicht
+      // „geprüft" steht, wo „nicht abgelehnt" gemeint ist.
+      befugnis = `ausgenommen: ${politik}`;
+    }
+
     laden();
 
     const schluessel =
@@ -127,6 +187,10 @@ export function createActionQueue({ whitelist, validators, logName }) {
       threadId,
       actionType,
       payload,
+      // In wessen Namen. Er steht NICHT im Idempotenzschlüssel: derselbe
+      // Vorgang bleibt derselbe, gleich wer ihn einreicht (ADR-0020).
+      principal,
+      befugnis,
       idempotencyKey: schluessel,
       status: "PENDING",
       attempts: 0,

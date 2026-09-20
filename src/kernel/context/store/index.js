@@ -130,6 +130,22 @@ export function createStore(adapter, embedding) {
     // `k` gilt nur in der ersten Kippe. Ein Dokument ist keine Rangliste; es
     // abzuschneiden hieße, dem Agenten die Hälfte seiner Notiz zu geben.
     async suche({ principal, anfrage = "", k = 5, dokumentId = null }) {
+      // EIN LEERES ZIEL IST EIN FEHLER, KEIN MODUSWECHSEL. Am 2026-09-20
+      // gefunden, und zwar nur, weil dieselbe Suite gegen BEIDE Adapter läuft:
+      // eine Befugnisprüfung rief mit `dokumentId: ""` auf, das fiel still in
+      // die Relevanzsuche mit leerer Frage, und dort bewerten die zwei Adapter
+      // verschieden — `memory` verwarf alles, Postgres lieferte. Aus einer
+      // fehlenden Kennung wurde so „durchsuche alles", und aus einer fehlenden
+      // Befugnis eine erteilte.
+      if (
+        dokumentId !== null &&
+        (typeof dokumentId !== "string" || dokumentId === "")
+      ) {
+        throw new Error(
+          "store.suche: `dokumentId` wurde übergeben, ist aber keine nicht-leere " +
+            "Zeichenkette. Ein leeres Ziel darf nicht zur Relevanzsuche werden.",
+        );
+      }
       const praedikat = kompiliereFilter(principal);
       if (!praedikat) {
         // Unterscheidbar protokolliert: „nicht auflösbar" ist etwas anderes

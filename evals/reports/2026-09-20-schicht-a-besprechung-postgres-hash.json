@@ -1,19 +1,19 @@
 {
-  "erzeugt": "2026-09-20T16:32:02.475Z",
+  "erzeugt": "2026-09-20T17:25:55.677Z",
   "schicht": "A",
   "modus": "mock",
   "domaene": "besprechung",
   "storeAdapter": "postgres",
   "embeddingAdapter": "hash",
   "identitaetAdapter": "fixtures",
-  "aufgaben": 22,
+  "aufgaben": 24,
   "abrufe": 7,
   "entzuege": 6,
   "deterministisch": true,
   "vertragstreue": {
     "name": "Aufgaben, die ihrer Erwartung entsprechen",
-    "zaehler": 35,
-    "nenner": 35,
+    "zaehler": 37,
+    "nenner": 37,
     "abweichungen": []
   },
   "metriken": {
@@ -73,6 +73,14 @@
       "p90SpitzeTokens": 172,
       "nenner": 12,
       "ziel": "berichten"
+    },
+    "3.16": {
+      "name": "Handlungsbefugnis-Verletzungsrate",
+      "zaehler": 0,
+      "nenner": 2,
+      "wert": 0,
+      "ziel": 0,
+      "erfuellt": true
     },
     "3.13": {
       "name": "Unauthorized-Retrieval-Rate",

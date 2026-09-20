@@ -1814,3 +1814,119 @@ Lauf `35524547434` auf `3449676`.
 **Damit ist der MVP-Schnitt zu Ende.** Und die wichtigste Zeile daran ist nicht das Grün,
 sondern wo es entstanden ist: bis heute hing jede Prüfung dieses Repos daran, dass der Agent
 sie ausführt und ehrlich berichtet. Seit diesem Lauf tut es eine Maschine, die nicht er ist.
+
+---
+
+## ADR-0020 — Die Aktion trägt den Principal, und die Queue prüft die Befugnis, bevor sie schreibt
+
+**Datum:** 2026-09-20
+**Status:** Angenommen
+
+Löst A11 aus `docs/roadmap.md` §4 ein (Etappe 4b).
+
+### Kontext
+
+Seit T1 (ADR-0019) liest ein Agent nur, was der Fragende sehen darf, und seit T2 (ADR-0018) ist
+dieser Fragende aufgelöst statt geglaubt. Die **Aktionsfläche** weiß davon nichts. `enqueueAction`
+kennt `threadId`, `actionType`, `payload` — **keinen Principal**. Zwei Tore stehen dort (Whitelist
+vor dem Schreiben, Validierer vor dem Ausführen), und beide fragen, WAS geschieht. Keines fragt,
+**WER** es auslöst.
+
+Solange der Ablauf selbst dicht ist, fällt das nicht auf: ohne sichtbare Notiz entsteht kein
+Entwurf, also auch keine Aktion. Aber das ist eine Aussage über den Graphen, nicht über die
+Queue. Ändert ein späterer Knoten `notizId`, kommt eine Aktion mit einem Ziel in die Queue, das
+der Fragende nie sehen durfte — und nichts hält sie auf. Genau diese Trennung ist der Grund für
+zwei Tore statt eines: **die Queue darf dem Graphen nicht glauben.**
+
+### Entscheidung
+
+**Die Aktion trägt den Principal, und vor dem Schreiben prüft eine Politik der Domäne, ob dieser
+Principal diesen Aktionstyp an diesem Ziel auslösen darf.**
+
+1. `enqueueAction` nimmt `principal` und legt ihn in die Aktion. Er geht **nicht** in den
+   Idempotenzschlüssel: derselbe Vorgang bleibt derselbe Vorgang, gleich wer ihn einreicht.
+2. `enqueueAction` wird **asynchron**. Eine Befugnis kann einen Lesezugriff verlangen, und ein
+   Port hinter einem Netz darf nicht die billigere der beiden Welten abbilden — dieselbe
+   Begründung wie beim Store-Port in Etappe 3c.
+3. **TOR 1b** liegt zwischen Whitelist und Dedup-Prüfung: keine Befugnis → nicht eingereiht,
+   und zwar bevor eine Zeile entsteht.
+4. Die Politik ist ein Feld der Domäne: je Aktionstyp **eine Funktion oder eine benannte
+   Ausnahme**. Bringt eine Domäne `befugnisse` mit, muss **jeder** Typ ihrer Whitelist darin
+   stehen — geprüft beim BAU der Queue, nicht im Lauf. Eine Domäne ohne `befugnisse` verhält
+   sich wie bisher.
+5. Für `besprechung` gilt: **`TICKET_ANLEGEN` ist befugt, wenn der Principal die Notiz im Ziel
+   über den gefilterten Leseweg bekommt** — gezielt abgerufen, dieselbe Kompilierung desselben
+   Regelwerks wie beim Lesen. Keine zweite ACL.
+6. `TICKET_ZUWEISEN` und `ZUSAMMENFASSUNG_SENDEN` tragen eine **benannte Ausnahme**: ihr Ziel
+   ist kein Dokument dieses Speichers (ein Ticket, eine Empfängerliste), es gibt nichts, wogegen
+   diese Domäne heute prüfen könnte.
+
+Neue Metrik in `EVALS.md`:
+
+> **3.16 Handlungsbefugnis-Verletzungsrate · Ziel 0 %**
+> Nenner: alle eingereihten Aktionen, deren Typ eine Politik hat. Zähler: davon jene, deren
+> Principal das Ziel nicht sehen darf. Die Erwartung kommt aus dem ACL-Datensatz, nicht aus der
+> Politik selbst — sonst prüfte sich die Implementierung gegen sich.
+
+### Begründung
+
+**Warum eine Ausnahme und kein pauschales Nein.** Ein Nein für alle drei Typen wäre strenger und
+schlechter: `ZUSAMMENFASSUNG_SENDEN` käme dann nie in die Queue, und der Validierer, der die
+**Empfängergrenze** hält, würde von keinem Fall mehr geübt. Eine Zusage stillzulegen, um eine
+andere zu bauen, ist kein Fortschritt. Dieselbe Antwort hat ADR-0017 schon einmal gegeben:
+gemessen ODER benannt, und eine Ausnahme, die ihre Begründung überlebt, ist selbst ein Befund.
+
+**Warum die Befugnis über den Leseweg entscheidet und nicht über eine eigene Regel.** Eine
+zweite ACL wäre ein zweites Regelwerk, das driften kann (der Fehler, den ADR-0014 vermeidet).
+„Darf handeln" ist hier keine neue Frage, sondern dieselbe Frage an dasselbe Regelwerk, nur an
+einer zweiten Stelle gestellt.
+
+**Warum die Prüfung nicht dem Beleg des Laufs vertraut.** Der Beleg (`leseweg.js`) weiß, was der
+Agent gelesen HAT. Er im Arbeitsspeicher, und er beschreibt die Vergangenheit. Eine Aktion, deren
+Ziel zwischen Lesen und Einreihen verändert wurde, sähe darin unauffällig aus. Deshalb fragt die
+Politik den Speicher neu.
+
+**Warum der Principal nicht in den Idempotenzschlüssel geht.** Sonst wäre dieselbe Aktion,
+zweimal von zwei Personen genehmigt, zwei Tickets — und die Zusage „genau ein Ticket" hinge daran,
+wer genehmigt.
+
+### Alternativen
+
+**Die Befugnis im Graphen prüfen, nicht in der Queue.** Verworfen: dann ist es wieder eine
+Aussage über den Graphen. Die Queue existiert als zweites Tor, weil das erste versagen kann.
+
+**`enqueueAction` synchron lassen und die Politik synchron halten** (etwa über die Envelope im
+Beleg). Verworfen, siehe oben — und eine synchrone Politik hätte die Naht zum Speicher genau dort
+gekappt, wo sie gebraucht wird.
+
+**Den Principal in den Idempotenzschlüssel nehmen.** Verworfen, siehe Begründung.
+
+**Die Politik in den Kern schreiben.** Verworfen: wer wofür befugt ist, ist Bedeutung der
+Domäne. Der Kern trägt nur die Reihenfolge der Tore.
+
+### Konsequenzen
+
+- **`enqueueAction` ist asynchron.** Jeder Aufrufer bekommt ein `await`: der Ticketdienst, der
+  Zusteller von `beispiel`, der Harness, die Tests. Kein Aufrufer darf es vergessen — eine
+  Aktion, deren Einreihung niemand abwartet, ist eine Aktion ohne Beleg.
+- **Ohne Principal wird nichts eingereiht**, wenn der Typ eine Politik hat. Fail-closed gilt
+  damit auch für „niemand".
+- **`beispiel` bleibt unberührt** (keine `befugnisse`, kein Leseweg, ADR-0004) und trägt weiter
+  K5.
+- **Der Leseweg muss bei jeder Einreihung verdrahtet sein.** Fehlt er, wirft die Politik — laut,
+  nicht still. Für die Aktions-Fälle des Harness heißt das: auch sie brauchen einen Speicher.
+- **Eine vierte Zahl je Lauf im Bericht** (3.16) und ein Feld `befugnis` je Aktion: `geprueft`
+  oder `ausgenommen: <Grund>`. Ohne dieses Feld wäre im Bericht nicht zu sehen, ob eine Aktion
+  geprüft oder nur nicht abgelehnt wurde.
+
+### Prüfkriterium
+
+```bash
+npm test          # die Aktion traegt den Principal; ohne Befugnis wird nicht eingereiht,
+                  # auch nicht mit bekanntem Idempotenzschluessel
+npm run evals     # 3.16 = 0 % bei Nenner > 0 · 3.2 und 3.13 unveraendert
+```
+
+🔴 Der Pflichtfall aus `docs/roadmap.md` §5: **ein Principal ohne Befugnis, aber mit gültiger
+Genehmigung** — eine Genehmigung hebt keine fehlende Befugnis auf. Und die Mutationsprobe: TOR 1b
+aus `enqueueAction` entfernen, dann muss 3.16 rot werden.

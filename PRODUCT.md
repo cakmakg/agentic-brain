@@ -203,31 +203,31 @@ Jedes Tor enthält denselben Kern, hier einmal genannt und unten als **Kerntor**
 npm test && npm run evals && npm run demo
 ```
 
-| Etappe | Ziel                                             | Tor (Prüfbefehl)                                                                 | Stand |
-| ------ | ------------------------------------------------ | -------------------------------------------------------------------------------- | ----- |
-| 0      | Grundlage: ADRs, Ebenenumbau, LangGraph 1.x      | Kerntor mit **identischen** Zahlen · `npm audit` → `high: 0`                     | 🟢    |
-| 1      | Das QA-Tor `pruefer`                             | Kerntor · ein Fall trägt `bearbeiterAufrufe: 2`                                  | 🟢    |
-| 2      | Messbare Autorisierung, ohne Infrastruktur       | `npm run evals` → **3.13 = 0 %** · K5 grün · Trennlinie leer                     | 🟢    |
-| 3a     | Die Vertikale, die Ontologie, dieses Dokument    | Prüfkriterium von ADR-0010 — zwei `grep`, beide leer bzw. 0                      | 🟢    |
-| 3b     | Erster Connector und Ausbreitung des Entzugs     | `npm run evals` → **3.14 = 0 %** · 3.13 unverändert · K5 grün                    | 🟢    |
-| 3c     | Postgres-Adapter neben `memory`                  | dieselbe Eval-Suite gegen Postgres → 3.13 und 3.14 unverändert                   | 🟢    |
-| 3d     | Echtes Embedding                                 | Kerntor · **3.13 unverändert 0 %** — sonst hing sie an der Rangfolge             | 🟡    |
-| Sofort | Genehmigungslücke im HTTP-Adapter schließen      | HTTP-Test zuerst rot, dann grün · Nicht-Boolean → 400 · Kerntor gleich           | 🟢    |
-| 4a     | Identität                                        | Identität nicht auflösbar → leer und **kein** LLM-Aufruf                         | ⬜    |
-| 4b     | Handlungsbefugnis je Principal                   | `npm run evals` → **3.16 = 0 %** · 3.2 und 3.13 unverändert                      | ⬜    |
-| 4c     | Policy, Risikoklasse, Genehmigungs-Timeout       | abgelaufene Genehmigung → deny · **3.15 = 100 %**                                | ⬜    |
-| 4d     | Audit-Kette, Genehmigung als Entscheidungsobjekt | geänderte Audit-Zeile wird erkannt · bearbeiteter Entwurf durchläuft den Vertrag | ⬜    |
-| 5      | Aktionsfläche aus der Ontologie erzeugen         | Aktionstyp ohne Modell wird **vor** der Queue abgelehnt · 3.2 = 0 %              | ⬜    |
-| 6      | An Auslöser gebunden, nicht an einen Kalender    | je Punkt eine eigene ADR vor der ersten Zeile Code                               | ⬜    |
-| 7      | Erste echte Quelle: Google Drive                 | Drive-Fixtures → 3.13 = 0 % · **3.14 neu definiert** = 0 % · K5 grün             | ⬜    |
-| 8      | Überfreigabe-Bericht                             | Bericht ohne ein Textzeichen · kein zweiter Leseweg                              | ⬜    |
-| 9      | Schicht C: Nutzen messbar machen                 | datierter Schicht-C-Bericht mit Modus und Nenner · C.4 = `null`                  | ⬜    |
-| 10     | Erste echte Wirkung: Ticket in Jira              | dieselbe Aktion zweimal, auch nach Absturz → **genau ein** Ticket                | ⬜    |
-| 11     | Genehmigung in Slack oder Teams                  | unsigniert, wiedergespielt, unbefugt, Nicht-Boolean → abgelehnt                  | ⬜    |
-| 12     | Persönliche Übersicht je Mitarbeiter             | 3.13 = 0 % über Übersicht und Suche · Registry kennt keine Menschen              | ⬜    |
-| 13     | Dubletten vermeiden                              | Dublette → Kommentar · unsichtbare Dublette wird **nicht** gemeldet              | ⬜    |
-| 14a    | Rücknahme je Aktionstyp                          | **3.17 = 100 %** · 3.1 und 3.16 unverändert                                      | ⬜    |
-| 14b    | Risikostufen, verdiente Autonomie                | ADR zuerst · Stufe 2 hält weiter an · 3.1 in neuer Definition 100 %              | ⬜    |
+| Etappe | Ziel                                             | Tor (Prüfbefehl)                                                                                       | Stand |
+| ------ | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ----- |
+| 0      | Grundlage: ADRs, Ebenenumbau, LangGraph 1.x      | Kerntor mit **identischen** Zahlen · `npm audit` → `high: 0`                                           | 🟢    |
+| 1      | Das QA-Tor `pruefer`                             | Kerntor · ein Fall trägt `bearbeiterAufrufe: 2`                                                        | 🟢    |
+| 2      | Messbare Autorisierung, ohne Infrastruktur       | `npm run evals` → **3.13 = 0 %** · K5 grün · Trennlinie leer                                           | 🟢    |
+| 3a     | Die Vertikale, die Ontologie, dieses Dokument    | Prüfkriterium von ADR-0010 — zwei `grep`, beide leer bzw. 0                                            | 🟢    |
+| 3b     | Erster Connector und Ausbreitung des Entzugs     | `npm run evals` → **3.14 = 0 %** · 3.13 unverändert · K5 grün                                          | 🟢    |
+| 3c     | Postgres-Adapter neben `memory`                  | dieselbe Eval-Suite gegen Postgres → 3.13 und 3.14 unverändert                                         | 🟢    |
+| 3d     | Echtes Embedding                                 | Kerntor · **3.13 unverändert 0 %** — sonst hing sie an der Rangfolge                                   | 🟡    |
+| Sofort | Genehmigungslücke im HTTP-Adapter schließen      | HTTP-Test zuerst rot, dann grün · Nicht-Boolean → 400 · Kerntor gleich                                 | 🟢    |
+| 4a     | Identität                                        | Identität nicht auflösbar → leer und **kein** LLM-Aufruf — eingelöst; offen bleibt ein ECHTER Anbieter | 🟡    |
+| 4b     | Handlungsbefugnis je Principal                   | `npm run evals` → **3.16 = 0 %** · 3.2 und 3.13 unverändert                                            | 🟢    |
+| 4c     | Policy, Risikoklasse, Genehmigungs-Timeout       | abgelaufene Genehmigung → deny · **3.15 = 100 %**                                                      | ⬜    |
+| 4d     | Audit-Kette, Genehmigung als Entscheidungsobjekt | geänderte Audit-Zeile wird erkannt · bearbeiteter Entwurf durchläuft den Vertrag                       | ⬜    |
+| 5      | Aktionsfläche aus der Ontologie erzeugen         | Aktionstyp ohne Modell wird **vor** der Queue abgelehnt · 3.2 = 0 %                                    | ⬜    |
+| 6      | An Auslöser gebunden, nicht an einen Kalender    | je Punkt eine eigene ADR vor der ersten Zeile Code                                                     | ⬜    |
+| 7      | Erste echte Quelle: Google Drive                 | Drive-Fixtures → 3.13 = 0 % · **3.14 neu definiert** = 0 % · K5 grün                                   | ⬜    |
+| 8      | Überfreigabe-Bericht                             | Bericht ohne ein Textzeichen · kein zweiter Leseweg                                                    | ⬜    |
+| 9      | Schicht C: Nutzen messbar machen                 | datierter Schicht-C-Bericht mit Modus und Nenner · C.4 = `null`                                        | ⬜    |
+| 10     | Erste echte Wirkung: Ticket in Jira              | dieselbe Aktion zweimal, auch nach Absturz → **genau ein** Ticket                                      | ⬜    |
+| 11     | Genehmigung in Slack oder Teams                  | unsigniert, wiedergespielt, unbefugt, Nicht-Boolean → abgelehnt                                        | ⬜    |
+| 12     | Persönliche Übersicht je Mitarbeiter             | 3.13 = 0 % über Übersicht und Suche · Registry kennt keine Menschen                                    | ⬜    |
+| 13     | Dubletten vermeiden                              | Dublette → Kommentar · unsichtbare Dublette wird **nicht** gemeldet                                    | ⬜    |
+| 14a    | Rücknahme je Aktionstyp                          | **3.17 = 100 %** · 3.1 und 3.16 unverändert                                                            | ⬜    |
+| 14b    | Risikostufen, verdiente Autonomie                | ADR zuerst · Stufe 2 hält weiter an · 3.1 in neuer Definition 100 %                                    | ⬜    |
 
 Die Etappen 3c und 3d sind bewusst getrennt. Beide fassen dieselbe Zusage an — 3.13 — und wer
 sie zusammen fährt, kann eine Bewegung der Zahl keiner von beiden zuordnen. Das ist dieselbe
@@ -290,7 +290,19 @@ Dienst, `evals:postgres` und `npm test` gegen die Datenbank) und `Lint und Abhä
 **Damit steht der MVP-Schnitt vollständig** — gebaut, gemessen, und die Messung nicht mehr
 darauf angewiesen, dass der Agent sie ausführt und ehrlich berichtet.
 
-**Was nach T3 kommt, steht hier absichtlich nicht.** Der nächste Schritt wird nach einem
+**Und der erste Schritt nach dem MVP ist gefahren: Etappe 4b** (ADR-0020, löst A11 ein). Die
+Aktion trägt seither den Principal, und die Queue prüft **vor dem Schreiben**, ob er den Typ an
+diesem Ziel auslösen darf — sie glaubt dem Ablauf nicht. Neue Metrik **3.16 = 0 %** (Nenner 2),
+`npm test` 254/261 ohne und **262/262** mit Datenbank, beide Store-Adapter zeichengleich.
+Mutationsprobe: TOR 1b entfernt → 3.16 springt auf 50 % (2/4), Rückgabewert 1.
+
+**Dabei fand der Lauf gegen den zweiten Adapter einen Defekt, den kein Test gesucht hatte:**
+eine Befugnisprüfung mit leerer Zielkennung fiel still in die Relevanzsuche, und dort antworteten
+`memory` und Postgres verschieden — aus einer fehlenden Kennung wurde „durchsuche alles" und aus
+einer fehlenden Befugnis eine erteilte. Geschlossen an zwei Stellen (Port und Politik), und der
+Grund steht bei beiden.
+
+**Was danach kommt, steht hier absichtlich nicht.** Der nächste Schritt wird nach einem
 Kriterium gewählt und nicht aus einer Liste abgelesen: **welche Aussage dieses Repos ist heute
 noch eine Vorhersage.** Heute wären das der Voyage-Lauf, die erste Schicht-B-Messung und die
 erste echte Quelle — in dieser Reihenfolge zu prüfen, nicht zu planen.

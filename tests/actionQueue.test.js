@@ -32,9 +32,11 @@ const finde = (id) => getQueue().find((a) => a.id === id);
 
 after(() => stopActionWorker());
 
-test("TOR 1: ein Typ außerhalb der Whitelist wird nicht einmal geschrieben", () => {
+test("TOR 1: ein Typ außerhalb der Whitelist wird nicht einmal geschrieben", async () => {
   const vorher = getQueue().length;
-  assert.throws(
+  // `rejects` statt `throws`: `enqueueAction` ist seit ADR-0020 asynchron, weil
+  // eine Befugnis einen Lesezugriff verlangen kann.
+  await assert.rejects(
     () =>
       enqueueAction({ threadId: "t1", actionType: "DELETE_ALL", payload: {} }),
     /Whitelist/,
@@ -46,8 +48,8 @@ test("TOR 1: ein Typ außerhalb der Whitelist wird nicht einmal geschrieben", ()
   );
 });
 
-test("TOR 1: ein erlaubter Typ landet als PENDING in der Queue", () => {
-  const id = enqueueAction({
+test("TOR 1: ein erlaubter Typ landet als PENDING in der Queue", async () => {
+  const id = await enqueueAction({
     threadId: "t2",
     actionType: "NOTIFY",
     payload: { text: "hallo" },
@@ -66,22 +68,22 @@ test("getQueue liefert eine Kopie — von außen ist die Queue nicht manipulierb
 });
 
 test("TOR 2: der Worker führt gültige Payloads aus und lehnt ungültige ab", async () => {
-  const gueltig = enqueueAction({
+  const gueltig = await enqueueAction({
     threadId: "t3",
     actionType: "NOTIFY",
     payload: { text: "kurz" },
   });
-  const zuLang = enqueueAction({
+  const zuLang = await enqueueAction({
     threadId: "t3",
     actionType: "NOTIFY",
     payload: { text: "x".repeat(1001) },
   });
-  const unsicher = enqueueAction({
+  const unsicher = await enqueueAction({
     threadId: "t3",
     actionType: "WEBHOOK",
     payload: { url: "http://kein-tls.example" },
   });
-  const keineMail = enqueueAction({
+  const keineMail = await enqueueAction({
     threadId: "t3",
     actionType: "EMAIL",
     payload: { to: "ohne-at-zeichen", body: "hi" },
@@ -100,7 +102,7 @@ test("startActionWorker ist idempotent — ein zweiter Aufruf legt keinen zweite
   startActionWorker(5);
   startActionWorker(5);
   stopActionWorker();
-  const id = enqueueAction({
+  const id = await enqueueAction({
     threadId: "t4",
     actionType: "EMAIL",
     payload: { to: "a@b.de", body: "kurz" },
@@ -115,15 +117,15 @@ test("startActionWorker ist idempotent — ein zweiter Aufruf legt keinen zweite
 
 // ── Idempotenz ───────────────────────────────────────────────────────────
 
-test("Dieselbe Aktion zweimal eingereiht ergibt EINE Zeile und dieselbe id", () => {
+test("Dieselbe Aktion zweimal eingereiht ergibt EINE Zeile und dieselbe id", async () => {
   const vorher = getQueue().length;
   const eingabe = {
     threadId: "t5",
     actionType: "NOTIFY",
     payload: { text: "genau einmal" },
   };
-  const erste = enqueueAction(eingabe);
-  const zweite = enqueueAction(eingabe);
+  const erste = await enqueueAction(eingabe);
+  const zweite = await enqueueAction(eingabe);
 
   assert.equal(
     zweite,
@@ -137,14 +139,14 @@ test("Dieselbe Aktion zweimal eingereiht ergibt EINE Zeile und dieselbe id", () 
   );
 });
 
-test("Die Feldreihenfolge im Payload ändert den Schlüssel nicht", () => {
+test("Die Feldreihenfolge im Payload ändert den Schlüssel nicht", async () => {
   const vorher = getQueue().length;
-  const a = enqueueAction({
+  const a = await enqueueAction({
     threadId: "t6",
     actionType: "EMAIL",
     payload: { to: "a@b.de", body: "kurz" },
   });
-  const b = enqueueAction({
+  const b = await enqueueAction({
     threadId: "t6",
     actionType: "EMAIL",
     payload: { body: "kurz", to: "a@b.de" },
@@ -157,14 +159,14 @@ test("Die Feldreihenfolge im Payload ändert den Schlüssel nicht", () => {
   assert.equal(getQueue().length, vorher + 1);
 });
 
-test("Ein anderes Payload ist eine andere Aktion", () => {
+test("Ein anderes Payload ist eine andere Aktion", async () => {
   const vorher = getQueue().length;
-  const a = enqueueAction({
+  const a = await enqueueAction({
     threadId: "t7",
     actionType: "NOTIFY",
     payload: { text: "eins" },
   });
-  const b = enqueueAction({
+  const b = await enqueueAction({
     threadId: "t7",
     actionType: "NOTIFY",
     payload: { text: "zwei" },
@@ -173,9 +175,9 @@ test("Ein anderes Payload ist eine andere Aktion", () => {
   assert.equal(getQueue().length, vorher + 2);
 });
 
-test("Ein mitgegebener idempotencyKey schlägt den abgeleiteten", () => {
+test("Ein mitgegebener idempotencyKey schlägt den abgeleiteten", async () => {
   const vorher = getQueue().length;
-  const a = enqueueAction({
+  const a = await enqueueAction({
     threadId: "t8",
     actionType: "NOTIFY",
     payload: { text: "erste Fassung" },
@@ -184,7 +186,7 @@ test("Ein mitgegebener idempotencyKey schlägt den abgeleiteten", () => {
   // Anderes Payload, gleicher Schlüssel → bewusst dieselbe Aktion. Das ist der
   // Fall, den ein echter externer Aufruf braucht: der Schlüssel gehört dem
   // Vorgang, nicht dem Text.
-  const b = enqueueAction({
+  const b = await enqueueAction({
     threadId: "t8",
     actionType: "NOTIFY",
     payload: { text: "zweite Fassung" },
@@ -194,10 +196,10 @@ test("Ein mitgegebener idempotencyKey schlägt den abgeleiteten", () => {
   assert.equal(getQueue().length, vorher + 1);
 });
 
-test("TOR 1 kommt vor der Dedup-Prüfung", () => {
+test("TOR 1 kommt vor der Dedup-Prüfung", async () => {
   // Ein nicht erlaubter Typ muss auch dann auffliegen, wenn er einen bereits
   // bekannten Schlüssel mitbringt.
-  assert.throws(
+  await assert.rejects(
     () =>
       enqueueAction({
         threadId: "t8",

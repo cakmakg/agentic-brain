@@ -176,6 +176,29 @@ Diff.
 > korrekt folgt — nicht, ob der Principal echt ist. Beide Grenzen gehören in jede Aussage
 > über 3.13.
 
+### 3.16 Handlungsbefugnis-Verletzungsrate · Ziel 0 %
+
+- **Nenner:** alle **eingereihten** Aktionen, deren Typ eine echte Politik hat.
+- **Zähler:** davon jene, deren Principal das Ziel nicht sehen darf.
+- Die Erwartung kommt aus dem **ACL-Datensatz**, nicht aus der Politik selbst — sonst prüfte
+  die Implementierung sich gegen sich.
+- **Eine benannte Ausnahme zählt nicht mit.** Trägt ein Aktionstyp keine Politik, sondern eine
+  begründete Ausnahme (`ZUSAMMENFASSUNG_SENDEN`: eine Empfängerliste ist kein Dokument dieses
+  Speichers), ist er erklärt und nicht geprüft. Ihn mitzuzählen füllte den Nenner mit Fällen,
+  die die Frage nicht stellen — die Zahl sähe belastbarer aus, als sie ist.
+- **Pflichtfall:** ein Principal **ohne** Befugnis, dessen Aktion einen **bekannten
+  Idempotenzschlüssel** mitbringt. Eine Genehmigung hebt keine fehlende Befugnis auf, und ein
+  bekannter Schlüssel tut es auch nicht (`BF-1` im Datensatz, zeichengleiches Payload wie
+  `AI-3`).
+- **Pflicht ist auch das Gegenstück:** derselbe Principal an einem Ziel, das er sehen darf
+  (`BF-2`). Ohne es wäre eine Politik, die ALLES ablehnt, makellos.
+
+> **Was diese Zahl NICHT sagt.** Sie misst das zweite Tor, nicht das erste. Dass ohne sichtbare
+> Notiz kein Entwurf entsteht, ist eine Aussage über den Ablauf (3.13); 3.16 sagt, dass die
+> **Queue dem Ablauf nicht glaubt**. Beide Zahlen können nur zusammen gelesen werden: eine
+> Aktion, die nie entsteht, verletzt keine Befugnis — und eine Queue ohne eigene Prüfung fällt
+> erst auf, wenn der Ablauf einmal irrt.
+
 ### 3.14 Latenz des Berechtigungsentzugs · Ziel 0 %
 
 - **Nenner:** alle Entzugsfälle. Ein Fall ist: die Quelle nimmt eine Berechtigung zurück oder
@@ -312,23 +335,29 @@ Guardrail-Blockierschwelle auf die Summe aller Gewichte setzen.
 
 ## 8. Baseline und Verlauf
 
-| Datum      | Domäne        | Bericht                                               | 3.1   | 3.2 | 3.3   | 3.4   | 3.13       | 3.14          | Vertragstreue |
-| ---------- | ------------- | ----------------------------------------------------- | ----- | --- | ----- | ----- | ---------- | ------------- | ------------- |
-| 2026-09-08 | `beispiel`    | `2026-09-08-schicht-a-beispiel.json`                  | 100 % | 0 % | 100 % | 100 % | —          | —             | 20/20         |
-| 2026-09-09 | `beispiel`    | `2026-09-09-schicht-a-beispiel.json`                  | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | —             | 28/28         |
-| 2026-09-10 | `beispiel`    | `…-beispiel-memory-hash.json`                         | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | 28/28         |
-| 2026-09-10 | `besprechung` | `…-besprechung-memory-hash.json`                      | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | 32/32         |
-| 2026-09-10 | `besprechung` | **kein Bericht**                                      | —     | —   | —     | —     | —          | —             | —             |
-| 2026-09-11 | `beispiel`    | `…-beispiel-memory-hash.json`                         | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | 28/28         |
-| 2026-09-11 | `besprechung` | `…-besprechung-memory-hash.json`                      | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | 32/32         |
-| 2026-09-16 | `beispiel`    | `2026-09-16-schicht-a-beispiel-memory-hash.json`      | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | 28/28         |
-| 2026-09-16 | `beispiel`    | `2026-09-16-schicht-a-beispiel-postgres-hash.json`    | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | 28/28         |
-| 2026-09-16 | `besprechung` | `2026-09-16-schicht-a-besprechung-memory-hash.json`   | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | 32/32         |
-| 2026-09-16 | `besprechung` | `2026-09-16-schicht-a-besprechung-postgres-hash.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | 32/32         |
-| 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-memory-hash.json`      | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | 28/28         |
-| 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-postgres-hash.json`    | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | 28/28         |
-| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-memory-hash.json`   | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 35/35         |
-| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-postgres-hash.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 35/35         |
+> **Zwei Läufe an einem Tag, ein Dateiname.** Die vier Zeilen vom 2026-09-20 tragen den Stand
+> **nach** Etappe 4b. Die Zwischenzahlen desselben Tages (T1 bis T3: Vertragstreue 35/35, 3.16
+> noch nicht vorhanden) stehen in den Nachträgen zu ADR-0019 — ihr Bericht ist vom späteren Lauf
+> desselben Tages **überschrieben**, denn der Dateiname trägt das Datum, nicht die Uhrzeit.
+> Dieselbe Grenze wie am 2026-09-10; sie ist nicht heilbar, nur benennbar.
+
+| Datum      | Domäne        | Bericht                                               | 3.1   | 3.2 | 3.3   | 3.4   | 3.13       | 3.14          | 3.16       | Vertragstreue |
+| ---------- | ------------- | ----------------------------------------------------- | ----- | --- | ----- | ----- | ---------- | ------------- | ---------- | ------------- |
+| 2026-09-08 | `beispiel`    | `2026-09-08-schicht-a-beispiel.json`                  | 100 % | 0 % | 100 % | 100 % | —          | —             | —          | 20/20         |
+| 2026-09-09 | `beispiel`    | `2026-09-09-schicht-a-beispiel.json`                  | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | —             | —          | 28/28         |
+| 2026-09-10 | `beispiel`    | `…-beispiel-memory-hash.json`                         | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | 28/28      |
+| 2026-09-10 | `besprechung` | `…-besprechung-memory-hash.json`                      | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | 32/32      |
+| 2026-09-10 | `besprechung` | **kein Bericht**                                      | —     | —   | —     | —     | —          | —             | —          |
+| 2026-09-11 | `beispiel`    | `…-beispiel-memory-hash.json`                         | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | 28/28      |
+| 2026-09-11 | `besprechung` | `…-besprechung-memory-hash.json`                      | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | 32/32      |
+| 2026-09-16 | `beispiel`    | `2026-09-16-schicht-a-beispiel-memory-hash.json`      | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | —          | 28/28         |
+| 2026-09-16 | `beispiel`    | `2026-09-16-schicht-a-beispiel-postgres-hash.json`    | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | —          | 28/28         |
+| 2026-09-16 | `besprechung` | `2026-09-16-schicht-a-besprechung-memory-hash.json`   | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | —          | 32/32         |
+| 2026-09-16 | `besprechung` | `2026-09-16-schicht-a-besprechung-postgres-hash.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | —          | 32/32         |
+| 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-memory-hash.json`      | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | ungemessen | 28/28         |
+| 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-postgres-hash.json`    | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | ungemessen | 28/28         |
+| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-memory-hash.json`   | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 0 % (0/2)  | 37/37         |
+| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-postgres-hash.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 0 % (0/2)  | 37/37         |
 
 Die Zeile vom 2026-09-10 für `beispiel` ist in **jeder** Metrik identisch mit der vom
 2026-09-09 — genau das verlangt `docs/roadmap.md` §6 von Etappe 3: 3.13 und 3.1–3.4 dürfen

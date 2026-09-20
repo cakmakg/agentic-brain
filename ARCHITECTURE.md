@@ -80,6 +80,12 @@ Diese Liste ist absichtlich sichtbar. Eine verschwiegene Grenze wird zu einem Au
   Nachtrag 2). Gefährlich ist die Lücke nicht — ohne Principal antwortet der Leseweg leer und
   mit Grund —, aber sie ist eine Lücke in der Reichweite. Den Rand die Domäne **wählen** zu
   lassen ist die saubere Fassung und braucht ihre eigene ADR.
+- **Zwei Aktionstypen haben keine Befugnisprüfung, sondern eine benannte Ausnahme.**
+  `TICKET_ZUWEISEN` und `ZUSAMMENFASSUNG_SENDEN` zielen nicht auf ein Dokument dieses Speichers
+  (ein Ticket, eine Empfängerliste) — es gibt nichts, wogegen zu prüfen wäre. Sie stehen deshalb
+  **nicht** im Nenner von 3.16 (ADR-0020). Sie werden frei, wenn es ein Ticketsystem gibt
+  (Etappe 10) und ein Verzeichnis für Empfänger. Bis dahin gilt für sie allein das zweite Tor,
+  der Validierer.
 - **Es gibt keinen echten Identitätsanbieter.** Aufgelöst wird gegen ein Verzeichnis aus
   Fixtures; ein OIDC-Adapter kommt, wenn es etwas gibt, wogegen er laufen kann (Etappe 7 und
   11). Bis dahin gilt: die Auflösung ist gemessen, der Anbieter ist keiner.

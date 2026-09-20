@@ -79,5 +79,6 @@ export const adapter = {
   // „ungemessen" und der Lauf würde rot, weil 3.13 hier NICHT steht.
   ungemessen: {
     3.14: "keine Connector-Quelle (ADR-0004) — nichts, das entzogen werden kann",
+    3.16: "diese Domaene hat keine Befugnis-Politik: ohne Connector und ohne Leseweg gibt es kein Ziel, gegen das eine Befugnis zu pruefen waere (ADR-0004, ADR-0020)",
   },
 };

@@ -16,9 +16,12 @@
 import { enqueueAction } from "../actions.js";
 import { markZugestellt } from "./ablage.js";
 
-export function zustellerNode(state) {
+export async function zustellerNode(state) {
   // KEIN direktes fetch — nur in die Queue schreiben.
-  enqueueAction({
+  // `await` seit ADR-0020: die Einreihung ist asynchron. `beispiel` bringt
+  // KEINE Befugnis-Politik mit — sie hat keinen Leseweg (ADR-0004) —, also
+  // ändert sich hier nur, dass gewartet wird.
+  await enqueueAction({
     threadId: state.threadId,
     actionType: "NOTIFY", // muss auf der Whitelist stehen, sonst lehnt die Queue ab
     payload: { text: `Aufgabe abgeschlossen: ${state.task}` },

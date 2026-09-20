@@ -99,38 +99,32 @@ Liste. Zu entscheiden ist nicht, ob refaktoriert wird, sondern ob die drei Schwe
 diese Dateien angehoben oder die Befunde als bekannte Ausnahme notiert werden — beides
 gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
 
-### Thema: Der MVP-Schnitt — gebaut und gemessen; offen ist nur der Zwang
+### Thema: Nach dem MVP — was ohne Schluessel messbar ist, und was nicht
 
-**Status:** 🟢 ABGESCHLOSSEN am 2026-09-20. **T0 bis T3 eingeloest, das Tor vollstaendig** (ADR-0018, ADR-0019 mit drei Nachtraegen): der Agent liest berechtigungstreu, die Identitaet wird aufgeloest, der Mensch entscheidet — und die CI hat es zum ersten Mal auf einer fremden Maschine bestaetigt.
+**Status:** 🟡 Neu am 2026-09-20. **MVP abgeschlossen, Etappe 4b gefahren** (ADR-0020, A11 gefallen, 3.16 = 0 %). Die drei naechsten Kandidaten (Voyage, Schicht B, echte Quelle) haengen ALLE an einem Schluessel oder Zugang, den es hier nicht gibt — `.env` ist leer, keine der vier Variablen gesetzt.
 
-Der MVP in einem Satz, und er ist jetzt ausfuehrbar:
+**Was blockiert ist und woran:** der **Voyage-Lauf** an `VOYAGE_API_KEY`; die **erste
+Schicht-B-Messung** an `ANTHROPIC_API_KEY` plus einer Ausgabengrenze (und die Domaene muss
+`schreibe`/`pruefe` liefern — ohne Schluessel waere das gebaut und ungemessen, also nicht
+anfangen); die **erste echte Quelle** an Drive-Zugangsdaten. Keiner dieser drei laesst sich
+ehrlich vorziehen.
 
-```bash
-printf 'nachweis-dora
+**Was ohne Schluessel noch offen ist**, in der Reihenfolge, in der es Sinn ergibt:
 
-ja
-' | npm run fragen   # Entwurf ZUGESTELLT, Queue 1
-printf 'nachweis-dora
+- **Etappe 5** — die Whitelist aus der Ontologie ERZEUGEN (A4). Heute wird sie nur dagegen
+  geprueft. Tor: ein Aktionstyp ohne Modell wird vor der Queue abgelehnt, 3.2 bleibt 0 %.
+- **4c** — Policy und Risikoklasse: nur die Klasse vergeben und protokollieren, wirksam erst in
+  14b. Neue Metrik 3.15 (Genehmigungs-Timeout).
+- **4d** — Audit-Kette als Hash-Kette und die Genehmigung als Entscheidungsobjekt. Braucht 4a,
+  das steht.
+- **E0-B** — dependency-cruiser. Wuerde die Kern-Domaenen-Linie MECHANISCH halten statt per
+  `grep`; seit T1 gibt es mehr Regeln zu schreiben. **Neue Abhaengigkeit, also vorher fragen.**
+- **express 4 → 5** — zwei mittlere Schwachstellen, eigene ADR, betrifft nur den HTTP-Rand.
 
-nein
-' | npm run fragen  # Queue 0
-```
-
-Was aus den drei Etappen als Regel bleibt:
-
-- **Relevanz darf ordnen; ausschliessen darf nur die ACL** (T1). Der Leseweg hat zwei Kippen in
-  EINER Methode, weil eine zweite Methode eine zweite Stelle waere, an der die fail-closed-Kante
-  fehlen kann.
-- **Ein Kanal wird an der Domaene gemessen, die er fuehrt** (T2). Die Identitaet an einen Rand zu
-  haengen, der `beispiel` fuehrt, haette eine Aufloesung erzeugt, die niemand benutzt.
-- **Ein Tor ist ein Befehl** (T3). Deshalb liest der Kanal auch aus einer Pipe und endet mit einer
-  maschinenlesbaren Zeile; ein Einstiegspunkt, der nur unter Menschenhand laeuft, ist eine
-  Vorfuehrung.
-
-Was als Naechstes zu entscheiden ist — **nicht** aus einer Liste, sondern nach dem Kriterium
-„welche Aussage ist heute noch eine Vorhersage": der Voyage-Lauf, die erste Schicht-B-Messung,
-die erste echte Quelle. Und die Commit-Aufteilung: **nichts ist commitiert**, sechs neue Dateien
-und 27 geaenderte warten.
+**Was aus 4b als Lehre bleibt:** der Lauf gegen den ZWEITEN Adapter fand einen Defekt, den kein
+Test gesucht hatte — eine Befugnispruefung mit leerer Zielkennung fiel still in die
+Relevanzsuche, wo `memory` und Postgres verschieden antworten. **Ein stiller Moduswechsel ist
+gefaehrlicher als ein Fehler**, und zwei Adapter sind der billigste Weg, ihn zu finden.
 
 ## Abgeschlossene Themen
 

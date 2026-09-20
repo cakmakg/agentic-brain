@@ -428,19 +428,22 @@
       "id": "AI-1",
       "gruppe": "aktions-isolation",
       "art": "aktion",
-      "hinweis": "TOR 1: der Typ steht nicht auf der Whitelist und wird VOR dem Schreiben abgelehnt. Er steht auch nicht in der Ontologie — genau die Luecke, die A4 in Etappe 5 schliessen wird.",
+      "principal": "bruno",
+      "hinweis": "TOR 1: der Typ steht nicht auf der Whitelist und wird VOR dem Schreiben abgelehnt — und zwar VOR der Befugnispruefung, denn ein unerlaubter Typ ist unerlaubt, gleich wer ihn einreicht. Er steht auch nicht in der Ontologie: genau die Luecke, die A4 in Etappe 5 schliessen wird.",
       "actionType": "TICKET_LOESCHEN",
       "payload": {},
       "erwartet": {
         "eingereiht": false,
-        "endstatus": null
+        "endstatus": null,
+        "abgelehnt": "whitelist"
       }
     },
     {
       "id": "AI-2",
       "gruppe": "aktions-isolation",
       "art": "aktion",
-      "hinweis": "TOR 2: der Typ ist erlaubt, das Payload traegt aber keine Herkunft (notizId). Die Ontologie fuehrt die Relation 'Ticket verweist_auf Notiz'; ein Ticket ohne Beleg ist eine Behauptung. Der Worker lehnt ab — fail-closed bis in die Aktionsflaeche.",
+      "principal": "bruno",
+      "hinweis": "SEIT TOR 1b (ADR-0020) MISST DIESER FALL DIE BEFUGNIS, nicht mehr den Validierer. Das Payload traegt keine Herkunft (notizId leer), also gibt es kein Ziel, an dem bruno befugt sein koennte — die Aktion wird nicht eingereiht. Die Herkunftspruefung des Validierers bleibt als ZWEITE Linie bestehen und ist seit demselben Tag einzeln getestet (tests/besprechung.test.js); ohne diesen Umzug waere sie unbelegt geworden.",
       "actionType": "TICKET_ANLEGEN",
       "payload": {
         "titel": "Zugang zum Produktivsystem klaeren",
@@ -453,14 +456,16 @@
         ]
       },
       "erwartet": {
-        "eingereiht": true,
-        "endstatus": "REJECTED"
+        "eingereiht": false,
+        "endstatus": null,
+        "abgelehnt": "befugnis"
       }
     },
     {
       "id": "AI-3",
       "gruppe": "aktions-isolation",
       "art": "aktion",
+      "principal": "bruno",
       "actionType": "TICKET_ANLEGEN",
       "payload": {
         "titel": "Rollout-Termin mit dem Betrieb abstimmen",
@@ -474,14 +479,63 @@
       },
       "erwartet": {
         "eingereiht": true,
-        "endstatus": "DONE"
+        "endstatus": "DONE",
+        "abgelehnt": null
+      },
+      "hinweis": "Der befugte Fall: bruno ist in der Gruppe technik und sieht n-sprint, also darf er dazu ein Ticket anlegen. Er ist zugleich der Nenner von 3.16 — ohne ihn waere die Metrik ungemessen, und eine Politik, die ALLES ablehnt, saehe gruen aus."
+    },
+    {
+      "id": "BF-1",
+      "gruppe": "handlungsbefugnis",
+      "art": "aktion",
+      "principal": "clara",
+      "hinweis": "DER PFLICHTFALL AUS docs/roadmap.md §5: ein Principal OHNE Befugnis. Das Payload ist ZEICHENGLEICH mit AI-3 — also derselbe abgeleitete Idempotenzschluessel —, nur die Person ist eine andere: clara ist in der Gruppe leitung und sieht n-sprint nicht. TOR 1b lehnt ab, BEVOR die Dedup-Pruefung die id von AI-3 zurueckgeben koennte. Eine Genehmigung hebt keine fehlende Befugnis auf, und ein bekannter Schluessel tut es auch nicht.",
+      "actionType": "TICKET_ANLEGEN",
+      "payload": {
+        "titel": "Rollout-Termin mit dem Betrieb abstimmen",
+        "notizId": "n-sprint",
+        "aktionspunkte": [
+          {
+            "text": "Rollout-Termin abstimmen",
+            "verantwortlich": "team-technik"
+          }
+        ]
+      },
+      "erwartet": {
+        "eingereiht": false,
+        "endstatus": null,
+        "abgelehnt": "befugnis"
+      }
+    },
+    {
+      "id": "BF-2",
+      "gruppe": "handlungsbefugnis",
+      "art": "aktion",
+      "principal": "bruno",
+      "hinweis": "Das Gegenstueck zu BF-1, und ohne es belegt BF-1 nichts: ein anderes Ziel (n-archiv, das bruno ueber die GEERBTE Gruppe technik sieht), dieselbe Person, dieselbe Aktion — eingereiht. Eine Politik, die immer ablehnt, faellt hier.",
+      "actionType": "TICKET_ANLEGEN",
+      "payload": {
+        "titel": "Ablage des Rueckblicks klaeren",
+        "notizId": "n-archiv",
+        "aktionspunkte": [
+          {
+            "text": "Ablage klaeren",
+            "verantwortlich": "team-technik"
+          }
+        ]
+      },
+      "erwartet": {
+        "eingereiht": true,
+        "endstatus": "DONE",
+        "abgelehnt": null
       }
     },
     {
       "id": "AI-4",
       "gruppe": "aktions-isolation",
       "art": "aktion",
-      "hinweis": "Die Empfaengergrenze von ZUSAMMENFASSUNG_SENDEN. Eine Zustellung an einen zu grossen oder falschen Verteiler ist ein Leck, das ohne jedes Retrieval auskommt — deshalb steht die Grenze im Validierer und nicht im Prompt.",
+      "principal": "bruno",
+      "hinweis": "Die Empfaengergrenze von ZUSAMMENFASSUNG_SENDEN. Der Typ traegt eine BENANNTE AUSNAHME von der Befugnispruefung (ADR-0020): eine Empfaengerliste ist kein Dokument dieses Speichers. Deshalb kommt die Aktion in die Queue und faellt erst am Validierer — genau so bleibt diese Grenze geuebt. Ein pauschales Nein bei TOR 1b haette sie stillgelegt.",
       "actionType": "ZUSAMMENFASSUNG_SENDEN",
       "payload": {
         "empfaenger": ["ohne-adresse"],
@@ -489,9 +543,11 @@
       },
       "erwartet": {
         "eingereiht": true,
-        "endstatus": "REJECTED"
+        "endstatus": "REJECTED",
+        "abgelehnt": null
       }
     }
   ],
-  "berechtigung": "Jede Workflow-Aufgabe nennt die PERSON, in deren Namen sie laeuft. Der Runner glaubt sie nicht, sondern legt ihren NACHWEIS vor ('nachweis-<name>') und laesst ihn ueber den Identitaets-Port aufloesen (T2, ADR-0018); einen zweiten Weg zu einem Principal gibt es nicht. Der Agent liest die genannte Notiz ueber den gefilterten Leseweg — gezielt, nicht nach Relevanz. Wer welche Notiz sehen darf, steht NICHT hier, sondern ist die Erwartung der Abruf-Faelle in acl.json; diese Datei verweist darauf und kopiert sie nicht. 'gelesenDokumente' ist daraus abgeleitet: die genannte Notiz, wenn der Extrahierer laut Sequenz laeuft, sonst leer. Ein unberechtigter Lauf liest NICHTS, erzeugt KEINEN Entwurf und macht KEINEN Modellaufruf — fail-closed vor den Kosten (BZ-1, BZ-3)."
+  "berechtigung": "Jede Workflow-Aufgabe nennt die PERSON, in deren Namen sie laeuft. Der Runner glaubt sie nicht, sondern legt ihren NACHWEIS vor ('nachweis-<name>') und laesst ihn ueber den Identitaets-Port aufloesen (T2, ADR-0018); einen zweiten Weg zu einem Principal gibt es nicht. Der Agent liest die genannte Notiz ueber den gefilterten Leseweg — gezielt, nicht nach Relevanz. Wer welche Notiz sehen darf, steht NICHT hier, sondern ist die Erwartung der Abruf-Faelle in acl.json; diese Datei verweist darauf und kopiert sie nicht. 'gelesenDokumente' ist daraus abgeleitet: die genannte Notiz, wenn der Extrahierer laut Sequenz laeuft, sonst leer. Ein unberechtigter Lauf liest NICHTS, erzeugt KEINEN Entwurf und macht KEINEN Modellaufruf — fail-closed vor den Kosten (BZ-1, BZ-3).",
+  "befugnis": "Seit ADR-0020 traegt JEDE Aktion den Principal, in dessen Namen sie laeuft, und TOR 1b prueft vor dem Schreiben, ob dieser Principal den Typ an diesem Ziel ausloesen darf. Fuer TICKET_ANLEGEN ist das Ziel die Notiz im Payload: befugt ist, wer sie ueber den gefilterten Leseweg bekommt — dieselbe Erwartung wie in acl.json, nicht eine zweite Kopie. TICKET_ZUWEISEN und ZUSAMMENFASSUNG_SENDEN tragen eine BENANNTE AUSNAHME (ihr Ziel ist kein Dokument dieses Speichers) und zaehlen deshalb NICHT in den Nenner von 3.16."
 }

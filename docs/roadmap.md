@@ -993,7 +993,7 @@ Behoben am 2026-09-14 — samt der Ausnahme, die es verdeckte.
 | Delta-Sync statt vollständiger Momentaufnahme?              | Etappe 3d  | 🟢 gefallen 2026-09-11, ADR-0016                           |
 | Vollständige TypeScript-Migration?                          | nichts     | ⬜ offen                                                   |
 | Zweiter Kanal (MCP): darf er `approve` anbieten?            | Etappe 6   | 🟡 teilweise: MCP nein, ein Mensch in Slack/Teams ja (A17) |
-| A11 · Handlungsbefugnis je Principal                        | Etappe 4b  | ⬜ offen, ADR-Kandidat                                     |
+| A11 · Handlungsbefugnis je Principal                        | Etappe 4b  | 🟢 gefallen 2026-09-20, ADR-0020                           |
 | A12 · Genehmigung als Entscheidungsobjekt                   | Etappe 4d  | ⬜ offen, ADR-Kandidat                                     |
 | A13 · Hybride Synchronisation (löst ADR-0011 teilweise ab)  | Etappe 7   | ⬜ offen, ADR-Kandidat                                     |
 | A14 · Überfreigabe-Bericht ohne zweiten Leseweg             | Etappe 8   | ⬜ offen, ADR-Kandidat                                     |

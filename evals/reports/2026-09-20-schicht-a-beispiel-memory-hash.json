@@ -1,5 +1,5 @@
 {
-  "erzeugt": "2026-09-20T16:31:56.617Z",
+  "erzeugt": "2026-09-20T17:46:49.261Z",
   "schicht": "A",
   "modus": "mock",
   "domaene": "beispiel",
@@ -73,6 +73,14 @@
       "p90SpitzeTokens": 101,
       "nenner": 14,
       "ziel": "berichten"
+    },
+    "3.16": {
+      "name": "Handlungsbefugnis-Verletzungsrate",
+      "zaehler": 0,
+      "nenner": 0,
+      "wert": null,
+      "ziel": 0,
+      "erfuellt": null
     },
     "3.13": {
       "name": "Unauthorized-Retrieval-Rate",

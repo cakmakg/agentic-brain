@@ -20,10 +20,14 @@
 import { enqueueAction } from "../actions.js";
 import { markZugestellt, titelAus } from "./entwurf.js";
 
-export function ticketdienstNode(state) {
+export async function ticketdienstNode(state) {
   // KEIN direktes fetch — nur in die Queue schreiben.
-  enqueueAction({
+  // AWAIT und `principal`: die Queue prüft die Befugnis, bevor sie schreibt
+  // (ADR-0020). Ohne das `await` liefe der Knoten weiter, während die Prüfung
+  // noch läuft — und eine Ablehnung käme nach dem Log an, das sie verschweigt.
+  await enqueueAction({
     threadId: state.threadId,
+    principal: state.principal,
     actionType: "TICKET_ANLEGEN",
     payload: {
       titel: titelAus(state.aktionspunkte),

@@ -385,3 +385,29 @@ test("Kanal: ein unbekannter Nachweis endet leer, ohne Entwurf und ohne LLM-Aufr
   await aufloeser.aufloese("nachweis-gibtsnicht");
   assert.equal(aufloeser.statistik.verzeichnisAufrufe, 2);
 });
+
+test("Leseweg gezielt: ein LEERES Ziel wirft — es darf nicht zur Relevanzsuche werden", async () => {
+  // Der Defekt vom 2026-09-20, gefunden durch den Lauf gegen beide Adapter:
+  // `dokumentId: ""` fiel still in die Relevanzsuche mit leerer Frage, und dort
+  // antworteten `memory` und Postgres verschieden — aus einer fehlenden Kennung
+  // wurde „durchsuche alles" und aus einer fehlenden Befugnis eine erteilte.
+  const { suche } = await import("../src/kernel/retrieval/suche.js");
+
+  for (const ziel of ["", 0, {}, []]) {
+    await assert.rejects(
+      () => suche({ store, principal: LEA, dokumentId: ziel }),
+      /dokumentId/,
+      `\`${JSON.stringify(ziel)}\` darf kein Ziel sein`,
+    );
+  }
+
+  // Und die Gegenprobe: `null` ist KEIN Ziel, sondern die Relevanzsuche.
+  const relevanz = await suche({
+    store,
+    principal: LEA,
+    anfrage: "Offene Punkte",
+    k: 100,
+    dokumentId: null,
+  });
+  assert.ok(relevanz.treffer.length > 0);
+});

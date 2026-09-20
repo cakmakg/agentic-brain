@@ -222,19 +222,47 @@ function bewerteGuardrail(sequenz, threatScore, aufgabe, adapter) {
 
 // ── Einen Aktions-Fall ausführen ─────────────────────────────────────────
 async function laufAktion(aufgabe, adapter) {
+  // Seit ADR-0020 kann TOR 1b einen Lesezugriff verlangen: also braucht auch
+  // ein Aktions-Fall einen Speicher und einen aufgeloesten Principal. Ohne den
+  // Speicher wuerfe die Politik — laut, aber am falschen Ort.
+  if (!adapter.leseweg) return laufAktionOhneLeseweg(aufgabe, adapter, null);
+
+  return mitStore(async (store) => {
+    await ingestiere(store, adapter.leseweg.dokumente);
+    adapter.leseweg.setze(store);
+    try {
+      const principal = adapter.identitaet
+        ? await adapter.identitaet.aufloeser.aufloese(
+            adapter.identitaet.nachweis(aufgabe.principal),
+          )
+        : null;
+      return await laufAktionOhneLeseweg(aufgabe, adapter, principal);
+    } finally {
+      adapter.leseweg.setze(null);
+    }
+  });
+}
+
+async function laufAktionOhneLeseweg(aufgabe, adapter, principal) {
   const { enqueueAction, getQueue, startActionWorker, stopActionWorker } =
     adapter.aktionen;
   const threadId = crypto.randomUUID();
   let eingereiht = true;
   let id = null;
+  let abgelehnt = null;
   try {
-    id = enqueueAction({
+    id = await enqueueAction({
       threadId,
       actionType: aufgabe.actionType,
       payload: aufgabe.payload,
+      principal,
     });
-  } catch {
-    eingereiht = false; // TOR 1 hat vor dem Schreiben abgelehnt
+  } catch (e) {
+    // TOR 1 (Whitelist) oder TOR 1b (Befugnis) hat vor dem Schreiben abgelehnt.
+    // WELCHES der beiden, gehört in den Bericht: „nicht erlaubt" und „nicht
+    // befugt" sind zwei verschiedene Befunde.
+    eingereiht = false;
+    abgelehnt = /Handlungsbefugnis/.test(e.message) ? "befugnis" : "whitelist";
   }
 
   if (eingereiht) {
@@ -259,8 +287,33 @@ async function laufAktion(aufgabe, adapter) {
     kostenUsd: 0,
     fehler: null,
     eingereiht,
+    abgelehnt,
+    ...befugnisZaehlen(
+      adapter,
+      aufgabe,
+      getQueue().find((a) => a.id === id),
+    ),
     erwartet: aufgabe.erwartet,
     abweichungen: [],
+  };
+}
+
+// ── Der Nenner von 3.16 (ADR-0020) ───────────────────────────────────────
+// Gezählt wird, was EINGEREIHT wurde und einen Typ mit echter Politik trägt.
+// Eine benannte Ausnahme zählt NICHT mit: sie ist erklärt, nicht geprüft, und
+// sie als geprüft zu zählen hieße, 3.16 mit Fällen zu füllen, die die Frage
+// nicht stellen.
+//
+// Die Erwartung kommt aus dem ACL-Datensatz, NICHT aus der Politik selbst —
+// sonst prüfte die Implementierung sich gegen sich. Befugt heißt hier: das Ziel
+// (`payload.notizId`) steht unter den Dokumenten, die dieser Principal sehen
+// darf.
+function befugnisZaehlen(adapter, aufgabe, aktion) {
+  if (!adapter.leseweg || !aktion || aktion.befugnis !== "geprueft") return {};
+  const erlaubt = new Set(adapter.leseweg.erlaubt[aufgabe.principal] ?? []);
+  return {
+    befugteAktionen: 1,
+    unbefugteAktionen: erlaubt.has(aktion.payload?.notizId) ? 0 : 1,
   };
 }
 
@@ -438,6 +491,11 @@ function pruefe(lauf, sequenzen) {
       ab.push(`eingereiht: ${lauf.eingereiht} statt ${e.eingereiht}`);
     if (e.endstatus !== undefined && lauf.endstatus !== e.endstatus)
       ab.push(`endstatus: ${lauf.endstatus} statt ${e.endstatus}`);
+    // WELCHES Tor abgelehnt hat (ADR-0020). „Nicht erlaubt" und „nicht befugt"
+    // sind zwei verschiedene Befunde; ohne diese Prüfung wäre ein Fall grün,
+    // der aus dem falschen Grund grün ist.
+    if (e.abgelehnt !== undefined && lauf.abgelehnt !== e.abgelehnt)
+      ab.push(`abgelehnt: ${lauf.abgelehnt} statt ${e.abgelehnt}`);
     return lauf;
   }
 
@@ -659,6 +717,7 @@ async function fahreDomaene(adapter) {
   console.log(zeile(metriken["3.1"]));
   console.log(zeile(metriken["3.2"]));
   console.log(zeile(metriken["3.13"]));
+  console.log(zeile(metriken["3.16"]));
   // Die Zyklenzahl steht in derselben Zeile: „0,0 %" allein ließe offen,
   // worauf sich die Dichtheit bezieht — und die Antwort ist nicht „Sekunden".
   console.log(
@@ -707,7 +766,7 @@ async function fahreDomaene(adapter) {
   // nicht mehr zutrifft, ist selbst ein Befund: sonst bliebe sie stehen,
   // nachdem die Domäne einen Connector bekommen hat, und deckte von da an
   // genau den Ausfall wieder zu, gegen den sie geschrieben wurde.
-  const PFLICHTMETRIKEN = ["3.1", "3.2", "3.3", "3.4", "3.13", "3.14"];
+  const PFLICHTMETRIKEN = ["3.1", "3.2", "3.3", "3.4", "3.13", "3.14", "3.16"];
   const befunde = PFLICHTMETRIKEN.map((schluessel) => {
     const { erfuellt, nenner } = metriken[schluessel];
     const grund = adapter.ungemessen[schluessel];

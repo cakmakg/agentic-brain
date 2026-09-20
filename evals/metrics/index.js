@@ -121,6 +121,28 @@ export function berechneMetriken(laeufe, wiederholung = []) {
   const chunksGesamt = gelesen.reduce((n, l) => n + l.gelieferteChunks, 0);
   const chunksUnerlaubt = gelesen.reduce((n, l) => n + l.unerlaubteChunks, 0);
 
+  // ── 3.16 Handlungsbefugnis-Verletzungsrate (ADR-0020) ─────────────────
+  // Nenner: eingereihte Aktionen, deren Typ eine echte Politik hat. Zähler:
+  // davon jene, deren Principal das Ziel nicht sehen darf.
+  //
+  // Eine benannte Ausnahme zählt NICHT mit. Sie ist erklärt, nicht geprüft, und
+  // als geprüft gezählt würde sie den Nenner mit Fällen füllen, die die Frage
+  // gar nicht stellen — die Zahl sähe belastbarer aus, als sie ist.
+  //
+  // WARUM NICHT 3.9: `EVALS.md` hält 3.7 und 3.9 bis 3.11 für Metriken frei,
+  // die eine Domäne mitbringt. Diese gehört dem Kern.
+  const mitPolitik = laeufe.filter(
+    (l) => typeof l.befugteAktionen === "number",
+  );
+  const aktionenGeprueft = mitPolitik.reduce(
+    (n, l) => n + l.befugteAktionen,
+    0,
+  );
+  const aktionenUnbefugt = mitPolitik.reduce(
+    (n, l) => n + l.unbefugteAktionen,
+    0,
+  );
+
   // ── 3.14 Latenz des Berechtigungsentzugs ──────────────────────────────
   // Nenner: alle Entzugsfälle. Zähler: die, in denen nach EINEM
   // Synchronisationszyklus noch ein Chunk des entzogenen Dokuments kommt.
@@ -191,6 +213,12 @@ export function berechneMetriken(laeufe, wiederholung = []) {
       nenner: wachstum.length,
       ziel: "berichten",
     },
+    3.16: kennzahl(
+      "Handlungsbefugnis-Verletzungsrate",
+      aktionenUnbefugt,
+      aktionenGeprueft,
+      0,
+    ),
     3.13: kennzahl(
       "Unauthorized-Retrieval-Rate",
       chunksUnerlaubt,

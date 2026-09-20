@@ -295,3 +295,56 @@ test("Vertrag: gar keine Liste ist NICHT konform", () => {
   assert.equal(pruefeVertrag(undefined).istFreigegeben, false);
   assert.equal(pruefeVertrag(null).istFreigegeben, false);
 });
+
+// ── Die Validierer, einzeln ──────────────────────────────────────────────
+// Sie standen bis zum 2026-09-20 nur über den Golden-Datensatz unter Beobachtung
+// (AI-2 und AI-4). Seit TOR 1b (ADR-0020) kommt ein TICKET_ANLEGEN ohne Herkunft
+// gar nicht mehr bis zum Validierer — die Befugnis lehnt es vorher ab. Damit
+// waere seine Herkunftspruefung unbelegt geworden, und eine Zusage ohne Pruefung
+// ist keine. Sie steht bewusst als ZWEITE Linie weiter da: die zwei Tore sind
+// absichtlich redundant.
+
+test("Validierer: ein Ticket ohne Herkunft faellt durch", async () => {
+  const { validators } = await import("../src/domains/besprechung/actions.js");
+  const gueltig = {
+    titel: "Rollout-Termin abstimmen",
+    notizId: "n-sprint",
+    aktionspunkte: [
+      { text: "Termin abstimmen", verantwortlich: "team-technik" },
+    ],
+  };
+
+  assert.equal(validators.TICKET_ANLEGEN(gueltig), true);
+  assert.equal(
+    validators.TICKET_ANLEGEN({ ...gueltig, notizId: "" }),
+    false,
+    "ein Ticket ohne Beleg ist eine Behauptung (Ontologie: Ticket verweist_auf Notiz)",
+  );
+  assert.equal(validators.TICKET_ANLEGEN({ ...gueltig, titel: "" }), false);
+  assert.equal(
+    validators.TICKET_ANLEGEN({ ...gueltig, aktionspunkte: [] }),
+    false,
+  );
+});
+
+test("Validierer: die Empfaengergrenze haelt", async () => {
+  const { validators } = await import("../src/domains/besprechung/actions.js");
+  const mail = (n) => Array.from({ length: n }, (_, i) => `p${i}@example.org`);
+
+  assert.equal(
+    validators.ZUSAMMENFASSUNG_SENDEN({ empfaenger: mail(50), text: "kurz" }),
+    true,
+  );
+  assert.equal(
+    validators.ZUSAMMENFASSUNG_SENDEN({ empfaenger: mail(51), text: "kurz" }),
+    false,
+    "eine Zustellung an einen zu grossen Verteiler ist ein Leck ohne jedes Retrieval",
+  );
+  assert.equal(
+    validators.ZUSAMMENFASSUNG_SENDEN({
+      empfaenger: ["ohne-adresse"],
+      text: "kurz",
+    }),
+    false,
+  );
+});
