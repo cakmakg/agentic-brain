@@ -146,13 +146,35 @@ und der Harness meldet trotzdem grün.
 ### 12. Beschreiben die Dokumente noch die Wirklichkeit
 
 ```bash
-grep -rn "src/domains/\|src/kernel/\|src/adapters/" README.md CLAUDE.md ARCHITECTURE.md 2>/dev/null | grep -o "src/[a-z/]*" | sort -u | while read p; do [ -e "$p" ] && echo "ok   $p" || echo "TOT  $p"; done
+grep -rhoE "src/[A-Za-z0-9_./-]+" README.md CLAUDE.md PRODUCT.md ARCHITECTURE.md 2>/dev/null | sed -E 's/[.,;:)`]+$//' | sort -u | while read -r p; do [ -e "$p" ] && echo "ok   $p" || echo "TOT  $p"; done
 ```
 
 🟢 keine `TOT`-Zeile. 🔴 ein Dokument nennt einen Pfad, den es nicht gibt.
 
 Ein Dokument, das eine gelöschte Struktur beschreibt, ist schlimmer als kein Dokument:
 es wird geglaubt.
+
+**Am 2026-09-20 repariert, und der Fehler ist der lehrreiche Teil.** Bis dahin stand hier
+`grep -o "src/[a-z/]*"`. Die Zeichenklasse kennt keinen Punkt, keine Ziffer, keinen
+Bindestrich — `src/kernel/agent/build.js` wurde also auf `src/kernel/agent/build`
+abgeschnitten, und `[ -e ]` fand nichts. **Jede genannte Datei meldete `TOT`**, seit dem
+2026-09-14 bekannt und ungefixt. Der Schaden war nicht die falsche Zeile, sondern die Folge:
+eine Prüfung, die immer rot ist, wird nicht gelesen. Genau so verschwindet eine Kontrolle,
+ohne dass jemand sie abschafft.
+
+Deshalb zwei Ergänzungen: die Klasse deckt jetzt echte Dateinamen, und ein Satzzeichen am
+Ende (`sed`) fällt weg — sonst wäre „siehe `src/kernel/registry.js`." wieder ein Fehlalarm.
+`PRODUCT.md` kommt dazu, weil `.gehirn/regeln.md` genau diese vier Dokumente als die nennt,
+die bei jeder Strukturänderung mitgezogen werden.
+
+**Und `docs/*.md` bleibt bewusst draußen.** `docs/engineering-discipline.md` führt eine
+Tabelle von Namen, die es NICHT geben darf (`src/domain/`, `src/infrastructure/`,
+`src/agent/`). Eine Prüfung, die dieses Dokument mitliest, ist per Konstruktion rot — sie
+würde bestrafen, dass eine Warnung aufgeschrieben wurde. Wer den Umfang hier erweitert,
+prüft das zuerst.
+
+Gegenprobe (sie muss rot werden können): einen erfundenen Pfad in eines der vier Dokumente
+schreiben, den Befehl fahren, die Zeile wieder entfernen.
 
 ### 13. Stehen Zahlen in Dokumenten ohne Beleg
 
