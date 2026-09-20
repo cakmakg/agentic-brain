@@ -16,10 +16,13 @@
 //   1. `acl.js` übersetzt die berechtigungstragenden Relationen in die
 //      Envelope des Kerns. Welche das sind, steht unten ausdrücklich an der
 //      Relation und nicht im Kopf desjenigen, der `acl.js` schreibt.
-//   2. Ab Etappe 5 (A4) wird `actions.js` aus `AKTIONSTYPEN` ERZEUGT und
-//      gegen diese Liste geprüft. Was hier nicht modelliert ist, kann dann
-//      kein Agent auslösen — auch kein übernommener. Heute ist das noch eine
-//      Absicht; `pruefeAktionsflaeche` unten macht sie schon jetzt prüfbar.
+//   2. Seit Etappe 5 (A4) wird die Aktionsfläche der Domäne aus
+//      `AKTIONSTYPEN` ERZEUGT: `actions.js` reicht diese Liste und ihre
+//      Umsetzung an `erzeugeAktionsflaeche` im Kern. Was hier nicht
+//      modelliert ist, kann kein Agent auslösen — auch kein übernommener.
+//      Umgekehrt ist nicht jeder modellierte Typ automatisch scharf: die
+//      Umsetzung entscheidet, und ein nicht scharfer Typ trägt dort eine
+//      benannte Begründung.
 
 // ── Entitäten ────────────────────────────────────────────────────────────
 // Sieben. `docs/roadmap.md` §5 setzt den Rahmen auf 5–9, und der Rahmen ist
@@ -180,8 +183,10 @@ export const RELATIONEN = [
 // Typ nennt die Entität, auf die er wirkt, und ob er nach außen wirkt.
 //
 // `nachAussen: true` heißt: hinter der HITL-Kante, über die Aktions-Queue,
-// niemals aus einem Agenten heraus. Diese Liste ist die Vorlage, aus der
-// Etappe 5 `actions.js` erzeugt.
+// niemals aus einem Agenten heraus. Diese Liste ist die DECKE der
+// Aktionsfläche: `actions.js` wird aus ihr erzeugt und kommt nicht darüber
+// hinaus (A4). Ein Typ steht hier, sobald er modelliert ist — scharf wird er
+// erst durch seine Umsetzung dort.
 export const AKTIONSTYPEN = {
   TICKET_ANLEGEN: {
     wirktAuf: "Ticket",
@@ -218,6 +223,24 @@ export const RAHMEN = {
   relationen: { min: 10, max: 20 },
 };
 
+// Haengt jeder Aktionstyp an Entitaeten, die dieses Modell wirklich fuehrt?
+// Die Pruefung stand bis Etappe 5 in `pruefeAktionsflaeche`. Die WHITELIST
+// dagegenzuhalten ist seither Sache von `erzeugeAktionsflaeche` im Kern; was
+// hier bleibt, ist die Frage nach INNEN. Eigene Funktion, damit
+// `pruefeOntologie` linear lesbar bleibt — drei Pruefungen hintereinander,
+// nicht drei verschachtelte Schleifen.
+function pruefeAktionstypen(namen) {
+  for (const [typ, def] of Object.entries(AKTIONSTYPEN)) {
+    for (const seite of ["wirktAuf", "ausEntitaet"]) {
+      if (!namen.includes(def[seite])) {
+        throw new Error(
+          `Ontologie: Aktionstyp "${typ}" nennt unbekannte Entität "${def[seite]}".`,
+        );
+      }
+    }
+  }
+}
+
 export function pruefeOntologie() {
   const namen = Object.keys(ENTITAETEN);
 
@@ -245,38 +268,13 @@ export function pruefeOntologie() {
     }
   }
 
-  return { entitaeten: anzahlE, relationen: anzahlR };
-}
+  pruefeAktionstypen(namen);
 
-// Die Aktionsfläche gegen die Ontologie halten. Ab Etappe 5 wird `actions.js`
-// hieraus erzeugt; bis dahin ist das die Brücke, die den Gedanken schon jetzt
-// prüfbar macht statt ihn nur zu behaupten.
-export function pruefeAktionsflaeche(whitelist) {
-  const namen = Object.keys(ENTITAETEN);
-  const modelliert = Object.keys(AKTIONSTYPEN);
-
-  for (const [typ, def] of Object.entries(AKTIONSTYPEN)) {
-    for (const seite of ["wirktAuf", "ausEntitaet"]) {
-      if (!namen.includes(def[seite])) {
-        throw new Error(
-          `Ontologie: Aktionstyp "${typ}" nennt unbekannte Entität "${def[seite]}".`,
-        );
-      }
-    }
-  }
-
-  // Die Richtung ist Absicht: geprüft wird, ob die WHITELIST über die
-  // Ontologie hinausgeht — nicht umgekehrt. Ein modellierter Typ, den noch
-  // niemand freigeschaltet hat, ist harmlos; ein freigeschalteter Typ ohne
-  // Modell ist genau die Lücke, die A4 schließen soll.
-  const unmodelliert = whitelist.filter((t) => !modelliert.includes(t));
-  if (unmodelliert.length > 0) {
-    throw new Error(
-      `Aktionsfläche: [${unmodelliert.join(", ")}] steht auf der Whitelist, ist aber nicht in der Ontologie modelliert.`,
-    );
-  }
-
-  return { modelliert: modelliert.length, freigeschaltet: whitelist.length };
+  return {
+    entitaeten: anzahlE,
+    relationen: anzahlR,
+    aktionstypen: Object.keys(AKTIONSTYPEN).length,
+  };
 }
 
 // Die berechtigungstragenden Kanten, die `acl.js` übersetzen muss. Als

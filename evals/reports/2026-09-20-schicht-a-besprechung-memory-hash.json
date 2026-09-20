@@ -1,19 +1,19 @@
 {
-  "erzeugt": "2026-09-20T17:46:50.280Z",
+  "erzeugt": "2026-09-20T22:14:41.424Z",
   "schicht": "A",
   "modus": "mock",
   "domaene": "besprechung",
   "storeAdapter": "memory",
   "embeddingAdapter": "hash",
   "identitaetAdapter": "fixtures",
-  "aufgaben": 24,
+  "aufgaben": 25,
   "abrufe": 7,
   "entzuege": 6,
   "deterministisch": true,
   "vertragstreue": {
     "name": "Aufgaben, die ihrer Erwartung entsprechen",
-    "zaehler": 37,
-    "nenner": 37,
+    "zaehler": 38,
+    "nenner": 38,
     "abweichungen": []
   },
   "metriken": {

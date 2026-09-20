@@ -17,14 +17,14 @@ Zwei Schichten, eine Naht:
 Die Naht hat genau **sechs feine Stellen** — dort reicht die Domäne dem Kern etwas an. Die
 ersten vier standen mit dem Gerüst, die letzten beiden kamen mit den Ebenen ② und ①:
 
-| Stelle         | Kern liefert                         | Domäne liefert                        |
-| -------------- | ------------------------------------ | ------------------------------------- |
-| Routing        | `createRouter` (das Verfahren)       | die Bremsen, in ihrer Reihenfolge     |
-| Guardrail      | `createGuardrail` (die Regex-Engine) | die Muster und ihre Gewichte          |
-| Aktions-Queue  | `createActionQueue` (die Mechanik)   | Whitelist und Validierer              |
-| State          | Kernfelder + `buildState`            | die eigenen Felder samt Reducer-Wahl  |
-| Chunk-Speicher | `createStore` (Port) + `baueStore`   | — reine Mechanik, die Domäne schweigt |
-| Connector      | `createConnector` (Port)             | das Berechtigungsmodell der Quelle    |
+| Stelle         | Kern liefert                                  | Domäne liefert                        |
+| -------------- | --------------------------------------------- | ------------------------------------- |
+| Routing        | `createRouter` (das Verfahren)                | die Bremsen, in ihrer Reihenfolge     |
+| Guardrail      | `createGuardrail` (die Regex-Engine)          | die Muster und ihre Gewichte          |
+| Aktions-Queue  | `createActionQueue` + `erzeugeAktionsflaeche` | Ontologie und Umsetzung je Aktionstyp |
+| State          | Kernfelder + `buildState`                     | die eigenen Felder samt Reducer-Wahl  |
+| Chunk-Speicher | `createStore` (Port) + `baueStore`            | — reine Mechanik, die Domäne schweigt |
+| Connector      | `createConnector` (Port)                      | das Berechtigungsmodell der Quelle    |
 
 Die letzte ist die teuerste: ein Connector ist zu einem Zehntel Holen und zu neun Zehnteln
 Berechtigungserfassung — und die neun liegen in `domains/<domäne>/acl.js`, nicht im Kern.
@@ -80,12 +80,13 @@ Diese Liste ist absichtlich sichtbar. Eine verschwiegene Grenze wird zu einem Au
   Nachtrag 2). Gefährlich ist die Lücke nicht — ohne Principal antwortet der Leseweg leer und
   mit Grund —, aber sie ist eine Lücke in der Reichweite. Den Rand die Domäne **wählen** zu
   lassen ist die saubere Fassung und braucht ihre eigene ADR.
-- **Zwei Aktionstypen haben keine Befugnisprüfung, sondern eine benannte Ausnahme.**
-  `TICKET_ZUWEISEN` und `ZUSAMMENFASSUNG_SENDEN` zielen nicht auf ein Dokument dieses Speichers
-  (ein Ticket, eine Empfängerliste) — es gibt nichts, wogegen zu prüfen wäre. Sie stehen deshalb
-  **nicht** im Nenner von 3.16 (ADR-0020). Sie werden frei, wenn es ein Ticketsystem gibt
-  (Etappe 10) und ein Verzeichnis für Empfänger. Bis dahin gilt für sie allein das zweite Tor,
-  der Validierer.
+- **Ein Aktionstyp hat keine Befugnisprüfung, sondern eine benannte Ausnahme.**
+  `ZUSAMMENFASSUNG_SENDEN` zielt nicht auf ein Dokument dieses Speichers (eine Empfängerliste) —
+  es gibt nichts, wogegen zu prüfen wäre. Er steht deshalb **nicht** im Nenner von 3.16
+  (ADR-0020) und wird allein vom zweiten Tor gehalten, dem Validierer. Frei wird er mit einem
+  Verzeichnis für Empfänger. `TICKET_ZUWEISEN` trug dieselbe Ausnahme, bis Etappe 5 ihn ganz
+  schloss: er ist **modelliert, aber nicht scharf**, und kommt gar nicht mehr bis zur Befugnis
+  (ADR-0021). Frei wird er mit einem Ticketsystem (Etappe 10).
 - **Es gibt keinen echten Identitätsanbieter.** Aufgelöst wird gegen ein Verzeichnis aus
   Fixtures; ein OIDC-Adapter kommt, wenn es etwas gibt, wogegen er laufen kann (Etappe 7 und
   11). Bis dahin gilt: die Auflösung ist gemessen, der Anbieter ist keiner.

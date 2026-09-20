@@ -56,34 +56,34 @@ ist bewusst: sie verhindert, dass zwei Gedächtnisse auseinanderdriften.
 
 ## Wegweiser nach Aufgabentyp
 
-| Aufgabentyp                                           | Wo nachschauen                                                                              |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Umfang, Nicht-Ziele, Erfolgskriterien                 | `PRODUCT.md`                                                                                |
-| Architekturentscheidung, Trade-off, bekannte Grenzen  | `ARCHITECTURE.md`                                                                           |
-| „Warum wurde so entschieden"                          | `DECISIONS.md`                                                                              |
-| Messung, Metrikdefinition, Baseline                   | `EVALS.md`                                                                                  |
-| Wachstumsreihenfolge, schichtweiser Ausbau            | `EXTEND.md`                                                                                 |
-| Etappen, ihre Tore, was wann gebraucht wird           | `docs/roadmap.md` — Vorschlag, kein Vertrag                                                 |
-| Ablaufdetails, Knotenreihenfolge, HITL-Mechanik       | `docs/workflow.md`                                                                          |
-| Sicherheitsmodell, Bedrohungsmodell                   | `docs/security-model.md`                                                                    |
-| KI-gestützter Entwicklungsprozess, Gedächtnisrhythmus | `docs/development-process.md`                                                               |
-| Agentenverhalten und Prompts                          | `src/domains/<domäne>/prompts.js`                                                           |
-| Graph, Routing, State, Pause und Fortsetzung          | `src/kernel/agent/` — Kernfelder plus Felder der Domäne                                     |
-| Envelope, Chunking, Embedding, Store-Port             | `src/kernel/context/` — Adapterwahl in `aufbau.js`                                          |
-| ACL-Filter, hybride Suche                             | `src/kernel/retrieval/` — `filter.js` ist reine Logik, kein IO                              |
-| Connector-Port, Synchronisationszyklus, Entzug        | `src/kernel/connectors/` — Momentaufnahme statt Delta (ADR-0011)                            |
-| Berechtigungsmodell einer Quelle → Envelope           | `src/domains/<domäne>/acl.js` — reine Funktionen, das Regelwerk steht im Dateikopf          |
-| Entitäten, Relationen, Aktionstypen                   | `src/domains/<domäne>/ontology.js` — prüft sich selbst, die Whitelist wird dagegen gehalten |
-| Ausgabevertrag einer Domäne (auch für Schicht B)      | `src/domains/<domäne>/vertrag.js` — ohne LLM, sonst misst der Prüfer zwei Unbekannte        |
-| Auth, Rate-Limit, Guardrail, Trace, Kosten            | `src/kernel/governance/`                                                                    |
-| Aktions-Isolation                                     | `src/kernel/action/queue.js` (Mechanik) · `src/domains/<domäne>/actions.js` (Whitelist)     |
-| LLM-Adapter und Mock-Modus                            | `src/kernel/llm/`                                                                           |
-| Domänen-Spezifikation, Bremsenreihenfolge             | `src/domains/<domäne>/domain.js` · Registrierung `src/kernel/registry.js`                   |
-| Tests                                                 | `tests/` — `node:test`, Aufruf `npm test`                                                   |
-| Evaluations-Harness und Datensatz                     | `evals/` — Aufruf `npm run evals`, Grenzen in `evals/README.md`                             |
-| Offene Themen                                         | `.gehirn/themen.md`                                                                         |
-| Verbindliche Projektkonventionen                      | `.gehirn/regeln.md`                                                                         |
-| Gesundheitscheck                                      | Skill `projekt-doktor`                                                                      |
+| Aufgabentyp                                           | Wo nachschauen                                                                                                 |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Umfang, Nicht-Ziele, Erfolgskriterien                 | `PRODUCT.md`                                                                                                   |
+| Architekturentscheidung, Trade-off, bekannte Grenzen  | `ARCHITECTURE.md`                                                                                              |
+| „Warum wurde so entschieden"                          | `DECISIONS.md`                                                                                                 |
+| Messung, Metrikdefinition, Baseline                   | `EVALS.md`                                                                                                     |
+| Wachstumsreihenfolge, schichtweiser Ausbau            | `EXTEND.md`                                                                                                    |
+| Etappen, ihre Tore, was wann gebraucht wird           | `docs/roadmap.md` — Vorschlag, kein Vertrag                                                                    |
+| Ablaufdetails, Knotenreihenfolge, HITL-Mechanik       | `docs/workflow.md`                                                                                             |
+| Sicherheitsmodell, Bedrohungsmodell                   | `docs/security-model.md`                                                                                       |
+| KI-gestützter Entwicklungsprozess, Gedächtnisrhythmus | `docs/development-process.md`                                                                                  |
+| Agentenverhalten und Prompts                          | `src/domains/<domäne>/prompts.js`                                                                              |
+| Graph, Routing, State, Pause und Fortsetzung          | `src/kernel/agent/` — Kernfelder plus Felder der Domäne                                                        |
+| Envelope, Chunking, Embedding, Store-Port             | `src/kernel/context/` — Adapterwahl in `aufbau.js`                                                             |
+| ACL-Filter, hybride Suche                             | `src/kernel/retrieval/` — `filter.js` ist reine Logik, kein IO                                                 |
+| Connector-Port, Synchronisationszyklus, Entzug        | `src/kernel/connectors/` — Momentaufnahme statt Delta (ADR-0011)                                               |
+| Berechtigungsmodell einer Quelle → Envelope           | `src/domains/<domäne>/acl.js` — reine Funktionen, das Regelwerk steht im Dateikopf                             |
+| Entitäten, Relationen, Aktionstypen                   | `src/domains/<domäne>/ontology.js` — prüft sich selbst, die Aktionsfläche wird daraus erzeugt                  |
+| Ausgabevertrag einer Domäne (auch für Schicht B)      | `src/domains/<domäne>/vertrag.js` — ohne LLM, sonst misst der Prüfer zwei Unbekannte                           |
+| Auth, Rate-Limit, Guardrail, Trace, Kosten            | `src/kernel/governance/`                                                                                       |
+| Aktions-Isolation                                     | `src/kernel/action/queue.js` (Tore) · `flaeche.js` (Erzeugung) · `src/domains/<domäne>/actions.js` (Umsetzung) |
+| LLM-Adapter und Mock-Modus                            | `src/kernel/llm/`                                                                                              |
+| Domänen-Spezifikation, Bremsenreihenfolge             | `src/domains/<domäne>/domain.js` · Registrierung `src/kernel/registry.js`                                      |
+| Tests                                                 | `tests/` — `node:test`, Aufruf `npm test`                                                                      |
+| Evaluations-Harness und Datensatz                     | `evals/` — Aufruf `npm run evals`, Grenzen in `evals/README.md`                                                |
+| Offene Themen                                         | `.gehirn/themen.md`                                                                                            |
+| Verbindliche Projektkonventionen                      | `.gehirn/regeln.md`                                                                                            |
+| Gesundheitscheck                                      | Skill `projekt-doktor`                                                                                         |
 
 ## Wohin neue Dateien gehören
 

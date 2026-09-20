@@ -97,7 +97,8 @@ Stream.
 
 ## Schicht 4 — Aktions-Isolation
 
-`src/kernel/action/queue.js` (Mechanik) · `src/domains/<domäne>/actions.js` (Whitelist)
+`src/kernel/action/queue.js` (Tore) · `src/kernel/action/flaeche.js` (Erzeugung) ·
+`src/domains/<domäne>/actions.js` (Umsetzung)
 
 ```
 Agent → ActionQueue (SCHREIBT nur) → Worker (liest + VALIDIERT + führt aus)
@@ -108,7 +109,10 @@ Agent → ActionQueue (SCHREIBT nur) → Worker (liest + VALIDIERT + führt aus)
 Zwei Tore:
 
 1. **`enqueueAction`** — steht der Typ nicht auf der Whitelist, wird schon **vor** dem
-   Schreiben abgelehnt.
+   Schreiben abgelehnt. Die Whitelist ist seit Etappe 5 **nicht geschrieben, sondern erzeugt**:
+   aus den Aktionstypen der Ontologie und ihrer Umsetzung. Sie enthält nur, was modelliert
+   UND scharf ist — ein modellierter Typ ohne Umsetzung bleibt draußen und trägt eine
+   benannte Begründung (ADR-0021).
 2. **Der Worker** — prüft das Payload gegen Schema und Länge; nach drei Versuchen `FAILED`.
 
 Tor 1 kommt **vor** der Dedup-Prüfung: ein nicht erlaubter Typ muss auch dann auffliegen,

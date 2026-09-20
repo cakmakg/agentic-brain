@@ -595,6 +595,32 @@ ihr ankommt. Braucht 4a — ein Genehmigender ohne aufgelöste Identität ist ke
 
 ### Etappe 5 — Aktionsfläche: von der Ontologie zur Whitelist
 
+> **🟢 Erledigt am 2026-09-20 (ADR-0021).** Belegt: `npm test` **268/268** gegen eine
+> erreichbare Datenbank (ohne sie 261/268, 7 übersprungen; vorher 262 Tests) ·
+> `npm run evals` Vertragstreue **38/38** für `besprechung` (vorher 37/37, neu ist AI-5),
+> **3.2 = 0 % (0/2) unverändert** wie gefordert, 3.13 = 0 % (0/50), 3.14 = 0 % (0/6),
+> 3.16 = 0 % (0/2) — alle unbewegt · `beispiel` in **jeder** Metrik identisch, 28/28 ·
+> `evals:postgres` dieselben Zahlen, beide Berichte nach Abzug von `erzeugt` und
+> `storeAdapter` **zeichengleich** · `npm run demo` Rückgabewert 0 ohne Infrastruktur (K5) ·
+> `grep -rn "besprechung" src/kernel/` leer · ESLint unverändert 12 Warnungen / 0 Fehler.
+>
+> **Die Etappe war zur Hälfte schon gegangen — und die andere Hälfte war das Eigentliche.**
+> Die Whitelist wurde seit Etappe 3a aus der Ontologie abgeleitet; **Validierer und Befugnisse
+> nicht**. Drei parallele Listen über denselben Schlüsseln, von denen nur eine am Modell hing:
+> vergisst eine der anderen einen Typ, wird die Aktion GESCHRIEBEN und danach wortlos
+> abgelehnt. Seit dieser Etappe erzeugt `erzeugeAktionsflaeche` alle drei aus einer Quelle
+> und wirft in drei Richtungen — auch beim SCHWEIGEN.
+>
+> **Was der Plan nicht vorhergesehen hatte: „modelliert" und „scharf" waren dasselbe.** Mit
+> `Object.keys(AKTIONSTYPEN)` war jeder modellierte Typ automatisch freigeschaltet — der
+> Zustand, den die Voraussetzung für Etappe 13 unten verlangt, konnte gar nicht existieren.
+> Aufgefallen ist das an einem konkreten Preis: **`TICKET_ZUWEISEN` war scharf und wurde von
+> keinem einzigen Fall geübt**, obwohl es kein Ticketsystem gibt, dem man etwas zuweisen
+> könnte. Er ist jetzt modelliert, aber nicht scharf, mit benannter Begründung; frei wird er
+> in Etappe 10. Die Mutationsprobe zeigt, was der alte Zustand war: macht man ihn wieder
+> scharf, läuft AI-5 bis **`DONE`** durch — eine Wirkung nach außen, die kein Fall erwartet
+> hat.
+
 A4 wird eingelöst: `actions.js` wird aus den Aktionstypen in `ontology.js` **erzeugt** und
 gegen sie geprüft. Was nicht als Aktionstyp modelliert ist, kann kein Agent auslösen — der
 Gedanke, den der Ausgangstext aus Palantirs Ontology zieht.

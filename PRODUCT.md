@@ -217,7 +217,7 @@ npm test && npm run evals && npm run demo
 | 4b     | Handlungsbefugnis je Principal                   | `npm run evals` → **3.16 = 0 %** · 3.2 und 3.13 unverändert                                            | 🟢    |
 | 4c     | Policy, Risikoklasse, Genehmigungs-Timeout       | abgelaufene Genehmigung → deny · **3.15 = 100 %**                                                      | ⬜    |
 | 4d     | Audit-Kette, Genehmigung als Entscheidungsobjekt | geänderte Audit-Zeile wird erkannt · bearbeiteter Entwurf durchläuft den Vertrag                       | ⬜    |
-| 5      | Aktionsfläche aus der Ontologie erzeugen         | Aktionstyp ohne Modell wird **vor** der Queue abgelehnt · 3.2 = 0 %                                    | ⬜    |
+| 5      | Aktionsfläche aus der Ontologie erzeugen         | Aktionstyp ohne Modell wird **vor** der Queue abgelehnt · 3.2 = 0 %                                    | 🟢    |
 | 6      | An Auslöser gebunden, nicht an einen Kalender    | je Punkt eine eigene ADR vor der ersten Zeile Code                                                     | ⬜    |
 | 7      | Erste echte Quelle: Google Drive                 | Drive-Fixtures → 3.13 = 0 % · **3.14 neu definiert** = 0 % · K5 grün                                   | ⬜    |
 | 8      | Überfreigabe-Bericht                             | Bericht ohne ein Textzeichen · kein zweiter Leseweg                                                    | ⬜    |

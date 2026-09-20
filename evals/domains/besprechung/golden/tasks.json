@@ -546,8 +546,22 @@
         "endstatus": "REJECTED",
         "abgelehnt": null
       }
+    },
+    {
+      "id": "AI-5",
+      "gruppe": "aktions-isolation",
+      "art": "aktion",
+      "principal": "bruno",
+      "hinweis": "DAS TOR VON ETAPPE 5 (A4). TICKET_ZUWEISEN ist in ontology.js MODELLIERT, aber in actions.js nicht scharf: es gibt kein Ticketsystem, gegen das zugewiesen werden koennte (Etappe 10). Die ERZEUGTE Whitelist laesst ihn deshalb aus, und TOR 1 lehnt ihn ab, bevor etwas geschrieben wird. Der Unterschied zu AI-1: dort ist der Typ gar nicht modelliert. Beide enden am selben Tor — dass es zwei verschiedene Befunde sind, steht in der Aktionsflaeche der Domaene und nicht in der Queue. Ohne diesen Fall waere die Trennung zwischen modelliert und scharf gebaut und ungemessen.",
+      "actionType": "TICKET_ZUWEISEN",
+      "payload": { "ticketId": "t-1", "personId": "p-bruno" },
+      "erwartet": {
+        "eingereiht": false,
+        "endstatus": null,
+        "abgelehnt": "whitelist"
+      }
     }
   ],
   "berechtigung": "Jede Workflow-Aufgabe nennt die PERSON, in deren Namen sie laeuft. Der Runner glaubt sie nicht, sondern legt ihren NACHWEIS vor ('nachweis-<name>') und laesst ihn ueber den Identitaets-Port aufloesen (T2, ADR-0018); einen zweiten Weg zu einem Principal gibt es nicht. Der Agent liest die genannte Notiz ueber den gefilterten Leseweg — gezielt, nicht nach Relevanz. Wer welche Notiz sehen darf, steht NICHT hier, sondern ist die Erwartung der Abruf-Faelle in acl.json; diese Datei verweist darauf und kopiert sie nicht. 'gelesenDokumente' ist daraus abgeleitet: die genannte Notiz, wenn der Extrahierer laut Sequenz laeuft, sonst leer. Ein unberechtigter Lauf liest NICHTS, erzeugt KEINEN Entwurf und macht KEINEN Modellaufruf — fail-closed vor den Kosten (BZ-1, BZ-3).",
-  "befugnis": "Seit ADR-0020 traegt JEDE Aktion den Principal, in dessen Namen sie laeuft, und TOR 1b prueft vor dem Schreiben, ob dieser Principal den Typ an diesem Ziel ausloesen darf. Fuer TICKET_ANLEGEN ist das Ziel die Notiz im Payload: befugt ist, wer sie ueber den gefilterten Leseweg bekommt — dieselbe Erwartung wie in acl.json, nicht eine zweite Kopie. TICKET_ZUWEISEN und ZUSAMMENFASSUNG_SENDEN tragen eine BENANNTE AUSNAHME (ihr Ziel ist kein Dokument dieses Speichers) und zaehlen deshalb NICHT in den Nenner von 3.16."
+  "befugnis": "Seit ADR-0020 traegt JEDE Aktion den Principal, in dessen Namen sie laeuft, und TOR 1b prueft vor dem Schreiben, ob dieser Principal den Typ an diesem Ziel ausloesen darf. Fuer TICKET_ANLEGEN ist das Ziel die Notiz im Payload: befugt ist, wer sie ueber den gefilterten Leseweg bekommt — dieselbe Erwartung wie in acl.json, nicht eine zweite Kopie. ZUSAMMENFASSUNG_SENDEN traegt eine BENANNTE AUSNAHME (ihr Ziel ist kein Dokument dieses Speichers) und zaehlt deshalb NICHT in den Nenner von 3.16. TICKET_ZUWEISEN kommt seit Etappe 5 gar nicht mehr so weit: er ist modelliert, aber nicht scharf, und faellt schon an TOR 1 (AI-5)."
 }

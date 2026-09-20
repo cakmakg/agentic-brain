@@ -335,11 +335,14 @@ Guardrail-Blockierschwelle auf die Summe aller Gewichte setzen.
 
 ## 8. Baseline und Verlauf
 
-> **Zwei Läufe an einem Tag, ein Dateiname.** Die vier Zeilen vom 2026-09-20 tragen den Stand
-> **nach** Etappe 4b. Die Zwischenzahlen desselben Tages (T1 bis T3: Vertragstreue 35/35, 3.16
-> noch nicht vorhanden) stehen in den Nachträgen zu ADR-0019 — ihr Bericht ist vom späteren Lauf
-> desselben Tages **überschrieben**, denn der Dateiname trägt das Datum, nicht die Uhrzeit.
-> Dieselbe Grenze wie am 2026-09-10; sie ist nicht heilbar, nur benennbar.
+> **Drei Läufe an einem Tag, ein Dateiname.** Die vier Zeilen vom 2026-09-20 tragen den Stand
+> **nach Etappe 5**. Die Zwischenstände desselben Tages sind von den späteren Läufen
+> **überschrieben**, denn der Dateiname trägt das Datum, nicht die Uhrzeit: T1 bis T3
+> (Vertragstreue 35/35, 3.16 noch nicht vorhanden) stehen in den Nachträgen zu ADR-0019,
+> Etappe 4b (Vertragstreue **37/37**, sonst jede Metrik gleich) in ADR-0020 — und seine
+> Berichtsdateien liegen im Commit `862c6ac`. Dieselbe Grenze wie am 2026-09-10; sie ist
+> nicht heilbar, nur benennbar. **Sie wird mit jeder Etappe teurer**, weil sie inzwischen
+> dreimal an einem Tag zugeschlagen hat — als offenes Thema notiert.
 
 | Datum      | Domäne        | Bericht                                               | 3.1   | 3.2 | 3.3   | 3.4   | 3.13       | 3.14          | 3.16       | Vertragstreue |
 | ---------- | ------------- | ----------------------------------------------------- | ----- | --- | ----- | ----- | ---------- | ------------- | ---------- | ------------- |
@@ -356,8 +359,8 @@ Guardrail-Blockierschwelle auf die Summe aller Gewichte setzen.
 | 2026-09-16 | `besprechung` | `2026-09-16-schicht-a-besprechung-postgres-hash.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | —          | 32/32         |
 | 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-memory-hash.json`      | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | ungemessen | 28/28         |
 | 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-postgres-hash.json`    | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | ungemessen | 28/28         |
-| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-memory-hash.json`   | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 0 % (0/2)  | 37/37         |
-| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-postgres-hash.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 0 % (0/2)  | 37/37         |
+| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-memory-hash.json`   | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 0 % (0/2)  | 38/38         |
+| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-postgres-hash.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 0 % (0/2)  | 38/38         |
 
 Die Zeile vom 2026-09-10 für `beispiel` ist in **jeder** Metrik identisch mit der vom
 2026-09-09 — genau das verlangt `docs/roadmap.md` §6 von Etappe 3: 3.13 und 3.1–3.4 dürfen
@@ -414,6 +417,17 @@ bleibt `npm run evals` bei 3.13 = 0,0 % und 32/32 — während `npm run evals:po
 BA-6 ihr Leck namentlich melden. Das belegt dreierlei auf einmal: der Postgres-Adapter
 benutzt wirklich die SQL-Bedingung, 3.13 misst sie, und die beiden Kompilate werden
 unabhängig voneinander geprüft.
+
+**Die vierte Probe, aus Etappe 5 (ADR-0021).** Die Vertragstreue stieg von 37 auf 38 Fälle,
+weil AI-5 dazukam: `TICKET_ZUWEISEN` ist modelliert, aber nicht scharf und muss **vor** dem
+Schreiben abgelehnt werden. Macht man ihn wieder scharf — der Stand vor dieser Etappe —, fällt
+die Vertragstreue auf **37/38** und der Lauf endet mit Rückgabewert 1: `eingereiht: true statt
+false`, `endstatus: DONE statt null`, `abgelehnt: null statt whitelist`. Bemerkenswert ist,
+was **3.2 dabei tut: nichts.** Sie bleibt 0 % (0/2), weil sie nur Aktionen aus Workflow-Läufen
+zählt und die Aktions-Fälle nicht berührt. Die Zahl, die diese Etappe halten sollte, hätte den
+Defekt also nicht gefunden — gefunden hat ihn die **Vertragstreue**. Das ist kein Widerspruch,
+sondern die Arbeitsteilung aus §3: eine Metrik misst eine Rate, ein Golden-Fall misst ein
+Verhalten. Wer nur auf die Raten schaut, sieht eine offene Aktionsfläche nicht.
 
 <!-- Erste Zeile: dein erster eigener Lauf. Trag ihn ein, auch wenn er rot ist —
      besonders dann. Der Übergang von Rot zu Grün ist der Beweis. -->

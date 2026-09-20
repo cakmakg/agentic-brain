@@ -21,7 +21,6 @@ import {
   BERECHTIGUNGSKANTEN,
   RAHMEN,
   pruefeOntologie,
-  pruefeAktionsflaeche,
 } from "../src/domains/besprechung/ontology.js";
 import {
   loeseOrdnerAuf,
@@ -103,23 +102,54 @@ test("Ontologie: die berechtigungstragenden Kanten sind genau die, die acl.js ue
   ]);
 });
 
-test("Aktionsflaeche: ein Typ ohne Modell wird abgelehnt", () => {
-  // Die Frühform von A4. Ab Etappe 5 wird die Whitelist erzeugt; bis dahin
-  // wird sie wenigstens dagegen gehalten.
-  assert.throws(
-    () =>
-      pruefeAktionsflaeche([...Object.keys(AKTIONSTYPEN), "TICKET_LOESCHEN"]),
-    /nicht in der Ontologie modelliert/,
+test("Aktionsflaeche: sie wird aus der Ontologie ERZEUGT, nicht daneben geschrieben", async () => {
+  // A4, Etappe 5. Der Import selbst ist ein Teil des Tests: `actions.js` ruft
+  // `erzeugeAktionsflaeche` beim Laden und wirft, sobald Modell und Umsetzung
+  // auseinanderlaufen. Die Richtungen prueft `tests/aktionsflaeche.test.js` am
+  // Kern; hier steht, was daraus FUER DIESE DOMAENE folgt.
+  const { whitelist, validators, befugnisse, nichtScharf } =
+    await import("../src/domains/besprechung/actions.js");
+
+  // Jeder modellierte Typ ist entweder scharf oder benannt — keiner fehlt,
+  // und keiner kommt von auszerhalb der Ontologie dazu.
+  assert.deepEqual(
+    [...whitelist, ...Object.keys(nichtScharf)].sort(),
+    Object.keys(AKTIONSTYPEN).sort(),
   );
-  // Die andere Richtung ist harmlos: modelliert, aber nicht freigeschaltet.
-  assert.doesNotThrow(() => pruefeAktionsflaeche(["TICKET_ANLEGEN"]));
+
+  // Und scharf heiszt vollstaendig: beide Tore stehen. Ein Typ ohne
+  // Validierer waere geschrieben und danach wortlos abgelehnt worden.
+  for (const typ of whitelist) {
+    assert.equal(typeof validators[typ], "function", `${typ} ohne Validierer`);
+    assert.ok(befugnisse[typ], `${typ} ohne Befugnis`);
+  }
 });
 
-test("Aktionsflaeche: die Whitelist der Domaene haelt der Ontologie stand", async () => {
-  // Der Import selbst ist der Test: `actions.js` ruft `pruefeAktionsflaeche`
-  // beim Laden und wirft, wenn die Whitelist über die Ontologie hinausgeht.
-  const { whitelist } = await import("../src/domains/besprechung/actions.js");
-  assert.deepEqual(whitelist.sort(), Object.keys(AKTIONSTYPEN).sort());
+test("Aktionsflaeche: TICKET_ZUWEISEN ist modelliert, aber nicht scharf", async () => {
+  // Es gibt kein Ticketsystem, gegen das zugewiesen werden koennte — der
+  // echte Ausfuehrer kommt erst mit Etappe 10 (A16). Bis Etappe 5 stand der
+  // Typ auf der Whitelist und wurde von keinem einzigen Fall geuebt: eine
+  // offene Wirkung, die niemand misst. Genau dafuer ist die Trennung zwischen
+  // modelliert und scharf da.
+  const { whitelist, nichtScharf, enqueueAction } =
+    await import("../src/domains/besprechung/actions.js");
+
+  assert.ok(!whitelist.includes("TICKET_ZUWEISEN"));
+  assert.match(nichtScharf.TICKET_ZUWEISEN, /Etappe 10/);
+
+  // Modelliert genuegt nicht: TOR 1 lehnt ab, bevor irgendetwas geschrieben
+  // wird. (Dass die Queue dabei wirklich nicht waechst, belegt der Kerntest
+  // an einer fluechtigen Queue — hier wuerde das Lesen der Queue den
+  // dauerhaften Zustand der Domaene anfassen.)
+  await assert.rejects(
+    () =>
+      enqueueAction({
+        threadId: "tz-1",
+        actionType: "TICKET_ZUWEISEN",
+        payload: { ticketId: "t-1", personId: "p-1" },
+      }),
+    /Whitelist/,
+  );
 });
 
 // ── ACL-Uebersetzung: die Vererbungskette ────────────────────────────────

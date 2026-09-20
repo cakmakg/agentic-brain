@@ -27,7 +27,7 @@ Zeile fällt. Notiert in `ARCHITECTURE.md` §4, damit die Grenze nicht verschwie
 
 ### Thema: Ingenieursdisziplin einführen
 
-**Status:** 🟡 E0-A steht (Stand 2026-09-10: **15** Warnungen, 0 Fehler); **E0-B ist frei** und der nächste Disziplinschritt.
+**Status:** 🟡 E0-A steht (gemessen am 2026-09-20: **12** Warnungen, 0 Fehler); **E0-B ist frei** und der nächste Disziplinschritt.
 Seit 2026-09-08: ESLint 10, Prettier, lefthook, alle Regeln auf `warn`, `src/` unberührt.
 E0-B (dependency-cruiser) schreibt seine Regeln auf **Pfade**; seit Etappe 0b stehen die
 Ebenenpfade fest, es kann also einmal geschrieben werden. Danach E0-C (`envLive` — erste Etappe mit
@@ -51,6 +51,67 @@ wohl aendern, ein dichtes Embedding gibt mehr Chunks einen Wert ueber null. `0/1
 sind beide 0 %. Bewegt sich der **Zaehler**, hing eine Berechtigung an der Sortierung — das
 waere der Befund, nicht das Embedding. Bis dahin gilt „der Adapter ist austauschbar" nur
 gegenueber dem breiten Testadapter.
+
+### Thema: Der Lint-Anstieg — drei Warnungen, die eine Entscheidung brauchen
+
+**Status:** 🟡 Neu am 2026-09-10, nachgemessen am 2026-09-20: **12** Warnungen (nicht 15 — der Anstieg aus 3b ist teils wieder abgebaut). Die Frage bleibt dieselbe.
+`darfSehen` Komplexitaet 11 und `pruefeEnvelope` Komplexitaet 13 sind der Preis, den ADR-0012
+in seinem eigenen Konsequenzen-Abschnitt benennt: eine Regel mehr. Die geordnete Regelliste in
+`darfSehen` zu zerschneiden waere schlechter als die Warnung — die Reihenfolge IST dort die
+Aussage. `berechneMetriken` mit 104 Zeilen ist eine Metrik mehr in einer bewusst linearen
+Liste. Zu entscheiden ist nicht, ob refaktoriert wird, sondern ob die drei Schwellen fuer
+diese Dateien angehoben oder die Befunde als bekannte Ausnahme notiert werden — beides
+gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
+
+### Thema: Nach dem MVP — was ohne Schluessel messbar ist, und was nicht
+
+**Status:** 🟡 Stand 2026-09-20. **4b und Etappe 5 gefahren** (ADR-0020, ADR-0021; A11 und A4 gefallen). Offen ohne Schluessel: **4c**, **4d**, **E0-B**, **express 5**. Die drei grossen Kandidaten (Voyage, Schicht B, echte Quelle) haengen ALLE an einem Schluessel oder Zugang, den es hier nicht gibt.
+
+**Was blockiert ist und woran:** der **Voyage-Lauf** an `VOYAGE_API_KEY`; die **erste
+Schicht-B-Messung** an `ANTHROPIC_API_KEY` plus einer Ausgabengrenze (und die Domaene muss
+`schreibe`/`pruefe` liefern — ohne Schluessel waere das gebaut und ungemessen, also nicht
+anfangen); die **erste echte Quelle** an Drive-Zugangsdaten. Keiner dieser drei laesst sich
+ehrlich vorziehen.
+
+**Was ohne Schluessel noch offen ist**, in der Reihenfolge, in der es Sinn ergibt:
+
+- ~~**Etappe 5**~~ — 🟢 am 2026-09-20 als ADR-0021. Die Aktionsflaeche wird erzeugt, und
+  **modelliert heisst nicht mehr scharf**: `TICKET_ZUWEISEN` ist zu, bis es ein Ticketsystem
+  gibt (Etappe 10). 3.2 unveraendert 0 %, Vertragstreue 37 → 38.
+- **4c** — Policy und Risikoklasse: nur die Klasse vergeben und protokollieren, wirksam erst in
+  14b. Neue Metrik 3.15 (Genehmigungs-Timeout).
+- **4d** — Audit-Kette als Hash-Kette und die Genehmigung als Entscheidungsobjekt. Braucht 4a,
+  das steht.
+- **E0-B** — dependency-cruiser. Wuerde die Kern-Domaenen-Linie MECHANISCH halten statt per
+  `grep`; seit T1 gibt es mehr Regeln zu schreiben. **Neue Abhaengigkeit, also vorher fragen.**
+- **express 4 → 5** — zwei mittlere Schwachstellen, eigene ADR, betrifft nur den HTTP-Rand.
+
+**Was aus 4b als Lehre bleibt:** der Lauf gegen den ZWEITEN Adapter fand einen Defekt, den kein
+Test gesucht hatte — eine Befugnispruefung mit leerer Zielkennung fiel still in die
+Relevanzsuche, wo `memory` und Postgres verschieden antworten. **Ein stiller Moduswechsel ist
+gefaehrlicher als ein Fehler**, und zwei Adapter sind der billigste Weg, ihn zu finden.
+
+**Was aus Etappe 5 als Lehre bleibt:** die Etappe war laut Plan zur Haelfte erledigt — und die
+unerledigte Haelfte war das Eigentliche. Aus der Frage „ist A4 nicht schon da?" fiel ein
+konkreter Befund: `TICKET_ZUWEISEN` war scharf, von keinem Fall geuebt und konnte gar nicht
+gelingen. **Eine erledigte Zusage lohnt sich nachzurechnen**, nicht nur abzuhaken.
+
+### Thema: Ein Dateiname je Tag — drei Laeufe teilen sich inzwischen einen Bericht
+
+**Status:** 🟠 Neu am 2026-09-20. Am selben UTC-Tag liefen T1–T3, Etappe 4b und Etappe 5; jeder Lauf ueberschrieb den Bericht des vorigen, denn der Dateiname traegt nur das Datum.
+
+Der Name entsteht in `evals/runners/policy.js` aus `bericht.erzeugt.slice(0, 10)` plus
+Store- und Embedding-Adapter. Zwei Etappen an einem Tag kollidieren also zwangslaeufig. Bisher
+war das eine benennbare Grenze (`EVALS.md` §8 sagt es zweimal); inzwischen ist die
+Beweiskette fuer 4b nur noch im Commit `862c6ac` zu finden, waehrend `EVALS.md` denselben
+Dateinamen fuer die Zahlen von Etappe 5 fuehrt.
+
+Zu entscheiden ist, **was in den Namen gehoert** — die Uhrzeit (mechanisch, aber unlesbar) oder
+eine Etappenmarke (lesbar, aber von Hand gesetzt und damit faelschbar). Nicht nebenbei: der
+Name ist in `EVALS.md`, `DECISIONS.md` und `projekt-doktor` §13 zitiert. Eigene Aenderung,
+eigenes Tor — genau deshalb steht es hier und nicht in Etappe 5.
+
+## Abgeschlossene Themen
 
 ### Thema: Zwang fehlt — von drei Schichten des Inventars steht eine
 
@@ -87,46 +148,6 @@ Davor gehoeren zwei gemessene Defekte im Messinstrument selbst: `evals/runners/p
 entscheidet in Zeile 618-626 sechsmal mit `erfuellt !== false` — ein `undefined` gilt als
 gruen —, und `berechneMetriken` steht in keinem einzigen Test. Ein ungepruefter Richter ist
 vor jeder Sperre dran.
-
-### Thema: Der Lint-Anstieg von 12 auf 15 Warnungen
-
-**Status:** 🟡 Neu am 2026-09-10. Drei neue Warnungen, alle als Folge von Etappe 3b bewusst stehengelassen.
-`darfSehen` Komplexitaet 11 und `pruefeEnvelope` Komplexitaet 13 sind der Preis, den ADR-0012
-in seinem eigenen Konsequenzen-Abschnitt benennt: eine Regel mehr. Die geordnete Regelliste in
-`darfSehen` zu zerschneiden waere schlechter als die Warnung — die Reihenfolge IST dort die
-Aussage. `berechneMetriken` mit 104 Zeilen ist eine Metrik mehr in einer bewusst linearen
-Liste. Zu entscheiden ist nicht, ob refaktoriert wird, sondern ob die drei Schwellen fuer
-diese Dateien angehoben oder die Befunde als bekannte Ausnahme notiert werden — beides
-gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
-
-### Thema: Nach dem MVP — was ohne Schluessel messbar ist, und was nicht
-
-**Status:** 🟡 Neu am 2026-09-20. **MVP abgeschlossen, Etappe 4b gefahren** (ADR-0020, A11 gefallen, 3.16 = 0 %). Die drei naechsten Kandidaten (Voyage, Schicht B, echte Quelle) haengen ALLE an einem Schluessel oder Zugang, den es hier nicht gibt — `.env` ist leer, keine der vier Variablen gesetzt.
-
-**Was blockiert ist und woran:** der **Voyage-Lauf** an `VOYAGE_API_KEY`; die **erste
-Schicht-B-Messung** an `ANTHROPIC_API_KEY` plus einer Ausgabengrenze (und die Domaene muss
-`schreibe`/`pruefe` liefern — ohne Schluessel waere das gebaut und ungemessen, also nicht
-anfangen); die **erste echte Quelle** an Drive-Zugangsdaten. Keiner dieser drei laesst sich
-ehrlich vorziehen.
-
-**Was ohne Schluessel noch offen ist**, in der Reihenfolge, in der es Sinn ergibt:
-
-- **Etappe 5** — die Whitelist aus der Ontologie ERZEUGEN (A4). Heute wird sie nur dagegen
-  geprueft. Tor: ein Aktionstyp ohne Modell wird vor der Queue abgelehnt, 3.2 bleibt 0 %.
-- **4c** — Policy und Risikoklasse: nur die Klasse vergeben und protokollieren, wirksam erst in
-  14b. Neue Metrik 3.15 (Genehmigungs-Timeout).
-- **4d** — Audit-Kette als Hash-Kette und die Genehmigung als Entscheidungsobjekt. Braucht 4a,
-  das steht.
-- **E0-B** — dependency-cruiser. Wuerde die Kern-Domaenen-Linie MECHANISCH halten statt per
-  `grep`; seit T1 gibt es mehr Regeln zu schreiben. **Neue Abhaengigkeit, also vorher fragen.**
-- **express 4 → 5** — zwei mittlere Schwachstellen, eigene ADR, betrifft nur den HTTP-Rand.
-
-**Was aus 4b als Lehre bleibt:** der Lauf gegen den ZWEITEN Adapter fand einen Defekt, den kein
-Test gesucht hatte — eine Befugnispruefung mit leerer Zielkennung fiel still in die
-Relevanzsuche, wo `memory` und Postgres verschieden antworten. **Ein stiller Moduswechsel ist
-gefaehrlicher als ein Fehler**, und zwei Adapter sind der billigste Weg, ihn zu finden.
-
-## Abgeschlossene Themen
 
 ### Thema: Der Postgres-Pfad laeuft nur, wenn jemand ihn faehrt
 

@@ -1861,6 +1861,11 @@ Principal diesen Aktionstyp an diesem Ziel auslösen darf.**
    ist kein Dokument dieses Speichers (ein Ticket, eine Empfängerliste), es gibt nichts, wogegen
    diese Domäne heute prüfen könnte.
 
+> **Nachtrag vom 2026-09-20 (ADR-0021).** Punkt 6 gilt nur noch für `ZUSAMMENFASSUNG_SENDEN`.
+> `TICKET_ZUWEISEN` ist seit Etappe 5 **modelliert, aber nicht scharf** und erreicht TOR 1b
+> gar nicht mehr — seine Ausnahme ist damit gegenstandslos geworden, nicht aufgehoben. Der
+> Grund war derselbe wie hier („es gibt kein Ticketsystem"), nur eine Stufe früher angewandt.
+
 Neue Metrik in `EVALS.md`:
 
 > **3.16 Handlungsbefugnis-Verletzungsrate · Ziel 0 %**
@@ -1930,3 +1935,145 @@ npm run evals     # 3.16 = 0 % bei Nenner > 0 · 3.2 und 3.13 unveraendert
 🔴 Der Pflichtfall aus `docs/roadmap.md` §5: **ein Principal ohne Befugnis, aber mit gültiger
 Genehmigung** — eine Genehmigung hebt keine fehlende Befugnis auf. Und die Mutationsprobe: TOR 1b
 aus `enqueueAction` entfernen, dann muss 3.16 rot werden.
+
+---
+
+## ADR-0021 — Die Aktionsfläche entsteht aus der Ontologie, und modelliert heißt nicht scharf
+
+**Datum:** 2026-09-20
+**Status:** Angenommen
+
+Löst A4 aus `docs/roadmap.md` §4 ein (Etappe 5). Ergänzt ADR-0020 und hebt dessen Punkt 6 für
+`TICKET_ZUWEISEN` auf.
+
+### Kontext
+
+A4 verlangt seit der ersten Planfassung, dass `actions.js` aus den Aktionstypen der Ontologie
+**erzeugt** wird. Seit Etappe 3a war die halbe Strecke gegangen: die Whitelist stand als
+`Object.keys(AKTIONSTYPEN)` da und `pruefeAktionsflaeche` hielt sie dagegen. Was danebenstand,
+hing an nichts — **Validierer und Befugnisse waren zwei frei geschriebene Objekte**. Drei
+parallele Listen über denselben Schlüsseln, von denen nur eine am Modell hing.
+
+Das ist kein Schönheitsfehler. Vergisst eine der beiden einen Typ, wird die Aktion
+**geschrieben** und danach wortlos abgelehnt: `validators[typ]?.(…)` ergibt `undefined`, der
+Worker setzt `REJECTED`, und im Bericht sieht das aus wie ein kaputtes Payload — nicht wie eine
+fehlende Zusage. Ein Tippfehler im Schlüssel (`TICKET_ANLEGN`) ergibt dasselbe Bild.
+
+Dazu kam ein zweiter Befund, den erst die Frage nach A4 sichtbar gemacht hat. Der Kommentar in
+`ontology.js` sagte: „ein modellierter Typ, den noch niemand freigeschaltet hat, ist harmlos".
+Mit `Object.keys` **kann es einen solchen Typ nicht geben** — jeder modellierte Typ war
+automatisch scharf. Der Kommentar beschrieb einen Zustand, den der Code ausschloss. Und Etappe
+13 braucht genau diesen Zustand: `TICKET_KOMMENTIEREN` entsteht dort zuerst in der Ontologie und
+wird erst danach freigeschaltet (K9).
+
+Was dabei auffiel, ist der eigentliche Preis: **`TICKET_ZUWEISEN` war scharf und wurde von
+keinem einzigen Fall geübt.** Kein Knoten des Graphen reiht ihn ein, kein Golden-Fall nennt ihn,
+und erfolgreich sein könnte er auch nicht — es gibt kein Ticketsystem, dem man ein Ticket
+zuweisen könnte. Eine offene Wirkung nach außen, die niemand misst.
+
+### Entscheidung
+
+**Die Aktionsfläche einer Domäne wird aus zwei Listen ERZEUGT, und die beiden Listen
+beantworten zwei verschiedene Fragen.**
+
+1. Neu im Kern: `kernel/action/flaeche.js` mit der reinen Funktion
+   `erzeugeAktionsflaeche(modelliert, umsetzung)`. Sie liefert `whitelist`, `validators`,
+   `befugnisse` und `nichtScharf`.
+2. **`modelliert` ist die Decke** (die Aktionstypen der Ontologie). Was dort fehlt, kann nie
+   scharf werden — auch nicht durch einen Eintrag in der Umsetzung. Das ist A4.
+3. **`umsetzung` ist der Schalter.** Je Typ entweder `{ validator, befugnis }` — dann ist er
+   scharf — oder eine nicht-leere Zeichenkette: modelliert, aber bewusst nicht scharf, **mit
+   Begründung**. Nur scharfe Typen kommen auf die Whitelist.
+4. Die Funktion **wirft** in drei Richtungen: umgesetzt ohne Modell · modelliert und in der
+   Umsetzung **verschwiegen** · halb umgesetzt (Validierer fehlt, Befugnis fehlt, Begründung
+   leer). Sie läuft beim Laden des Domänenmoduls, nicht in einem Test allein.
+5. Die Befugnis darf eine benannte Ausnahme sein (ADR-0020), **der Validierer nicht**. Ein Typ
+   ohne Payload-Schema hätte kein zweites Tor.
+6. Für `besprechung` gilt ab hier: **`TICKET_ZUWEISEN` ist modelliert, aber nicht scharf** —
+   „kein Ticketsystem, gegen das zugewiesen werden könnte (Etappe 10)". Damit entfällt seine
+   benannte Befugnis-Ausnahme aus ADR-0020 Punkt 6; er kommt gar nicht mehr so weit.
+   `ZUSAMMENFASSUNG_SENDEN` bleibt scharf und behält seine Ausnahme unverändert.
+7. Der Kern liest von beiden Listen **nur die Schlüssel**. Kein Entitätstyp, kein Domänenname —
+   `grep -rn "besprechung" src/kernel/` bleibt leer.
+
+Keine neue Metrik. **3.2 misst das bereits**, sie muss nur standhalten (`docs/roadmap.md` §5).
+
+### Begründung
+
+**Warum die Erzeugung und nicht eine dritte Prüfung.** Eine Prüfung sagt, dass zwei Listen
+zueinander passen; sie verhindert nicht, dass es zwei Listen gibt. Aus einer Quelle erzeugt,
+kann der Fehler nicht mehr entstehen — dieselbe Antwort wie bei den ACL-Regeln in ADR-0014
+(eine Quelle, zwei Kompilate) und bei `BERECHTIGUNGSKANTEN`.
+
+**Warum Schweigen wirft.** Ein modellierter Typ ohne Eintrag wäre still nicht scharf. Das
+Problem ist nicht „nicht scharf", sondern **still**: niemand könnte später sagen, ob das Absicht
+war oder ein Versehen. Dieselbe Linie wie `ungemessen` in ADR-0017 und die benannte Ausnahme in
+ADR-0020 — gemessen oder benannt, aber nie vergessen.
+
+**Warum `TICKET_ZUWEISEN` zugeht, obwohl das die Aktionsfläche verkleinert.** Die Mutationsprobe
+zeigt, was der alte Zustand wirklich war: macht man den Typ wieder scharf, wird AI-5 eingereiht
+und läuft bis **`DONE`** durch — eine Aktion nach außen, die kein Fall erwartet hat. Ein
+Mechanismus, der seinen ersten echten Anwendungsfall erst in Etappe 13 fände, wäre außerdem
+gebaut und ungemessen; das ist der Fehler, gegen den dieses Repo gebaut ist.
+
+**Warum die Funktion in den Kern gehört.** Sie ist Mechanik über zwei Schlüsselmengen, wie die
+Queue selbst. Die Bedeutung — welche Typen es gibt, welcher scharf ist und warum nicht — bleibt
+vollständig in der Domäne.
+
+### Alternativen
+
+**`pruefeAktionsflaeche` behalten und um Validierer und Befugnisse erweitern.** Verworfen: dann
+bleiben drei Listen bestehen und die Prüfung wächst mit jeder vierten Sache mit. Die Funktion ist
+deshalb **gelöscht**, nicht stillgelegt; ihre Prüfung nach innen (nennt ein Aktionstyp bekannte
+Entitäten?) lebt in `pruefeOntologie` weiter.
+
+**Modelliert = scharf lassen und Etappe 13 später lösen.** Verworfen: dann entscheidet der
+Zeitpunkt des Modellierens über die Schärfe, und `TICKET_KOMMENTIEREN` müsste bis zu seiner
+Freischaltung **unmodelliert** bleiben — also genau die Lücke, die K9 verbietet.
+
+**Einen nicht scharfen Typ durch Weglassen ausdrücken** (kein Eintrag in der Umsetzung).
+Verworfen, siehe Begründung: ununterscheidbar von Vergessen.
+
+**`beispiel` mitnehmen.** Verworfen: `beispiel` hat keine Ontologie und soll keine bekommen
+(ADR-0004). Es bleibt die Referenzdomäne, die belegt, dass eine zweite Domäne null Zeilen im Kern
+ändert. **A4 gilt damit für Domänen mit Ontologie** — eine benannte Grenze, keine stille.
+
+### Konsequenzen
+
+- **Die Whitelist von `besprechung` schrumpft von drei auf zwei Typen.** `TICKET_ZUWEISEN` wird
+  vor dem Schreiben abgelehnt, mit derselben Fehlermeldung wie ein gar nicht modellierter Typ.
+  Dass es **zwei verschiedene Befunde** sind, steht in der Aktionsfläche der Domäne und nicht in
+  der Queue — die Queue kennt nur ihre Whitelist, und das soll so bleiben.
+- **Ein neuer Golden-Fall: AI-5.** Ohne ihn wäre die Trennung zwischen modelliert und scharf
+  gebaut und ungemessen. Die Vertragstreue von `besprechung` steigt damit von 37 auf 38 Fälle.
+- **`nichtScharf` ist Teil des Exports der Domäne.** Ein nicht scharfer Typ ist damit von außen
+  sichtbar und begründet — er verschwindet nicht einfach aus der Whitelist.
+- **Die Prüfung beim Bau der Queue (ADR-0020) bleibt**, obwohl die erzeugte Fläche sie für diese
+  Domäne nicht mehr auslösen kann. Sie trägt weiter jede Domäne, die ihre Whitelist von Hand
+  schreibt — `beispiel` tut das.
+- **Ein neuer Lint-Befund entstand und wurde beseitigt**, nicht stehengelassen: die
+  Entitätsprüfung der Aktionstypen hob `pruefeOntologie` auf Komplexität 11. Sie steht jetzt in
+  einer eigenen Funktion; ESLint bleibt bei 12 Warnungen.
+
+### Prüfkriterium
+
+```bash
+npm test          # ein modellierter, aber nicht scharfer Typ wird vor dem Schreiben abgelehnt
+                  # eine verschwiegene oder halb umgesetzte Flaeche laesst den Prozess nicht starten
+npm run evals     # AI-5 gruen · 3.2 = 0 % unveraendert · 3.13, 3.14, 3.16 unveraendert
+grep -rn "besprechung" src/kernel/    # muss leer bleiben
+```
+
+🟢 **Eingelöst am 2026-09-20.** `npm test` 268/268 gegen eine erreichbare Datenbank (ohne sie
+261/268, 7 übersprungen) · `npm run evals` Vertragstreue **38/38**, 3.2 = 0 % (0/2), 3.13 = 0 %
+(0/50), 3.14 = 0 % (0/6), 3.16 = 0 % (0/2) — alle vier unverändert · `evals:postgres` dieselben
+Zahlen, beide Berichte nach Abzug von `erzeugt` und `storeAdapter` **zeichengleich** ·
+`npm run demo` Rückgabewert 0 ohne Infrastruktur (K5) · Trennlinie leer.
+
+🔴 **Mutationsprobe, zwei Stufen.** Erst: eine benannte Begründung auf die Whitelist nehmen —
+der Prozess **startet nicht**, `createActionQueue` fängt es an der Befugnis-Prüfung aus ADR-0020
+ab. Das belegt die Reihenfolge, nicht die Metrik. Dann der Stand **vor** dieser Etappe:
+`TICKET_ZUWEISEN` wieder scharf mit Validierer und benannter Ausnahme → **AI-5 rot**
+(`eingereiht: true statt false`, `endstatus: DONE statt null`, `abgelehnt: null statt
+whitelist`), Vertragstreue 37/38, Rückgabewert 1. Zurückgenommen, `sha1sum` beider Dateien
+gleich.
