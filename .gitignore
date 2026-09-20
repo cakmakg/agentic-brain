@@ -56,6 +56,10 @@ evals/reports/*
 !evals/reports/2026-09-16-schicht-a-beispiel-postgres-hash.json
 !evals/reports/2026-09-16-schicht-a-besprechung-memory-hash.json
 !evals/reports/2026-09-16-schicht-a-besprechung-postgres-hash.json
+!evals/reports/2026-09-20-schicht-a-beispiel-memory-hash.json
+!evals/reports/2026-09-20-schicht-a-beispiel-postgres-hash.json
+!evals/reports/2026-09-20-schicht-a-besprechung-memory-hash.json
+!evals/reports/2026-09-20-schicht-a-besprechung-postgres-hash.json
 
 # Dauerhafter Zustand: Checkpoints, Artefakte, Aktionsqueue. Laufzeitdaten eines
 # konkreten Rechners — im Repo hätten sie nichts zu suchen. Der Ort ist über
