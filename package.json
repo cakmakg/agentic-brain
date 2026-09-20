@@ -10,6 +10,7 @@
     "dev": "node --watch src/bin/serve.js",
     "demo": "node src/bin/demo.js",
     "demo:besprechung": "node src/bin/demo-besprechung.js",
+    "fragen": "node src/bin/fragen.js",
     "test": "node --test --test-force-exit --experimental-test-coverage --test-coverage-lines=80 --test-coverage-exclude=\"tests/**\" --test-coverage-exclude=src/bin/*.js \"tests/**/*.test.js\"",
     "evals": "node evals/runners/policy.js",
     "evals:postgres": "node evals/runners/policy.js --store=postgres"
