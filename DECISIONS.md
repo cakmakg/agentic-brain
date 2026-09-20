@@ -1798,10 +1798,19 @@ es geht.
 Fälle fallen** — die Ablehnung und die Strenge —, die Genehmigung bleibt zu Recht grün.
 Zurückgenommen, `sha1sum` unverändert (`a61332e0…`).
 
-**Was offen bleibt, und warum es hier steht.** Das Tor von T3 hat drei Teile; zwei sind
-eingelöst. Der dritte — **die CI einmal grün sehen** — verlangt einen Commit und einen Push.
-Beides tut dieser Agent nicht ohne ausdrückliche Aufforderung (`~/.claude/CLAUDE.md`), und es
-wäre auch die falsche Reihenfolge: die Zwangs-Schicht existiert, damit ein Mensch am Diff
-vorbeikommt, nicht damit ein Agent sich selbst freigibt. Der MVP ist damit **gebaut und
-gemessen, aber noch nicht unter Zwang** — und genau diese Unterscheidung ist der Grund, warum
-das Repo überhaupt so geschrieben ist.
+**Der dritte Teil des Tors, am selben Tag eingelöst.** Er verlangte einen Commit und einen
+Push, und beides tut dieser Agent nicht ohne ausdrückliche Aufforderung
+(`~/.claude/CLAUDE.md`) — es wäre auch die falsche Reihenfolge: die Zwangs-Schicht existiert,
+damit ein Mensch am Diff vorbeikommt, nicht damit ein Agent sich selbst freigibt. Auf
+Aufforderung gingen fünf Commits hinaus (und neun ältere, die seit dem 2026-09-16 unversendet
+lagen — darunter die CI selbst, weshalb dies ihr **erster Lauf überhaupt** war).
+
+**Ergebnis: alle drei Jobs grün, keiner übersprungen** — `Schicht A` ohne Schlüssel und ohne
+Datenbank (npm ci · test · evals · beide Demos), `Postgres` mit pgvector als Dienst
+(`evals:postgres` und `npm test` gegen die Datenbank, also 259/259 statt 252 und 7
+übersprungen) und `Lint und Abhängigkeiten` (`eslint .`, `npm audit --audit-level=high`).
+Lauf `35524547434` auf `3449676`.
+
+**Damit ist der MVP-Schnitt zu Ende.** Und die wichtigste Zeile daran ist nicht das Grün,
+sondern wo es entstanden ist: bis heute hing jede Prüfung dieses Repos daran, dass der Agent
+sie ausführt und ehrlich berichtet. Seit diesem Lauf tut es eine Maschine, die nicht er ist.

@@ -252,7 +252,7 @@ nebeneinander statt einer Kette (`ARCHITECTURE.md` §4).
 | T0      | Der Schnitt ist entschieden und benannt — kein Code  | ADR-0019 · Grenze in `ARCHITECTURE.md` §4 · dieser Abschnitt                                                                                           | 🟢    |
 | T1      | Die Naht: der Agent liest als Principal, gefiltert   | unberechtigte Notiz → **kein Entwurf, nichts in der Queue** · 3.13 = 0 % bei **größerem** Nenner · Mutationsprobe (Principal entfernen) → 3.13 **rot** | 🟢    |
 | T2      | Identität am Rand, aufgelöst statt geglaubt          | nicht auflösbarer Nachweis → leeres Ergebnis und **null** LLM-Aufrufe · ADR-0018 nachgeschrieben                                                       | 🟢    |
-| T3      | Die Genehmigung kommt vom Menschen, nicht vom Skript | Ablehnung von Hand → Queue leer · Genehmigung von Hand → **genau eine** Aktion · CI erstmals grün                                                      | 🟡    |
+| T3      | Die Genehmigung kommt vom Menschen, nicht vom Skript | Ablehnung von Hand → Queue leer · Genehmigung von Hand → **genau eine** Aktion · CI erstmals grün                                                      | 🟢    |
 
 **Draußen bis T3 steht:** echte Quelle (7), echte Wirkung (10), Postgres als Voreinstellung,
 der Voyage-Lauf, Schicht B, Schicht C, Policy und Risikoklasse (4c), Audit-Kette (4d),
@@ -281,9 +281,14 @@ ist der Kanal des MVP: ein Mensch legt seinen Nachweis vor, sieht den Entwurf un
 selbst. Gemessen, als Prozess von außen (`tests/kanal.test.js`, 5 Fälle): **Ablehnung von Hand →
 Queue leer**, **Genehmigung von Hand → genau eine Aktion**, und `true` oder eine leere Zeile
 genehmigen **nicht**. Mutationsprobe: setzt man den Parser auf „alles genehmigt", fallen zwei der
-fünf Fälle. **Offen bleibt der dritte Teil des Tors: die CI ist geschrieben und nie gelaufen** —
-sie braucht einen Push, und der ist eine Entscheidung der Nutzerin oder des Nutzers, nicht des
-Agenten.
+fünf Fälle. **Und der dritte Teil des Tors ist eingelöst:** am 2026-09-20 lief die CI zum
+ersten Mal — auf einer Maschine, die nicht der Agent ist. Alle drei Jobs grün, keiner
+übersprungen: `Schicht A` (npm ci · test · evals · beide Demos), `Postgres` (pgvector als
+Dienst, `evals:postgres` und `npm test` gegen die Datenbank) und `Lint und Abhängigkeiten`
+(`eslint .`, `npm audit --audit-level=high`). Lauf `35524547434` auf `3449676`.
+
+**Damit steht der MVP-Schnitt vollständig** — gebaut, gemessen, und die Messung nicht mehr
+darauf angewiesen, dass der Agent sie ausführt und ehrlich berichtet.
 
 **Was nach T3 kommt, steht hier absichtlich nicht.** Der nächste Schritt wird nach einem
 Kriterium gewählt und nicht aus einer Liste abgelesen: **welche Aussage dieses Repos ist heute

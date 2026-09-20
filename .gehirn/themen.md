@@ -54,7 +54,7 @@ gegenueber dem breiten Testadapter.
 
 ### Thema: Zwang fehlt — von drei Schichten des Inventars steht eine
 
-**Status:** 🟠 Aktualisiert am 2026-09-17. Beweiskette ✅, Sperre ✅, **CI geschrieben und NIE GELAUFEN** — bis der erste Push gruen ist, haengt jede Pruefung weiter daran, dass der Agent sie ausfuehrt und ehrlich berichtet.
+**Status:** 🟢 Abgeschlossen am 2026-09-20. Beweiskette ✅, Sperre ✅, **CI zum ersten Mal gelaufen und gruen** (Lauf 35524547434, drei Jobs, keiner uebersprungen) — die Pruefung haengt nicht mehr daran, dass der Agent sie ausfuehrt und ehrlich berichtet.
 Das Inventar vom 2026-09-15 fand 18 Kontrollpunkte und **keinen einzigen technischen Riegel
 gegen den Agenten**: `npx eslint src/` endet mit 0 (in E0-A ist jede Regel `warn`), also
 blockiert `lefthook` nichts; `prettier` schreibt und laeuft weiter; `.github` fehlt; in
@@ -101,7 +101,7 @@ gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
 
 ### Thema: Der MVP-Schnitt — gebaut und gemessen; offen ist nur der Zwang
 
-**Status:** 🟢 Aktualisiert am 2026-09-20. **T0 bis T3 sind eingeloest** (ADR-0018, ADR-0019 mit drei Nachtraegen). Vom Tor des MVP fehlt **ein** Teil: die CI ist geschrieben und nie gelaufen — sie braucht einen Push, und den entscheidet der Mensch.
+**Status:** 🟢 ABGESCHLOSSEN am 2026-09-20. **T0 bis T3 eingeloest, das Tor vollstaendig** (ADR-0018, ADR-0019 mit drei Nachtraegen): der Agent liest berechtigungstreu, die Identitaet wird aufgeloest, der Mensch entscheidet — und die CI hat es zum ersten Mal auf einer fremden Maschine bestaetigt.
 
 Der MVP in einem Satz, und er ist jetzt ausfuehrbar:
 
