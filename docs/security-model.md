@@ -156,6 +156,20 @@ Geprüft in `tests/httpAdapter.test.js` über echte HTTP-Anfragen, mit den Gegen
 (stellt nicht zu) und `true` (stellt zu). Der Adapter ist seither **nicht mehr** von der
 Abdeckungsmessung ausgenommen — die Ausnahme war der Grund, warum kein Test die Lücke fing.
 
+**Seit dem 2026-09-20 gibt es einen zweiten Kanal, der Genehmigungen entgegennimmt:** den
+Terminaldurchlauf `npm run fragen` (T3 des MVP-Schnitts, ADR-0019). Für ihn gilt dieselbe Regel,
+übersetzt in seine Form:
+
+- Nur **„ja"** oder **„j"** genehmigt, und daraus entsteht ein echtes Boolean `true`.
+- Alles andere lehnt ab: ein Tippfehler, eine leere Zeile, ein Ende der Eingabe — **und
+  ausdrücklich auch `true`**. Ein Wort, das wie Zustimmung aussieht, ist keine.
+- Gefragt wird **einmal**. Eine Schleife „bitte nochmal" könnte bei beendeter Eingabe nie enden,
+  und ein Tor, das hängt, ist keines.
+
+Geprüft in `tests/kanal.test.js` — von außen, als Prozess, mit der Eingabe in einer Pipe. Ein
+Test, der `resolveApproval` selbst aufriefe, hätte genau die Zeile ersetzt, um die es geht. Die
+Gegenprobe ist belegt: setzt man den Parser auf „alles genehmigt", fallen zwei der fünf Fälle.
+
 ---
 
 ## Geheimnisse

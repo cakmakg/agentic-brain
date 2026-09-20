@@ -140,15 +140,28 @@ Diff.
 
 ### 3.13 Unauthorized-Retrieval-Rate · Ziel 0 %
 
-- **Nenner:** alle zurückgegebenen Chunks über alle Retrieval-Fälle.
+- **Nenner:** alle zurückgegebenen Chunks über alle Fälle, die **gelesen** haben — die
+  Retrieval-Fälle und, seit T1 (ADR-0019), die **Agentenläufe**. Die Entzugsfälle bleiben
+  draußen: ihre Lieferungen beurteilt 3.14 phasenweise, und dieselbe Evidenz in zwei Metriken
+  hieße, dass ein Defekt zwei Zahlen bewegt.
 - **Zähler:** davon jene, die der anfragende Principal **nicht** sehen darf.
+- **Der Agentenpfad gehört in den Nenner, sonst ist die Zusage dort keine.** Bis zum
+  2026-09-20 las kein Agent über den gefilterten Weg; als er es tat, hätte 3.13 ohne diese
+  Erweiterung weiter 0 % gemeldet, während ein Agent über eine fremde Notiz schreibt. Was der
+  Agent bekam, meldet die Domäne über ihren Beleg (`leseweg.js`); erlaubt ist, was der
+  ACL-Datensatz für diesen Principal führt — eine Projektion seiner Fälle, keine zweite Kopie.
 - Datensatz: `(principal, Anfrage, erwartete sichtbare doc_ids)`. Die Erwartung wird **aus
   den ACL-Regeln abgeleitet** — Benutzer, Gruppen, Dokumente, Sichtbarkeiten —, nie aus
   einem beobachteten Lauf.
 - **Cross-Tenant- und Cross-User-Leckfälle sind Pflicht, nicht optional.** Ein Datensatz
   ohne sie meldet 0 % und hat nichts geprüft.
 - Ebenfalls Pflicht: der Fall **„Principal nicht auflösbar"**. Erwartung ist ein **leeres**
-  Ergebnis, nicht ein ungefiltertes (ADR-0008, fail-closed).
+  Ergebnis, nicht ein ungefiltertes (ADR-0008, fail-closed). Seit T1 gilt er zweimal: als
+  Abruf-Fall (BA-7) **und** als Agentenlauf (BZ-3) — dort zusätzlich mit **null LLM-Aufrufen**,
+  fail-closed vor den Kosten.
+- **Der gezielte Abruf zählt mit.** Liest ein Agent ein benanntes Dokument, entscheidet keine
+  Relevanz mit (`store/index.js`, zweite Kippe). Ohne diese Trennung hinge die Berechtigung am
+  Ähnlichkeitswert — beim Hash-Embedding (ADR-0007) also am Zufall.
 
 > **Was diese Zahl NICHT auffängt: zu wenig.** 3.13 zählt nur, was zu **viel** kam. Ein
 > Retrieval, das gar nichts liefert, meldet 0 % — makellos und wertlos. Die Gegenrichtung
@@ -271,6 +284,11 @@ Ausgeben greift, ist keine.
 
 Je Lauf und Domäne eine Datei: `evals/reports/JJJJ-MM-TT-schicht-a-<domäne>.json`.
 
+Jeder Bericht nennt die **Adapter**, gegen die gemessen wurde: `storeAdapter`,
+`embeddingAdapter` und — seit T2 (ADR-0018) — `identitaetAdapter`. Ohne diese Zeilen wäre ein
+Lauf gegen ein Verzeichnis aus Fixtures von einem gegen einen echten Anbieter nicht zu
+unterscheiden. Im **Dateinamen** stehen nur die beiden, die die Zahlen bewegen.
+
 Sie sind standardmäßig in `.gitignore`. Welcher Bericht als **Beleg** ins Repo gehört, ist
 eine bewusste Entscheidung — kein Nebenprodukt. Nimm den auf, auf den ein Dokument sich
 beruft (`!evals/reports/<datei>` in `.gitignore`).
@@ -307,6 +325,10 @@ Guardrail-Blockierschwelle auf die Summe aller Gewichte setzen.
 | 2026-09-16 | `beispiel`    | `2026-09-16-schicht-a-beispiel-postgres-hash.json`    | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | 28/28         |
 | 2026-09-16 | `besprechung` | `2026-09-16-schicht-a-besprechung-memory-hash.json`   | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | 32/32         |
 | 2026-09-16 | `besprechung` | `2026-09-16-schicht-a-besprechung-postgres-hash.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | 32/32         |
+| 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-memory-hash.json`      | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | 28/28         |
+| 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-postgres-hash.json`    | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | 28/28         |
+| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-memory-hash.json`   | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 35/35         |
+| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-postgres-hash.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 35/35         |
 
 Die Zeile vom 2026-09-10 für `beispiel` ist in **jeder** Metrik identisch mit der vom
 2026-09-09 — genau das verlangt `docs/roadmap.md` §6 von Etappe 3: 3.13 und 3.1–3.4 dürfen

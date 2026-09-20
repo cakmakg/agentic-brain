@@ -99,31 +99,38 @@ Liste. Zu entscheiden ist nicht, ob refaktoriert wird, sondern ob die drei Schwe
 diese Dateien angehoben oder die Befunde als bekannte Ausnahme notiert werden — beides
 gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
 
-### Thema: Ausbau nach dem Abgleich mit dem Ausgangstext — als Nächstes Etappe 4a
+### Thema: Der MVP-Schnitt — gebaut und gemessen; offen ist nur der Zwang
 
-**Status:** 🟡 Aktualisiert am 2026-09-14. Die Genehmigungslücke am HTTP-Rand ist geschlossen (Test zuerst rot); offen bleiben die Etappen 4a–14b und A11–A19, alle in `docs/roadmap.md`.
-Die vier Lücken aus dem Abgleich — echte Connectoren, Graph und Gedächtnis, ein Agent je
-Mitarbeiter, der Autonomiegrad — sind am 2026-09-13 in den Plan gewandert: `docs/roadmap.md`
-§4 (A11–A19), §5 (Sofortmaßnahme, Etappe 4a–4d, 7–14b), §8 (Begründung), §10 (offene
-Entscheidungen). Die Begründung steht dort und nicht mehr hier. Was hier bleibt, ist nur, was
-im Plan leicht übersehen wird:
+**Status:** 🟢 Aktualisiert am 2026-09-20. **T0 bis T3 sind eingeloest** (ADR-0018, ADR-0019 mit drei Nachtraegen). Vom Tor des MVP fehlt **ein** Teil: die CI ist geschrieben und nie gelaufen — sie braucht einen Push, und den entscheidet der Mensch.
 
-- **Die Sofortmaßnahme ist am 2026-09-14 gefallen** und hinterlässt eine Regel, keine Notiz:
-  nur ein JSON-Boolean `true` ist eine Genehmigung, jeder Nicht-Boolean → 400 — **für jeden
-  Kanal**, auch den aus Etappe 11 (`docs/security-model.md`). Die drei Hinweise sind
-  verschwunden; `tests/httpAdapter.test.js` ist der erste Test gegen den Adapter, und die
-  Abdeckungs-Ausnahme für ihn ist weg.
-- **Keine der neun Entscheidungen A11–A19 ist gefallen.** Der Plan ändert keinen Vertrag;
-  jede Etappe zieht ihren Vertrag mit ihrer eigenen ADR nach (`docs/roadmap.md` §9).
-- **Die frühere Abhängigkeit „Autonomiegrad vor echten Connectoren" ist so aufgelöst:** bis
-  einschließlich Etappe 13 bleibt jede Außenwirkung genehmigungspflichtig; Autonomie kommt erst
-  in 14b und nur aus Schicht-C-Daten. Die erste echte Quelle (7) kommt also nicht zusammen mit
-  mehr Autonomie.
-- **Zwei Umdeutungen, keine Übernahmen:** „ein Agent je Mitarbeiter" ist ein
-  Principal-Kontext (A18), „Ende zu Ende autonom" ist verdiente Autonomie mit Stufe 2 als
-  Grenze (A19).
-- Die Zusammenfassung des Ausgangstexts liegt weiter **nicht** im Repo; ihr Kern steht in
-  `docs/roadmap.md` §8.
+Der MVP in einem Satz, und er ist jetzt ausfuehrbar:
+
+```bash
+printf 'nachweis-dora
+
+ja
+' | npm run fragen   # Entwurf ZUGESTELLT, Queue 1
+printf 'nachweis-dora
+
+nein
+' | npm run fragen  # Queue 0
+```
+
+Was aus den drei Etappen als Regel bleibt:
+
+- **Relevanz darf ordnen; ausschliessen darf nur die ACL** (T1). Der Leseweg hat zwei Kippen in
+  EINER Methode, weil eine zweite Methode eine zweite Stelle waere, an der die fail-closed-Kante
+  fehlen kann.
+- **Ein Kanal wird an der Domaene gemessen, die er fuehrt** (T2). Die Identitaet an einen Rand zu
+  haengen, der `beispiel` fuehrt, haette eine Aufloesung erzeugt, die niemand benutzt.
+- **Ein Tor ist ein Befehl** (T3). Deshalb liest der Kanal auch aus einer Pipe und endet mit einer
+  maschinenlesbaren Zeile; ein Einstiegspunkt, der nur unter Menschenhand laeuft, ist eine
+  Vorfuehrung.
+
+Was als Naechstes zu entscheiden ist — **nicht** aus einer Liste, sondern nach dem Kriterium
+„welche Aussage ist heute noch eine Vorhersage": der Voyage-Lauf, die erste Schicht-B-Messung,
+die erste echte Quelle. Und die Commit-Aufteilung: **nichts ist commitiert**, sechs neue Dateien
+und 27 geaenderte warten.
 
 ## Abgeschlossene Themen
 

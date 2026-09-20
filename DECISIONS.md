@@ -1416,3 +1416,392 @@ npm run evals                                  # unveraendert: Rueckgabewert 0
 Vor dieser Entscheidung war **jede** dieser drei Mutationen grün. Dazu steht das Instrument
 selbst seit demselben Tag unter Test (`tests/metriken.test.js`, fünf Fälle, drei Mutationen
 belegt): `npm test` 222 bestanden, 0 gefallen, Abdeckung 96,40 %.
+
+---
+
+## ADR-0018 — Der Principal wird aufgelöst, nicht geglaubt: ein Port, ein Verzeichnis, eine befristete Antwort
+
+**Datum:** 2026-09-20
+**Status:** Angenommen
+
+> **Diese ADR kommt nach ihrem Code.** Der Port liegt seit dem 2026-09-17 unversioniert im
+> Arbeitsbaum und nennt im Dateikopf eine ADR-0018, die es nicht gab. Das ist die Schuld, die
+> T2 des MVP-Schnitts einlöst — nachgeschrieben, nicht rückdatiert.
+
+### Kontext
+
+`istPrincipalAufloesbar` in `context/envelope.js` prüft die **Form**: Mandant da, Benutzer da,
+Gruppen ein Array. Wer ein passend geformtes Objekt schickt, ist damit, wen er zu sein behauptet.
+Seit T1 (ADR-0019) reist dieser Principal durch den Graphen und entscheidet, **was ein Agent
+sieht** — die Behauptung ist also von einer Randnotiz zur Zugriffsentscheidung geworden. Genau
+das macht ihre Auflösung fällig.
+
+### Entscheidung
+
+**Die Identität wird über einen Port aufgelöst, mit einer befristeten Antwort und ohne dass
+dieses Repo Identitäten verwaltet.**
+
+1. `governance/identitaet/index.js` ist der Port: ein Adapter kann genau eines —
+   `aufloese(nachweis)` gibt einen Principal oder `null`. Er trägt einen `name`, weil der in
+   den Bericht gehört: sonst ist ein Lauf gegen ein Testdouble von einem echten nicht zu
+   unterscheiden.
+2. `fixtures.js` ist der erste und bis auf Weiteres einzige Adapter: ein Verzeichnis als
+   Tabelle, kein Netz, kein Schlüssel. Er trägt Schicht A und K5, wie `memory` beim Store
+   (ADR-0013) und `hash` beim Embedding (ADR-0015).
+3. Die Auflösung ist **befristet** (Voreinstellung fünf Minuten) und die Uhr ist einspeisbar.
+4. **Ein negatives Ergebnis wird nicht zwischengespeichert.**
+5. `vergiss(nachweis)` nimmt einen Eintrag sofort aus dem Speicher.
+6. **Das Nicht-Ziel bleibt:** kein eigener Identitätsanbieter (`PRODUCT.md` §3.2). Hier
+   entsteht kein Benutzer, kein Passwort, keine Gruppe — hier wird gefragt.
+7. **Den Adapter und das Verzeichnis wählt der Kanal**, nicht der Kern. Es gibt noch **keinen**
+   `aufbau.js` für Identität: ein Wähler zwischen einem einzigen Adapter wäre Gerüst für später,
+   und der kommt mit dem zweiten Adapter.
+
+### Begründung
+
+**Warum überhaupt ein Zwischenspeicher.** Ohne ihn liegt bei jedem Lauf ein Netzaufruf auf dem
+heißen Pfad, vor jeder Datenlogik.
+
+**Warum ein befristeter.** Ein unbefristeter wäre der Fehler, den dieses Repo als 3.14 messbar
+gemacht hat, eine Ebene höher: dort überlebt die KOPIE eines Dokuments die Berechtigung, hier
+überlebte die Gruppenzugehörigkeit von gestern den Entzug von heute. Ein Entzug im Verzeichnis
+muss innerhalb einer Sitzung wirken.
+
+**Warum kein negatives Ergebnis im Speicher.** Wäre „nicht auflösbar" eine Zeile im
+Zwischenspeicher, würde eine **Störung** des Verzeichnisses für die Dauer der Frist zu einer
+Berechtigungsentscheidung — der Ausfall sähe aus wie ein Nein. Ein Nein muss teuer bleiben.
+
+**Warum die Uhr einspeisbar ist.** Ein Test, der schläft, misst die Uhr und nicht die Regel.
+Der Messpunkt ist ohnehin nicht der Principal, sondern die Zahl der Verzeichnis-Aufrufe: am
+zurückgegebenen Objekt sieht man nicht, ob es frisch erfragt oder weitergereicht wurde.
+
+**Warum noch kein echter Anbieter.** Die Lektion des Voyage-Adapters: ein Adapter, der nie gegen
+den echten Dienst gelaufen ist, ist gebaut und nicht gemessen. Ein OIDC-Adapter ohne
+erreichbaren Anbieter wäre dieselbe Schuld ein zweites Mal. Er kommt, wenn es etwas gibt, wogegen
+er laufen kann (Etappe 7 und 11).
+
+### Alternativen
+
+**Den Principal weiter glauben.** Verworfen: seit T1 entscheidet er, was ein Agent liest. Eine
+geglaubte Identität heißt dann, dass der Aufrufer seine Leseberechtigung selbst bestimmt.
+
+**Unbefristet zwischenspeichern.** Verworfen, siehe Begründung — ein Entzug, der erst nach dem
+Neustart wirkt, ist keiner.
+
+**Die Auflösung im Kern erzwingen, statt sie dem Kanal zu geben.** Verworfen. Der Kern kennt
+keinen Kanal; ein Zwang im Kern hieße, dass `beispiel` ohne Verzeichnis nicht mehr läuft, und
+das kostet K5.
+
+**Identitäten selbst verwalten.** Verworfen: ändert ein Nicht-Ziel und bringt Passwörter,
+Sitzungen und Entzug in ein Repo, das ein Kontextlayer ist.
+
+### Konsequenzen
+
+- **Der Kanal verdrahtet.** Wer keinen Auflöser mitbringt, bekommt `principal = null` — und
+  damit ein leeres Ergebnis mit Grund, nicht ein ungefiltertes (ADR-0008 F7). Fail-closed ist
+  die Voreinstellung, nicht die Ausnahme.
+- **Der HTTP-Rand löst nichts auf.** Er führt `beispiel`, und `beispiel` liest nichts
+  (ADR-0004). Warum der MVP die Identität in den Terminalkanal legt und nicht an `/api/run`,
+  steht im zweiten Nachtrag zu ADR-0019.
+- **Der Harness löst ebenfalls auf.** Sonst wäre „aufgelöst statt geglaubt" verdrahtet und
+  ungemessen — der Fall, den dieses Repo am häufigsten benennt.
+- **Der Adaptername steht im Bericht** (`identitaetAdapter`), nicht im Dateinamen: die beiden
+  Adapter im Namen sind die, die die **Zahlen** bewegen; dieser bewegt keine.
+- **Ein kaputter Verzeichniseintrag fällt beim BAU auf**, nicht im Lauf. Ein Datenfehler, der
+  erst im Lauf auffällt, sieht aus wie eine abgelehnte Identität.
+
+### Prüfkriterium
+
+```bash
+npm test                 # tests/identitaet.test.js — 9 Faelle
+# darunter, ohne zu warten: abgelaufener Eintrag wird NEU aufgeloest
+#   (verzeichnisAufrufe 2 statt 1), negatives Ergebnis nie zwischengespeichert,
+#   kaputter Verzeichniseintrag faellt beim Bau auf
+npm run evals            # 3.13 unveraendert 0 % — die Aufloesung aendert die Zahl nicht,
+                         # sie aendert, WOHER der Principal kommt
+```
+
+Dazu der Ende-zu-Ende-Fall in `tests/naht.test.js` und `BZ-3` im Golden-Datensatz: ein
+**unbekannter Nachweis** ergibt ein leeres Ergebnis und **null LLM-Aufrufe**.
+
+### Nachtrag vom 2026-09-20 · was T2 verdrahtet hat
+
+`demo-besprechung.js` legt keinen Principal mehr vor, sondern einen **Nachweis**, und der Port
+löst ihn auf; ein dritter Lauf mit unbekanntem Nachweis zeigt die Kante. Der Eval-Adapter baut
+sein Verzeichnis als **Projektion** der Principale aus `acl.json` (`nachweis-<name>`), und der
+Runner nimmt den Principal nur noch aus der Auflösung — der frühere direkte Zugriff auf die
+Principal-Tabelle ist **entfernt**, damit es nicht zwei Wege gibt, an eine Identität zu kommen.
+`BZ-3` prüft seither die Identitätskante statt eines von Hand missgestalteten Principals: der
+Nachweis `nachweis-kaputt` steht in keinem Verzeichnis, weil ein missgestalteter Principal dort
+gar nicht eingetragen werden **kann**.
+
+---
+
+## ADR-0019 — Der MVP ist ein Schnitt durch den Ausbauplan; sein erster Schritt ist die fehlende Naht
+
+**Datum:** 2026-09-20
+**Status:** Angenommen
+
+### Kontext
+
+Dieses Repo hat zwanzig Etappen und **keine MVP-Definition**. Das Wort steht an genau zwei
+Stellen: in `data/kurumsal-ai-beyni-altyapi.md` §12.2, der Fassung des Ausgangstexts (Faz 1 —
+drei bis vier Connectoren, pgvector, fünf bis zehn Aktionen über MCP, Genehmigung in Slack,
+OTel, acht bis zwölf Wochen), und in `docs/roadmap.md` §8 als bewusste Abweichung davon.
+Abgewichen wurde, **ersetzt wurde nie**. Ein Ausbauplan sagt, was als Nächstes kommt; ein MVP
+sagt, was bewusst draußen bleibt. Das zweite fehlt, und solange es fehlt, ist jede Antwort auf
+„läuft das Ding im Kern?" eine Meinung.
+
+Beim Zuschneiden dieses Schnitts fiel am 2026-09-20 eine Lücke auf, die **keine Metrik dieses
+Repos misst**. Vier Befunde, jeder per `grep` belegt:
+
+- `kernel/retrieval/suche.js` — der gefilterte Leseweg — wird aus genau zwei Stellen
+  aufgerufen: `src/bin/demo-besprechung.js` und dem Eval-Harness. **Aus keinem Agentenknoten.**
+- `principal` kommt im Agentenlayer nicht vor: nicht in `agent/schema.js`, nicht in
+  `agent/runner.js`, in keinem Knoten. Der Graph **kann** keinen Principal tragen.
+- `domains/besprechung/agents/extrahierer.js` holt die Notiz-Id über einen regulären Ausdruck
+  aus `state.task` (`NOTIZ_MUSTER`) und fragt dann das Modell. Der Speicher wird nie berührt.
+- `/api/run` nimmt `task` und sonst nichts. Am Rand gibt es keine Identität.
+
+Damit ist der Satz, der dieses Repo beschreibt — Wissen wird samt seinen Berechtigungen
+aufgenommen, **berechtigungstreu abgefragt** und in menschlich genehmigte Aktionen
+**überführt** (ADR-0001) — heute **zwei Beweise nebeneinander statt einer Kette**: 3.13 und
+3.14 messen den Leseweg, 3.1 und 3.2 messen die Genehmigung, und zwischen beiden liegt keine
+Naht. Ein Agent kann einen Entwurf über eine Notiz schreiben, die der Fragende nicht sehen
+darf, und 3.13 bleibt dabei bei 0 % — weil der Agentenpfad nicht in ihrem Nenner ist.
+`demo-besprechung.js` zeigt dieselbe Trennung offen: Teil 1 und 2 fragen als Principal, Teil 3
+startet den Ablauf ohne einen.
+
+### Entscheidung
+
+**Der MVP ist ein Schnitt durch `docs/roadmap.md`, kein eigener Plan — vier Schritte, deren
+erster die fehlende Naht schließt.**
+
+- **T0** — diese ADR, die Grenze in `ARCHITECTURE.md` §4 und ein Abschnitt in `PRODUCT.md` §7.
+  Kein Code.
+- **T1 · die Naht** — `principal` wird ein Feld des Graphzustands, und der `extrahierer` holt
+  seine Notiz über `suche({ store, principal })` statt über einen regulären Ausdruck auf
+  `state.task`. Der Principal bleibt zunächst eine **Behauptung** des Aufrufers: dieselbe
+  Vertrauensstufe, die der Leseweg heute schon hat, eine Ebene höher.
+- **T2 · Identität am Rand** — `/api/run` nimmt einen Nachweis, der Port aus
+  `governance/identitaet/` löst ihn auf. ADR-0018 wird nachgeschrieben, die beiden
+  unversionierten Dateien kommen ins Repo.
+- **T3 · die menschliche Hand** — die Genehmigung kommt vom Menschen, nicht aus dem Skript:
+  ein im Terminal anhaltender Durchlauf. `npm run demo` bleibt unberührt, es ist K5.
+
+**Draußen bleibt, bis der MVP steht:** echte Quelle (Etappe 7), echte Wirkung (10), Postgres
+als Voreinstellung, der Voyage-Lauf, Schicht B, Schicht C, Policy und Risikoklasse (4c), die
+Audit-Kette (4d), Genehmigung in Slack oder Teams (11), Graph (13), MCP, Autonomie (14) — und
+die Disziplinschulden `express` 5, E0-B, `projekt-doktor` §12. Die einzige Ausnahme ist die
+**CI**: sie ist geschrieben und wird in T3 einmal grün gesehen, weil sie das ist, was den
+Boden davor bewahrt, still zu brechen.
+
+### Begründung
+
+**Die Naht ist der billigste Schritt mit dem größten Beweis.** Sie fügt keine Fähigkeit hinzu;
+sie verbindet zwei Hälften, die beide schon gemessen sind. Danach beantwortet **ein** Durchlauf
+die Frage, für die man heute zwei Berichte und ein Zugeständnis braucht.
+
+**Warum die Naht vor der Identität kommt.** Ohne Naht gibt es nichts, was einen aufgelösten
+Principal tragen könnte — die Auflösung ginge ins Leere. Und die Reihenfolge ist in diesem Repo
+schon einmal so entschieden worden: Etappe 2 hat die Autorisierung gegen **regelabgeleitete
+Principals aus Fixtures** gemessen, lange vor jeder echten Identität, und `docs/roadmap.md`
+sagt dasselbe für 4b ausdrücklich.
+
+**Warum ein Schnitt und kein eigenes Dokument.** Ausgangstext, Ausbauplan und MVP wären drei
+Pläne und damit drei Wahrheiten; nach wenigen Wochen widersprechen sie sich, und keiner merkt
+es. Der MVP ist eine Aussage über den **Umfang** — er gehört deshalb in das Dokument, das den
+Umfang trägt.
+
+**Warum der MVP des Ausgangstexts nicht übernommen wird.** Drei bis vier Connectoren, MCP,
+Slack, OTel: keiner dieser Punkte macht eine Aussage messbar, die heute eine Vorhersage ist.
+ADR-0010 hat bereits entschieden, dass eine schwere Quelle mehr lehrt als drei leichte.
+
+### Alternativen
+
+**Den MVP als „einsatzfähig" definieren** — 4a, 4b, 4d, 7, 9, 10. Am 2026-09-20 ausgeschrieben
+und verworfen: das ist der zweite Stock. Die Naht käme darin als Nebensache vor, und ein
+Fundament, dessen tragende Fuge nebenbei entsteht, ist keines.
+
+**Zuerst die Identität, dann die Naht.** Verworfen: ein aufgelöster Principal, den kein Ablauf
+weiterträgt, ist eine Auflösung ins Leere. Die Reihenfolge wäre umgekehrt teurer, weil T1 das
+Zustandsschema ohnehin anfasst.
+
+**Eine eigene `docs/mvp.md`.** Verworfen, siehe Begründung: dritte Wahrheit.
+
+**Die Naht sofort beheben, ohne ADR.** Verworfen. Sie ändert das Zustandsschema des Kerns und
+den **Nenner** von 3.13; eine Änderung, die einen Nenner bewegt, ohne dass irgendwo steht,
+warum, macht jeden späteren Vergleich mit den Berichten davor ungültig.
+
+### Konsequenzen
+
+- **Der Nenner von 3.13 wächst in T1.** Die Zahl soll 0 % bleiben, aber sie misst danach zwei
+  Wege. Ein Vergleich mit Berichten von vor T1 ist nur unter Nennung beider Nenner gültig.
+- **`ARCHITECTURE.md` §4 trägt die Grenze**, bis T1 sie schließt. Eine verschwiegene Grenze
+  wird zu einem Ausfall.
+- **Bis T2 bleibt der Principal eine Behauptung**, im Leseweg wie im Agentenpfad. Bewusst und
+  benannt, nicht übersehen.
+- **`beispiel` bekommt die Naht nicht.** Sie hat keinen Connector (ADR-0004) und bleibt die
+  Referenzdomäne von K5. Die Naht entsteht in `besprechung`, der Vertikalen aus ADR-0010.
+- **Der MVP endet nach T3.** Was danach kommt, wird nach einem Kriterium gewählt und nicht aus
+  einer Liste abgelesen: **welche Aussage dieses Repos ist heute noch eine Vorhersage.**
+
+### Prüfkriterium
+
+Heute, **vor** T1 — beide Befehle belegen die fehlende Naht, beide am 2026-09-20 ausgeführt und
+beide leer (Rückgabewert 1):
+
+```bash
+grep -rn "suche" src/domains/*/agents/   # leer: kein Agent liest ueber den gefilterten Weg
+grep -rn "principal" src/kernel/agent/   # leer: der Graph kann keinen Principal tragen
+```
+
+🔴 **Nach T1 müssen beide Treffer haben** — und das genügt nicht, denn Treffer sind keine
+Wirkung. Das Tor des MVP, Schritt für Schritt, offen:
+
+```bash
+npm test && npm run evals && npm run demo && npm run demo:besprechung
+# T1  unberechtigte Notiz -> KEIN Entwurf, nichts in der Queue; 3.13 = 0 % bei GROESSEREM Nenner
+# T1  Mutationsprobe: `principal` aus dem Suchaufruf des Agenten entfernen -> 3.13 MUSS rot werden
+# T2  nicht aufloesbarer Nachweis -> leeres Ergebnis und NULL LLM-Aufrufe
+# T3  Ablehnung von Hand -> Queue leer; Genehmigung von Hand -> genau eine Aktion
+```
+
+Die Mutationsprobe in T1 ist die eigentliche Prüfung. Bleibt 3.13 nach dem Entfernen des
+Principals grün, ist die Naht gelegt, aber nicht gemessen — und dann gilt für sie dasselbe wie
+für den Voyage-Adapter: gebaut ist nicht gemessen.
+
+### Nachtrag vom 2026-09-20 · T1 ist eingelöst, und eine Annahme darin war falsch
+
+**Was T1 geändert hat.** `principal` ist ein Kernfeld des Graphzustands mit dem neuen Reducer
+`einmalGesetzt` — der erste nicht-leere Wert gewinnt, damit die Identität innerhalb eines Laufs
+nicht tauschbar ist. `startWorkflow` nimmt ihn an. Der `extrahierer` der Domäne `besprechung`
+holt seine Notiz über den gefilterten Leseweg, bekommt sie nicht, wenn der Principal sie nicht
+sehen darf, und fragt in diesem Fall **kein Modell**. Die Herkunft eines Tickets kommt seither
+aus dem Leseweg und nicht mehr aus der Antwort des Modells. Der Speicher liegt in
+`domains/besprechung/leseweg.js` **neben** dem Zustand, nicht darin: der Checkpointer
+serialisiert den Zustand, und ein Chunk-Speicher darin hieße, Inhalte samt Envelopes in ein Log
+zu schreiben, das keine Berechtigung kennt.
+
+**DIE FALSCHE ANNAHME.** Der Plan sagte „der `extrahierer` holt seine Notiz über
+`suche({ store, principal })`" — also über die Relevanzsuche. Beim ersten Lauf kam sie nicht:
+`memory` verwirft Chunks mit `wert = 0`, und ein Hash-Embedding (ADR-0007) sagt über Relevanz
+nichts. Eine **berechtigte** Notiz wäre damit „nicht sichtbar" gewesen, weil sie schlecht
+bewertet wurde — die Rangfolge hätte über die Berechtigung entschieden. Hätte der
+Golden-Datensatz das durch passend gewählte Aufgabentexte ausgeglichen, wäre die Erwartung an
+die Implementierung angepasst worden: genau der Fehler, den dieses Repo Erwartung-an-roten-Lauf
+nennt.
+
+**Deshalb hat der Leseweg jetzt zwei Kippen statt einer zweiten Methode.** Ohne `dokumentId`
+die Relevanzsuche; mit `dokumentId` der gezielte Abruf: alle sichtbaren Chunks genau dieses
+Dokuments, in Absatzreihenfolge, ohne Relevanz und ohne `k`. Eine zweite Lesemethode wäre eine
+zweite Stelle, an der man die fail-closed-Kante vergessen kann — beide Kippen gehen durch
+dieselbe Kompilierung desselben Regelwerks (ADR-0014). **Relevanz darf ordnen; ausschließen
+darf nur die ACL.**
+
+**Der Nenner von 3.13 trägt jetzt den Agentenpfad** (50 statt 16 Chunks in `besprechung`).
+Draußen bleiben die Entzugsfälle: ihre Lieferungen beurteilt 3.14 phasenweise, und dieselbe
+Evidenz in zwei Metriken hieße, dass ein Defekt zwei Zahlen bewegt.
+
+**Belegt — ausgeführt, nicht behauptet:**
+
+```bash
+npm test                     # 243/249, 0 gefallen, 6 uebersprungen (ohne Docker)
+DATABASE_URL=... npm test    # 250/250, 0 uebersprungen — auch der gezielte Abruf gegen pgvector
+npm run evals                # 3.13 = 0 % bei Nenner 50 (vorher 16) · Vertragstreue 35/35
+DATABASE_URL=... npm run evals:postgres   # beide Berichte nach Abzug von `erzeugt` und
+                                          # `storeAdapter` ZEICHENGLEICH (1760 Zeichen)
+npm run demo                 # Exit 0 — K5 unberuehrt
+grep -rn "suche" src/domains/*/agents/    # jetzt TREFFER (vorher leer)
+grep -rn "principal" src/kernel/agent/    # jetzt TREFFER (vorher leer)
+```
+
+**Die Mutationsprobe, die aus der Naht eine Messung macht.** Im Suchaufruf des Agenten
+`state.principal` durch ein Dienstkonto ersetzt (`gruppen: ["technik", "leitung"]`) — der
+klassische Defekt „der Agent läuft als Servicekonto":
+
+```
+Unauthorized-Retrieval-Rate   7,4 %  (4/54)        → Rueckgabewert 1
+Vertragstreue                 33/35
+  🔴 BZ-1  LECK im Agentenpfad: 2 unerlaubte Chunks aus [n-archiv]
+  🔴 BZ-3  LECK im Agentenpfad: 2 unerlaubte Chunks aus [n-offen]
+```
+
+Zwei unabhängige Kanäle melden denselben Defekt: die Metrik und die Vertragstreue. Danach
+zurückgenommen, die Datei über `sha1sum` unverändert
+(`17c0e15ae743aa958a8ced502891518e38d82182`), alle Zahlen wieder wie oben.
+
+**Was T1 NICHT getan hat.** Der Principal ist weiter eine **Behauptung** des Aufrufers — das
+ist T2. Und der Agent liest nur die Notiz, die die Aufgabe **nennt**; ein Knoten, der von sich
+aus recherchiert, ist an einen Auslöser gebunden (`docs/roadmap.md` §5, Etappe 6). `beispiel`
+bleibt ohne Naht und trägt weiter K5.
+
+### Nachtrag vom 2026-09-20 (2) · T2 sitzt im Terminalkanal, nicht an `/api/run`
+
+**Was entschieden wurde.** T2 bringt die Identität in den **Terminalkanal** — nicht an
+`/api/run`, wie die Entscheidung oben es formulierte. Der HTTP-Rand bleibt unberührt.
+
+**Warum.** Der Rand führt heute an sechs Stellen fest `beispiel`
+(`adapters/http/server.js` 37–41, 96, 98 und `bin/serve.js` 8). Und `beispiel` hat keinen
+Connector (ADR-0004), liest also nichts: ein Principal hat dort **nichts zu entscheiden**. Die
+Identität an einen Rand zu hängen, der eine Domäne ohne Leseweg führt, hätte eine Auflösung
+erzeugt, die niemand benutzt — gebaut und nicht messbar, genau die Schuld, gegen die der
+MVP-Schnitt geschnitten ist. Zugleich ist der Kanal des MVP ohnehin das Terminal: T3 legt die
+menschliche Genehmigung in einen anhaltenden Durchlauf, nicht in einen Browser.
+
+**Die verworfene Alternative** ist nicht falsch, nur später: den Rand die Domäne **wählen**
+lassen (Domäne als Parameter, Artefakt- und Queue-Zugriff aus der Domänenspezifikation statt aus
+einem festen Import). Das ist die saubere Fassung — sie ändert aber den Vertrag der
+Domänenspezifikation und braucht ihre eigene ADR. Sie kommt, wenn der Rand wirklich zwei Domänen
+führen soll, und nicht vorher.
+
+**Was dadurch offen bleibt und benannt ist:** über HTTP ist die Vertikale mit Naht **nicht
+erreichbar**, und der Rand löst keine Identität auf (`ARCHITECTURE.md` §4). Gefährlich ist das
+nicht: ohne Principal antwortet der Leseweg leer und mit Grund. Es ist eine Lücke in der
+Reichweite, keine in der Zusage.
+
+### Nachtrag vom 2026-09-20 (3) · T3: die Hand am Tor — und der eine Teil, der offen bleibt
+
+**Was T3 gebaut hat.** `src/bin/fragen.js`, der Kanal des MVP: er löst eine Identität auf (T2),
+startet den Lauf, hält beim Entwurf an, zeigt ihn und lässt den **Menschen** entscheiden. Er
+tritt **neben** die beiden bestehenden Einstiegspunkte — `npm run demo` bleibt unberührt, weil es
+K5 ist, und `demo-besprechung.js` bleibt die Vorführung, die sich selbst genehmigt.
+
+**Die Regel dieses Kanals, aus der Regel am HTTP-Rand übersetzt.** Nur `ja` oder `j` genehmigt,
+und daraus entsteht ein echtes Boolean. Alles andere lehnt ab — ein Tippfehler, eine leere
+Zeile, ein Ende der Eingabe und ausdrücklich auch `true`. Gefragt wird **einmal**: eine Schleife
+„bitte nochmal" könnte bei beendeter Eingabe nie enden, und ein Tor, das hängt, ist keines.
+Nachgezogen in `docs/security-model.md`, wo die Regel je Kanal steht.
+
+**Warum der Kanal aus einer Pipe lesen kann.** Ein Tor ist ein Befehl. Ein Einstiegspunkt, der
+nur am Terminal eines Menschen funktioniert, wäre eine Vorführung — messbar wird er erst, wenn
+`printf` ihn fahren kann. Deshalb liest er bei fehlendem TTY die Eingabe vorher ganz und
+verbraucht sie zeilenweise, und deshalb endet er mit einer **maschinenlesbaren Zeile** (dieselbe
+Form wie die Fixtures der Persistenzprüfung).
+
+**Belegt — ausgeführt, nicht behauptet:**
+
+```bash
+printf 'nachweis-dora\n\nnein\n' | npm run fragen   # Entwurf AWAITING_APPROVAL · Queue 0
+printf 'nachweis-dora\n\nja\n'   | npm run fragen   # Entwurf ZUGESTELLT · Queue 1 TICKET_ANLEGEN
+npm test                                            # 252/259, 0 gefallen, 7 uebersprungen
+                                                    # Abdeckung 96,79 %
+```
+
+`tests/kanal.test.js` fährt fünf Fälle als **Prozess von außen**: Ablehnung, Genehmigung, die
+Strenge des Parsers (`true`, `yes`, `jaa`, `1`, leer — alle lehnen ab), ein unbekannter Nachweis
+(an der Tür abgelehnt, kein Lauf) und eine unberechtigte Notiz (der Mensch wird **gar nicht**
+gefragt). Ein Test, der `resolveApproval` selbst aufriefe, hätte genau die Zeile ersetzt, um die
+es geht.
+
+**Mutationsprobe.** Parser auf „alles genehmigt" (`antwort !== undefined`): **zwei der fünf
+Fälle fallen** — die Ablehnung und die Strenge —, die Genehmigung bleibt zu Recht grün.
+Zurückgenommen, `sha1sum` unverändert (`a61332e0…`).
+
+**Was offen bleibt, und warum es hier steht.** Das Tor von T3 hat drei Teile; zwei sind
+eingelöst. Der dritte — **die CI einmal grün sehen** — verlangt einen Commit und einen Push.
+Beides tut dieser Agent nicht ohne ausdrückliche Aufforderung (`~/.claude/CLAUDE.md`), und es
+wäre auch die falsche Reihenfolge: die Zwangs-Schicht existiert, damit ein Mensch am Diff
+vorbeikommt, nicht damit ein Agent sich selbst freigibt. Der MVP ist damit **gebaut und
+gemessen, aber noch nicht unter Zwang** — und genau diese Unterscheidung ist der Grund, warum
+das Repo überhaupt so geschrieben ist.

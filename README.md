@@ -14,7 +14,16 @@ Der Anspruch: nicht nur die Arbeit zählt als Beweis, sondern **wie sie gemessen
 > Zwei Zahlen tragen die zentrale Zusage: **3.13 Unauthorized-Retrieval-Rate = 0 %** und
 > **3.14 Latenz des Berechtigungsentzugs = 0 %**, beide belegt durch Mutationsproben.
 > Offen: **der Voyage-Lauf selbst** — der Adapter ist gebaut und gegen ein Testdouble geprüft,
-> aber ohne Schlüssel nie gegen den echten Dienst gelaufen —, dazu echte Identitäten.
+> aber ohne Schlüssel nie gegen den echten Dienst gelaufen — und ein echter
+> Identitätsanbieter: aufgelöst wird gegen ein Verzeichnis aus Fixtures, nicht gegen SSO.
+> **Seit dem 2026-09-20 geschlossen:** die Naht zwischen „berechtigungstreu abgefragt" und
+> „in Aktionen überführt". Der Agent liest mit dem Principal des Fragenden; eine Notiz, die
+> dieser nicht sehen darf, erzeugt **keinen Entwurf und keinen Modellaufruf**. 3.13 trägt
+> seither den Agentenpfad im Nenner (0 % bei 50 Chunks statt 16), und eine Mutationsprobe
+> macht die Zahl rot (T1 des MVP-Schnitts, ADR-0019). **Und der Principal wird seither
+> aufgelöst, nicht geglaubt** (T2, ADR-0018): der Kanal legt einen Nachweis vor, ein
+> Verzeichnis antwortet, eine befristete Antwort wird nach Ablauf neu erfragt, und ohne
+> Antwort ist das Ergebnis leer — ohne einen einzigen Modellaufruf.
 > Die Entscheidungen stehen in
 > [`DECISIONS.md`](DECISIONS.md), die Reihenfolge der Etappen in
 > [`docs/roadmap.md`](docs/roadmap.md), der Umfang in [`PRODUCT.md`](PRODUCT.md).
@@ -77,14 +86,15 @@ START → guardrail → orchestrator ⇄ {bearbeiter, pruefer, ablage}
                          → (NUR bei ausdrücklicher Freigabe) zusteller → END
 ```
 
-Vier Zusagen, jede an einen Prüfbefehl gebunden:
+Fünf Zusagen, jede an einen Prüfbefehl gebunden:
 
-| Zusage                                            | Wo sie im Code steht                                                       | Wo sie geprüft wird                                    |
-| ------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Ohne menschliche Freigabe wirkt nichts nach außen | `src/kernel/agent/build.js` (Kante) · `src/adapters/http/server.js` (Rand) | `tests/workflow.test.js` · `tests/httpAdapter.test.js` |
-| Kein Agent ruft je selbst eine externe API        | `src/kernel/action/queue.js`                                               | `tests/actionQueue.test.js`                            |
-| Ein Neustart verliert keine wartende Genehmigung  | `src/kernel/agent/checkpointer.js` · `src/kernel/persistence/store.js`     | `tests/integration/persistence.test.js`                |
-| Routing ist deterministisch und terminiert        | `src/kernel/agent/routing.js`                                              | `npm run evals`                                        |
+| Zusage                                            | Wo sie im Code steht                                                                  | Wo sie geprüft wird                                                            |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Ohne menschliche Freigabe wirkt nichts nach außen | `src/kernel/agent/build.js` (Kante) · `src/adapters/http/server.js` (Rand)            | `tests/workflow.test.js` · `tests/httpAdapter.test.js` · `tests/kanal.test.js` |
+| Kein Agent ruft je selbst eine externe API        | `src/kernel/action/queue.js`                                                          | `tests/actionQueue.test.js`                                                    |
+| Ein Neustart verliert keine wartende Genehmigung  | `src/kernel/agent/checkpointer.js` · `src/kernel/persistence/store.js`                | `tests/integration/persistence.test.js`                                        |
+| Routing ist deterministisch und terminiert        | `src/kernel/agent/routing.js`                                                         | `npm run evals`                                                                |
+| Ein Agent liest nur, was der Fragende sehen darf  | `src/kernel/context/store/index.js` · `src/domains/besprechung/agents/extrahierer.js` | `tests/naht.test.js` · `npm run evals` → 3.13                                  |
 
 **Fail-closed heißt wörtlich fail-closed:** alles, was nicht exakt `true` ist — auch
 `null` — endet bei `END`. Eine Ablehnung stellt nicht zu und reiht nichts ein.

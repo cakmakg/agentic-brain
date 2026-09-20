@@ -69,6 +69,23 @@ Datenlogik.
 
 Diese Liste ist absichtlich sichtbar. Eine verschwiegene Grenze wird zu einem Ausfall.
 
+- **Der Agent liest nur die Notiz, die die Aufgabe NENNT.** Seit T1 (ADR-0019) liest er
+  berechtigungstreu — aber gezielt: es gibt keinen Knoten, der von sich aus recherchiert. Eine
+  Frage, die kein `notiz:<id>` enthält, erreicht den Speicher nicht. Der `recherche`-Knoten ist
+  an einen Auslöser gebunden (`docs/roadmap.md` §5, Etappe 6).
+- **Über HTTP ist die Vertikale mit Naht nicht erreichbar, und der Rand löst keine Identität
+  auf.** `adapters/http/server.js` und `bin/serve.js` führen an sechs Stellen fest `beispiel` —
+  eine Domäne ohne Connector, die nichts liest (ADR-0004). Der aufgelöste Principal lebt in den
+  Kanälen, die ihn verdrahten: im Terminaldurchlauf und im Eval-Harness (ADR-0018, ADR-0019
+  Nachtrag 2). Gefährlich ist die Lücke nicht — ohne Principal antwortet der Leseweg leer und
+  mit Grund —, aber sie ist eine Lücke in der Reichweite. Den Rand die Domäne **wählen** zu
+  lassen ist die saubere Fassung und braucht ihre eigene ADR.
+- **Es gibt keinen echten Identitätsanbieter.** Aufgelöst wird gegen ein Verzeichnis aus
+  Fixtures; ein OIDC-Adapter kommt, wenn es etwas gibt, wogegen er laufen kann (Etappe 7 und
+  11). Bis dahin gilt: die Auflösung ist gemessen, der Anbieter ist keiner.
+- **Der Beleg eines Laufs bleibt im Arbeitsspeicher.** `domains/besprechung/leseweg.js` hält je
+  `threadId`, welche Chunks der Agent bekam — dieselbe unbegrenzt wachsende Karte wie
+  `getEntwurf` und `getArtifact`. Für ein Gerüst tragbar, für Dauerbetrieb nicht.
 - **Das Zustandslog wächst unbegrenzt.** Keine Verdichtung, keine Rotation. Für ein Gerüst mit
   einem Mandanten tragbar; für Dauerbetrieb nicht.
 - **Kein Sperrmechanismus zwischen Prozessen.** Zwei gleichzeitig schreibende Prozesse können

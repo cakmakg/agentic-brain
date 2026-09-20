@@ -86,3 +86,11 @@ nebeneinander stehen. Wird die Liste lang, wandern die nützlichsten nach oben �
 Reift eine Regel zu einer Architekturentscheidung, **befördere sie** als ADR nach
 `DECISIONS.md` und kürz den Eintrag hier auf einen Verweis. Eine Regel und eine ADR, die
 dasselbe sagen, driften auseinander.
+
+- **Regel:** „MVP" heißt in diesem Projekt **das kleinste Fundament, das von Hand
+  nachvollziehbar läuft** — nicht ein Plan über alle Phasen. Wird ein MVP-Plan verlangt, wird
+  der kleinste geschnitten; die weiteren Stockwerke werden **danach und einzeln** gewählt.
+  **Grund:** Ein Plan, der alle Phasen enthält, sieht wie Fortschritt aus und verschiebt genau
+  den Beweis, der zuerst fällig ist. (2026-09-20 zweimal korrigiert: „projeyi en temel çekirdek
+  aşamasında en temel fonksiyonda çalıştığını görmek", „binayı ilk anda hemen bitirmek
+  istemiyorum".)

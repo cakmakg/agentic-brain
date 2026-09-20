@@ -119,9 +119,12 @@ die ihr das Notizenlaufwerk zeigen würde — nicht mehr.
 nach ausdrücklicher Freigabe; die Kante prüft auf exakt `true`, alles andere ist eine
 Ablehnung.
 
-**Über welchen Kanal.** Heute zwei: `npm run demo` fährt den vollständigen Ablauf ohne HTTP
-in einem Befehl, und der HTTP-Adapter (`src/adapters/http/`) bietet Start, Genehmigung und
-Beobachtung der Queue. Ein MCP-Kanal ist vorgesehen, aber an einen Auslöser gebunden — und
+**Über welchen Kanal.** Heute drei: `npm run demo` fährt den vollständigen Ablauf ohne HTTP
+in einem Befehl (das ist K5), **`npm run fragen` ist der Kanal des MVP** — er löst eine Identität
+auf, hält beim Entwurf an und lässt den Menschen entscheiden; aus einer Pipe gelesen ist er
+zugleich ein Prüfbefehl —, und der HTTP-Adapter (`src/adapters/http/`) bietet Start, Genehmigung
+und Beobachtung der Queue, führt aber fest die Domäne `beispiel` und löst keine Identität auf
+(`ARCHITECTURE.md` §4). Ein MCP-Kanal ist vorgesehen, aber an einen Auslöser gebunden — und
 die ADR dazu muss festhalten, ob er `approve` überhaupt anbieten darf.
 
 **Wer betreibt es.** Schicht A läuft ohne `ANTHROPIC_API_KEY` und ohne Datenbank, damit die
@@ -179,7 +182,10 @@ Genehmigung, jeder Nicht-Boolean endet mit 400 (`tests/httpAdapter.test.js`, zue
 Zusage „ohne menschliche Freigabe wirkt nichts nach außen" gilt damit nicht nur im Kern,
 sondern auch am Rand.
 
-**Was als Nächstes kommt** (Stand 2026-09-14). Etappe 4a: echte Identitäten. Etappe 3d ist
+**Was als Nächstes kommt** (Stand 2026-09-20). Der **MVP-Schnitt** aus ADR-0019 — §7 unten.
+**T1 ist eingelöst:** der Agent liest berechtigungstreu, und 3.13 misst das jetzt auch auf
+seinem Pfad. Als Nächstes **T2** — die Identität am Rand, aufgelöst statt geglaubt; bis dahin
+bleibt der Principal eine Behauptung des Aufrufers (`ARCHITECTURE.md` §4). Etappe 3d ist
 gebaut; offen ist nur der Voyage-Lauf, der vor der ersten echten Quelle fallen muss. Die
 Etappen 7 bis 14 — echte Quelle, echte Wirkung, Genehmigung in Slack oder Teams, verdiente
 Autonomie — stehen samt Begründung in `docs/roadmap.md`. **Ziele, Nicht-Ziele und
@@ -227,3 +233,59 @@ Die Etappen 3c und 3d sind bewusst getrennt. Beide fassen dieselbe Zusage an —
 sie zusammen fährt, kann eine Bewegung der Zahl keiner von beiden zuordnen. Das ist dieselbe
 Regel wie „höchstens eine neue Metrik je Etappe" in `docs/roadmap.md` §6, nur von der anderen
 Seite gelesen.
+
+### Der MVP-Schnitt
+
+Die Tabelle oben ist der **Ausbau**. Der MVP liegt **quer** dazu: er ist ein Schnitt, der
+benennt, was bewusst draußen bleibt, bis der Kern von Hand nachvollziehbar läuft (ADR-0019).
+Er beantwortet eine einzige Frage — **trägt das Fundament?** — und nicht die Frage, ob ein
+Unternehmen das System einsetzen kann; das ist Etappe 4 bis 10.
+
+Der Grund für den ersten Schritt ist ein Befund vom 2026-09-20: 3.13 und 3.14 messen den
+Leseweg, 3.1 und 3.2 messen die Genehmigung, **und dazwischen liegt keine Naht.** Kein
+Agentenknoten ruft `suche` auf; `principal` kommt im Agentenlayer nicht vor. Die Zusage „samt
+Berechtigungen abgefragt **und** in genehmigte Aktionen überführt" ist damit heute zwei Beweise
+nebeneinander statt einer Kette (`ARCHITECTURE.md` §4).
+
+| Schritt | Ziel                                                 | Tor (Prüfbefehl)                                                                                                                                       | Stand |
+| ------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- |
+| T0      | Der Schnitt ist entschieden und benannt — kein Code  | ADR-0019 · Grenze in `ARCHITECTURE.md` §4 · dieser Abschnitt                                                                                           | 🟢    |
+| T1      | Die Naht: der Agent liest als Principal, gefiltert   | unberechtigte Notiz → **kein Entwurf, nichts in der Queue** · 3.13 = 0 % bei **größerem** Nenner · Mutationsprobe (Principal entfernen) → 3.13 **rot** | 🟢    |
+| T2      | Identität am Rand, aufgelöst statt geglaubt          | nicht auflösbarer Nachweis → leeres Ergebnis und **null** LLM-Aufrufe · ADR-0018 nachgeschrieben                                                       | 🟢    |
+| T3      | Die Genehmigung kommt vom Menschen, nicht vom Skript | Ablehnung von Hand → Queue leer · Genehmigung von Hand → **genau eine** Aktion · CI erstmals grün                                                      | 🟡    |
+
+**Draußen bis T3 steht:** echte Quelle (7), echte Wirkung (10), Postgres als Voreinstellung,
+der Voyage-Lauf, Schicht B, Schicht C, Policy und Risikoklasse (4c), Audit-Kette (4d),
+Genehmigung in Slack oder Teams (11), Graph (13), MCP, Autonomie (14), sowie `express` 5, E0-B
+und `projekt-doktor` §12. Einzige Ausnahme ist die **CI** — geschrieben, aber nie gelaufen; sie
+bewahrt den Boden davor, still zu brechen, und wird deshalb in T3 einmal grün gesehen.
+
+**T1 ist am 2026-09-20 eingelöst** (ADR-0019, Nachtrag). Gemessen: 3.13 = 0 % bei Nenner
+**50** statt 16 — der Agentenpfad ist seither im Nenner —, Vertragstreue **35/35**, `npm test`
+243/249 ohne und **250/250** mit Datenbank, beide Store-Adapter zeichengleich. Die
+Mutationsprobe macht die Zahl rot: liest der Agent als Dienstkonto, springt 3.13 auf 7,4 %
+(4/54), und zwei Fälle melden ihr Leck namentlich. Was dabei die Planannahme widerlegte — dass
+die Relevanzsuche für eine benannte Notiz genügt —, steht im Nachtrag.
+
+**T2 ist am 2026-09-20 eingelöst** (ADR-0018, ADR-0019 Nachtrag 2). Der Kanal legt einen
+**Nachweis** vor, ein Verzeichnis antwortet, und ohne Antwort ist das Ergebnis leer und kostet
+**keinen Modellaufruf**. Gemessen: `npm test` 247/254 ohne und **254/254** mit Datenbank ·
+3.13 unverändert 0 % (0/50) · Vertragstreue 35/35 · beide Store-Adapter zeichengleich · der
+Bericht nennt seither den Identitäts-Adapter (`fixtures`). Mutationsprobe: **glaubt** der
+Harness den Nachweis statt ihn aufzulösen, springt 3.13 auf 7,4 % (4/54) und zwei Fälle melden
+ihr Leck. **Der Kanal ist das Terminal, nicht `/api/run`** — der HTTP-Rand führt `beispiel`, das
+nichts liest; die Begründung steht im Nachtrag, die verbleibende Lücke in `ARCHITECTURE.md` §4.
+
+**T3 ist am 2026-09-20 zu zwei Dritteln eingelöst** (ADR-0019, Nachtrag 3). `npm run fragen`
+ist der Kanal des MVP: ein Mensch legt seinen Nachweis vor, sieht den Entwurf und entscheidet
+selbst. Gemessen, als Prozess von außen (`tests/kanal.test.js`, 5 Fälle): **Ablehnung von Hand →
+Queue leer**, **Genehmigung von Hand → genau eine Aktion**, und `true` oder eine leere Zeile
+genehmigen **nicht**. Mutationsprobe: setzt man den Parser auf „alles genehmigt", fallen zwei der
+fünf Fälle. **Offen bleibt der dritte Teil des Tors: die CI ist geschrieben und nie gelaufen** —
+sie braucht einen Push, und der ist eine Entscheidung der Nutzerin oder des Nutzers, nicht des
+Agenten.
+
+**Was nach T3 kommt, steht hier absichtlich nicht.** Der nächste Schritt wird nach einem
+Kriterium gewählt und nicht aus einer Liste abgelesen: **welche Aussage dieses Repos ist heute
+noch eine Vorhersage.** Heute wären das der Voyage-Lauf, die erste Schicht-B-Messung und die
+erste echte Quelle — in dieser Reihenfolge zu prüfen, nicht zu planen.
