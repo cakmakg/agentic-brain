@@ -81,7 +81,29 @@ const { synchronisiere } =
   await import("../../src/kernel/connectors/synchronisation.js");
 
 // ── Einen Workflow-Fall ausführen ────────────────────────────────────────
+// Seit T1 (ADR-0019) kann ein Agentenlauf LESEN. Bringt der Adapter einen
+// Leseweg mit, bekommt der Lauf einen frischen Speicher und einen Principal —
+// und was der Agent dabei aus dem Speicher bekam, geht in den Nenner von 3.13.
+// Fehlt der Leseweg (`beispiel` hat keinen Connector, ADR-0004), läuft alles
+// wie bisher; der Runner bleibt damit domänenfrei.
 async function laufWorkflow(aufgabe, adapter) {
+  if (!adapter.leseweg) return laufWorkflowOhneLeseweg(aufgabe, adapter);
+
+  return mitStore(async (store) => {
+    await ingestiere(store, adapter.leseweg.dokumente);
+    adapter.leseweg.setze(store);
+    try {
+      return await laufWorkflowOhneLeseweg(aufgabe, adapter);
+    } finally {
+      // Der Speicher wird gleich geschlossen. Bliebe er verdrahtet, läse der
+      // nächste Lauf aus einem geschlossenen Speicher — und das sähe aus wie
+      // eine verweigerte Berechtigung.
+      adapter.leseweg.setze(null);
+    }
+  });
+}
+
+async function laufWorkflowOhneLeseweg(aufgabe, adapter) {
   const { startWorkflow, resolveApproval } = adapter.runner;
   const threadId = crypto.randomUUID();
   const inputTokens = [];
@@ -102,6 +124,15 @@ async function laufWorkflow(aufgabe, adapter) {
     const { interrupted } = await startWorkflow({
       task: aufgabe.task,
       threadId,
+      // AUFGELÖST, nicht geglaubt (ADR-0018): der Fall nennt eine Person, der
+      // Kanal legt ihren Nachweis vor, das Verzeichnis antwortet. Es gibt keinen
+      // zweiten Weg zu einem Principal — kennt das Verzeichnis den Nachweis
+      // nicht, bleibt es `null`, und der Leseweg antwortet leer mit Grund.
+      principal: adapter.identitaet
+        ? await adapter.identitaet.aufloeser.aufloese(
+            adapter.identitaet.nachweis(aufgabe.principal),
+          )
+        : null,
     });
     endstatus = interrupted ? "AWAITING_APPROVAL" : "DONE";
 
@@ -139,8 +170,28 @@ async function laufWorkflow(aufgabe, adapter) {
     inputTokens,
     kostenUsd,
     fehler,
+    ...gelesenesZaehlen(adapter, aufgabe, threadId),
     erwartet: aufgabe.erwartet,
     abweichungen: [],
+  };
+}
+
+// Was der Agent aus dem Speicher bekam — und wie viel davon er nicht hätte
+// bekommen dürfen. Der Nenner von 3.13 wächst genau hier um den Agentenpfad.
+//
+// Erlaubt ist, was der ACL-Datensatz für DIESEN Principal führt: eine
+// Projektion seiner Fälle, keine zweite Kopie. Nennt ein Fall keinen Principal,
+// ist die erlaubte Menge leer — dann zählt jeder gelieferte Chunk als Leck, und
+// das ist die richtige Richtung.
+function gelesenesZaehlen(adapter, aufgabe, threadId) {
+  if (!adapter.leseweg) return {};
+  const beleg = adapter.leseweg.beleg(threadId);
+  const erlaubt = new Set(adapter.leseweg.erlaubt[aufgabe.principal] ?? []);
+  return {
+    gelieferteChunks: beleg.chunks.length,
+    unerlaubteChunks: beleg.chunks.filter((c) => !erlaubt.has(c.dokumentId))
+      .length,
+    gelesenDokumente: beleg.dokumente,
   };
 }
 
@@ -472,6 +523,28 @@ function pruefe(lauf, sequenzen) {
   if (e.llmAufrufe !== undefined && lauf.llmAufrufe !== e.llmAufrufe)
     ab.push(`llmAufrufe: ${lauf.llmAufrufe} statt ${e.llmAufrufe}`);
 
+  // ── Was der AGENT gelesen hat (T1, ADR-0019) ───────────────────────────
+  // Dieselben zwei Richtungen wie beim Abruf-Fall, aus demselben Grund: nur
+  // auf Lecks zu schauen ließe eine Fassung durchgehen, die dem Agenten nie
+  // etwas gibt — 3.13 wäre 0 % und die Zahl wertlos.
+  if (lauf.unerlaubteChunks > 0) {
+    const zuviel = lauf.gelesenDokumente.filter(
+      (d) => !(e.gelesenDokumente ?? []).includes(d),
+    );
+    ab.push(
+      `LECK im Agentenpfad: ${lauf.unerlaubteChunks} unerlaubte Chunks aus [${zuviel.join(", ")}]`,
+    );
+  }
+  if (e.gelesenDokumente !== undefined) {
+    const erwartetGelesen = [...e.gelesenDokumente].sort();
+    if (
+      JSON.stringify(lauf.gelesenDokumente) !== JSON.stringify(erwartetGelesen)
+    )
+      ab.push(
+        `gelesen: [${(lauf.gelesenDokumente ?? []).join(", ")}] statt [${erwartetGelesen.join(", ")}]`,
+      );
+  }
+
   // Knotenzählungen generisch: jede Erwartung `<knoten>Aufrufe` zählt, wie oft
   // der Knoten in der Sequenz steht. Feste Agentennamen an dieser Stelle wären
   // Domänenwissen mitten im Runner — der Datensatz nennt sie, der Runner nicht.
@@ -546,6 +619,12 @@ async function fahreDomaene(adapter) {
     // deterministisch, einer mit `voyage` weder noch — die beiden duerfen im
     // Bericht nicht gleich aussehen.
     embeddingAdapter: EMBEDDING_ADAPTER,
+    // Und woher die Identitäten kamen (ADR-0018). Er steht NICHT im
+    // Dateinamen: die beiden Adapter dort sind die, die die Zahlen bewegen —
+    // dieser bewegt keine, er ändert nur, wer der Fragende ist. Ohne die Zeile
+    // wäre ein Lauf gegen ein Verzeichnis aus Fixtures von einem gegen einen
+    // echten Anbieter nicht zu unterscheiden.
+    identitaetAdapter: adapter.identitaet?.aufloeser.name ?? "keiner",
     aufgaben: adapter.datensatz.aufgaben.length,
     abrufe: (adapter.retrieval.faelle ?? []).length,
     entzuege: (adapter.entzug.faelle ?? []).length,

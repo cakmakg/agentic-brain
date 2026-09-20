@@ -25,6 +25,10 @@ import { baueStore } from "../kernel/context/aufbau.js";
 import { synchronisiere } from "../kernel/connectors/synchronisation.js";
 import { suche } from "../kernel/retrieval/suche.js";
 import { besprechungDomain } from "../domains/besprechung/domain.js";
+import { setzeLeseweg } from "../domains/besprechung/leseweg.js";
+import { createAufloeser } from "../kernel/governance/identitaet/index.js";
+import { createFixturesAufloeser } from "../kernel/governance/identitaet/fixtures.js";
+import { istPrincipalAufloesbar } from "../kernel/context/envelope.js";
 import { createNotizlaufwerk } from "../domains/besprechung/connectors/notizlaufwerk.js";
 import { getEntwurf } from "../domains/besprechung/agents/entwurf.js";
 import { getQueue } from "../domains/besprechung/actions.js";
@@ -82,18 +86,87 @@ await synchronisiere(store, laufwerk.connector);
 console.log("   nach EINEM Synchronisationszyklus:");
 await zeige("anna");
 
-// ── Teil 3: Der Ablauf bis zur menschlichen Genehmigung ──────────────────
-const { startWorkflow, resolveApproval } = getRunner(besprechungDomain.name);
-const threadId = crypto.randomUUID();
+// ── Teil 3: Die Naht — der Agent liest als der, der fragt ────────────────
+// Bis zum 2026-09-20 fehlte hier der Zusammenhang: Teil 1 fragte als Principal,
+// Teil 3 startete den Ablauf ohne einen. Der Agent schrieb über eine Notiz, die
+// er nie gelesen hatte. Seit T1 (ADR-0019) ist es EIN Vorgang, und man sieht es
+// an zwei Läufen mit derselben Aufgabe.
+setzeLeseweg(store);
 
-agentEventBus.on(threadId, (ev) => {
-  if (ev.type === "agent_log") console.log("   " + ev.line);
+// ── Die Identität dieses Kanals (T2, ADR-0018) ───────────────────────────
+// Der Kanal legt einen NACHWEIS vor und glaubt keinen Principal. Das
+// Verzeichnis ist eine Projektion der Principale des Datensatzes; `kaputt`
+// fällt heraus, weil ein missgestalteter Principal dort nicht eingetragen
+// werden kann — `fixtures.js` prüft beim Bau, nicht im Lauf.
+const aufloeser = createAufloeser({
+  adapter: createFixturesAufloeser({
+    verzeichnis: Object.fromEntries(
+      Object.entries(datensatz.principale)
+        .filter(([, p]) => istPrincipalAufloesbar(p))
+        .map(([name, p]) => [`nachweis-${name}`, p]),
+    ),
+  }),
 });
 
-console.log("\n▶  Workflow startet: Aktionspunkte aus notiz:n-sprint...\n");
+// Gibt es den Nachweis nicht, ist das Ergebnis `null` — und `null` heißt für den
+// Leseweg „leer mit Grund", nicht „alles". Fail-closed ist die Voreinstellung.
+const alsWer = (nachweis) => aufloeser.aufloese(nachweis);
+
+const { startWorkflow, resolveApproval } = getRunner(besprechungDomain.name);
+const AUFGABE = "Aktionspunkte aus notiz:n-sprint zum Rollout.";
+
+const lausche = (threadId) =>
+  agentEventBus.on(threadId, (ev) => {
+    if (ev.type === "agent_log") console.log("   " + ev.line);
+  });
+
+// clara ist in der Gruppe `leitung`; n-sprint gehört der Gruppe `technik`, und
+// clara steht auch nicht auf ihren Freigaben. Sie darf die Notiz nicht sehen.
+console.log(
+  `\n▶  ${"clara".padEnd(5)} fragt: „${AUFGABE}" — sie darf n-sprint NICHT sehen\n`,
+);
+const claraId = crypto.randomUUID();
+lausche(claraId);
+await startWorkflow({
+  task: AUFGABE,
+  threadId: claraId,
+  principal: await alsWer("nachweis-clara"),
+});
+console.log(
+  `   → Entwurf: ${getEntwurf(claraId)?.status ?? "keiner"} · Queue: ${
+    getQueue().filter((a) => a.threadId === claraId).length
+  } Eintrag(e) — und KEIN Modellaufruf, das Ergebnis stand vor den Kosten fest`,
+);
+
+// Ein Nachweis, den das Verzeichnis nicht kennt. DIE KANTE VON T2: keine
+// Identität heißt leeres Ergebnis und kein Modellaufruf — nicht „alles sehen".
+console.log(
+  `\n▶  ein unbekannter Nachweis fragt dasselbe — niemand löst ihn auf\n`,
+);
+const fremdId = crypto.randomUUID();
+lausche(fremdId);
+await startWorkflow({
+  task: AUFGABE,
+  threadId: fremdId,
+  principal: await alsWer("nachweis-gibtsnicht"),
+});
+console.log(
+  `   → Entwurf: ${getEntwurf(fremdId)?.status ?? "keiner"} · Queue: ${
+    getQueue().filter((a) => a.threadId === fremdId).length
+  } Eintrag(e) — Verzeichnisaufrufe: ${aufloeser.statistik.verzeichnisAufrufe}, Treffer: ${aufloeser.statistik.treffer}`,
+);
+
+// dora sieht n-sprint über eine Einzelfreigabe (ADR-0012), nicht über eine
+// Gruppe. Dieselbe Aufgabe, dieselbe Notiz, anderer Ausgang.
+console.log(
+  `\n▶  ${"dora".padEnd(5)} fragt dasselbe — sie ist einzeln freigegeben\n`,
+);
+const threadId = crypto.randomUUID();
+lausche(threadId);
 const { interrupted } = await startWorkflow({
-  task: "Aktionspunkte aus notiz:n-sprint zum Rollout.",
+  task: AUFGABE,
   threadId,
+  principal: await alsWer("nachweis-dora"),
 });
 
 if (interrupted) {
