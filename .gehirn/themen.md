@@ -127,7 +127,8 @@ eigenes Tor — genau deshalb steht es hier und nicht in Etappe 5.
 Die Annahme „`qs` braucht `express` 5" stammte vom 2026-09-09 und war falsch: 4.22.3 erschien
 am 2026-09-14. Aufgedeckt erst, als vor dem Major-Sprung `npm view express@4.22.3
 dependencies.qs` gefragt wurde. Lehre: eine Aussage „X braucht Major-Sprung" vor dem Sprung
-**neu messen**. Rest: `minimatch` über eslint 10.10.0 (devDependency, eslint ≥ 10.15 schließt).
+**neu messen**. Den Rest (`minimatch` über eslint 10.10.0) schloss am selben Tag eslint 10.15.0 — `npm audit`
+seither `found 0 vulnerabilities`.
 
 ### Thema: Zwang fehlt — von drei Schichten des Inventars steht eine
 

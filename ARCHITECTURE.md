@@ -134,14 +134,13 @@ Diese Liste ist absichtlich sichtbar. Eine verschwiegene Grenze wird zu einem Au
   umfasst 144 Zeilen (gemessen am 2026-11-16), und `src/kernel/agent/checkpointer.js` verschachtelt an einer Stelle
   fünf Ebenen tief. Beide sind als ESLint-Warnung sichtbar und bleiben es, bis der
   Lint-Rollout sie einzeln aufgreift — nicht nebenbei bei einer anderen Änderung.
-- **Ein mittlerer Befund bleibt offen — nur im Werkzeug.** Der Abhängigkeitsrückstand ist
-  eingelöst: seit Etappe 0c läuft `@langchain/langgraph` 1.4.14 und `npm audit` meldet
-  `high: 0` (ADR-0003). Die zwei mittleren Befunde in `qs` schloss am 2026-11-16 ein Patch auf
-  `express` 4.22.3, das `qs` 6.16.2 mitbringt. Die frühere Aussage, dafür sei `express` 5
-  nötig, war falsch: 4.22.3 erschien am 2026-09-14, nach jener Messung. Übrig ist `minimatch`
-  über `eslint` 10.10.0 (`npm audit` zählt ihn zweimal) — eine reine devDependency; er
-  schließt mit eslint ≥ 10.15, das exakt gepinnt ist und deshalb bewusst gehoben wird.
-  Gemessen am 2026-11-16.
+- **`npm audit` meldet keinen Befund.** Der Abhängigkeitsrückstand ist eingelöst: seit
+  Etappe 0c läuft `@langchain/langgraph` 1.4.14 und `npm audit` meldet `high: 0` (ADR-0003).
+  Die zwei mittleren Befunde in `qs` schloss am 2026-11-16 ein Patch auf `express` 4.22.3, das
+  `qs` 6.16.2 mitbringt. Die frühere Aussage, dafür sei `express` 5 nötig, war falsch: 4.22.3
+  erschien am 2026-09-14, nach jener Messung. Den letzten, `minimatch` über `eslint`, schloss
+  am selben Tag eslint 10.10.0 → 10.15.0 (exakt gepinnt, Lint-Bestand Regel für Regel
+  unverändert). Gemessen am 2026-11-16: `found 0 vulnerabilities`.
 
 ## 5. Beobachtbarkeit
 
