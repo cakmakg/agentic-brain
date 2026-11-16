@@ -18,7 +18,7 @@ Bewegung entstehen zwei Wahrheiten.
 
 ### Thema: `express` 4 → 5 — die zwei verbliebenen mittleren Schwachstellen
 
-**Status:** 🟠 Neu am 2026-09-09. `npm audit` ist bei `high: 0`, aber zwei **mittlere** in `qs` bleiben; sie brauchen `express` 5.
+**Status:** 🟠 Stand 2026-11-16. `npm audit` wieder bei `high: 0` (zod 3→4 und `npm audit fix` am 2026-11-16, CI-Tor grün); vier **mittlere** bleiben: `qs` braucht `express` 5, `minimatch` braucht eslint ≥ 10.15 (exakt gepinnt).
 Aufgetaucht als Rest von Etappe 0c. `express` 4.22.2 zieht `qs` 6.15.3 mit; die zwei
 mittleren Befunde (Array-Limit-Umgehung, DoS über `isBuffer`) verschwinden erst mit dem
 Major-Sprung auf `express` 5. Das hat mit ADR-0003 nichts zu tun und darf deshalb nicht
