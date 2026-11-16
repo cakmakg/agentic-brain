@@ -16,15 +16,6 @@ Bewegung entstehen zwei Wahrheiten.
 > nicht. Die **Statuszeile muss deshalb für sich allein stehen** und in sich abgeschlossen
 > sein. Der Fließtext darunter ist Vertiefung für den, der die Datei öffnet.
 
-### Thema: `express` 4 → 5 — die zwei verbliebenen mittleren Schwachstellen
-
-**Status:** 🟠 Stand 2026-11-16. `npm audit` wieder bei `high: 0` (zod 3→4 und `npm audit fix` am 2026-11-16, CI-Tor grün); vier **mittlere** bleiben: `qs` braucht `express` 5, `minimatch` braucht eslint ≥ 10.15 (exakt gepinnt).
-Aufgetaucht als Rest von Etappe 0c. `express` 4.22.2 zieht `qs` 6.15.3 mit; die zwei
-mittleren Befunde (Array-Limit-Umgehung, DoS über `isBuffer`) verschwinden erst mit dem
-Major-Sprung auf `express` 5. Das hat mit ADR-0003 nichts zu tun und darf deshalb nicht
-nebenbei passieren — betroffen wäre `src/adapters/http/`. Braucht eine eigene ADR, bevor eine
-Zeile fällt. Notiert in `ARCHITECTURE.md` §4, damit die Grenze nicht verschwiegen ist.
-
 ### Thema: Ingenieursdisziplin einführen
 
 **Status:** 🟡 E0-A steht (gemessen am 2026-09-20: **12** Warnungen, 0 Fehler). **E0-B steht seit 2026-11-16**: `.dependency-cruiser.cjs` mit den zwei Regeln der Stufe 1 auf `error` (`kernel → domains`, Zyklus), CI-Schritt im Job `disziplin`; `npx depcruise src` sauber (75 Module), beide Regeln per Gegenprobe rot gesehen. Naechster Schritt: die fuenf wartenden Regeln — **eine pro Aenderung** — oder E0-C.
@@ -73,7 +64,7 @@ gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
 
 ### Thema: Nach dem MVP — was ohne Schluessel messbar ist, und was nicht
 
-**Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). E0-B am 2026-11-16 gefahren. Offen ohne Schluessel: **express 5**, der ehrliche Stand von **4a**. Voyage, Schicht B und echte Quelle haengen ALLE an einem Schluessel oder Zugang.
+**Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). E0-B und der `qs`-Patch am 2026-11-16 gefahren. Offen ohne Schluessel: der ehrliche Stand von **4a**. Voyage, Schicht B und echte Quelle haengen ALLE an einem Schluessel oder Zugang.
 
 **Was blockiert ist und woran:** der **Voyage-Lauf** an `VOYAGE_API_KEY`; die **erste
 Schicht-B-Messung** an `ANTHROPIC_API_KEY` plus einer Ausgabengrenze (und die Domaene muss
@@ -97,7 +88,10 @@ ehrlich vorziehen.
   Aufbewahrungsfrist (sie steht in Spannung zur Kette) und ein Anker ausserhalb der Datei.
 - ~~**E0-B**~~ — 🟢 am 2026-11-16. dependency-cruiser 18.7.2 (exakt gepinnt), zwei Regeln auf
   `error`, CI-Schritt. Kerntor unveraendert (303/296/0/7, evals gruen, Demos Exit 0), `src/` unberuehrt.
-- **express 4 → 5** — zwei mittlere Schwachstellen, eigene ADR, betrifft nur den HTTP-Rand.
+- ~~**express 4 → 5**~~ — 🟢 am 2026-11-16 entfallen: `express` 4.22.3 schloss die `qs`-Befunde
+  ohne Major-Sprung (siehe Abgeschlossene Themen).
+- **4a ehrlich messen** — gibt es die Fixture-Tore (unaufloesbarer Principal → leeres Ergebnis,
+  kein LLM-Aufruf)? Danach die Roadmap-Zeile so schreiben, wie es gemessen ist.
 
 **Was aus 4b als Lehre bleibt:** der Lauf gegen den ZWEITEN Adapter fand einen Defekt, den kein
 Test gesucht hatte — eine Befugnispruefung mit leerer Zielkennung fiel still in die
@@ -125,6 +119,14 @@ Name ist in `EVALS.md`, `DECISIONS.md` und `projekt-doktor` §13 zitiert. Eigene
 eigenes Tor — genau deshalb steht es hier und nicht in Etappe 5.
 
 ## Abgeschlossene Themen
+
+### Thema: `express` 4 → 5 — die zwei `qs`-Befunde
+
+**Status:** 🟢 Abgeschlossen am 2026-11-16 — **ohne** `express` 5. Ein Patch auf `express` 4.22.3 (zieht `qs` 6.16.2) schloss beide `qs`-Befunde und den eigenen von `express`; nur Lockfile.
+Die Annahme „`qs` braucht `express` 5" stammte vom 2026-09-09 und war falsch: 4.22.3 erschien
+am 2026-09-14. Aufgedeckt erst, als vor dem Major-Sprung `npm view express@4.22.3
+dependencies.qs` gefragt wurde. Lehre: eine Aussage „X braucht Major-Sprung" vor dem Sprung
+**neu messen**. Rest: `minimatch` über eslint 10.10.0 (devDependency, eslint ≥ 10.15 schließt).
 
 ### Thema: Zwang fehlt — von drei Schichten des Inventars steht eine
 

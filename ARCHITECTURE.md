@@ -134,11 +134,14 @@ Diese Liste ist absichtlich sichtbar. Eine verschwiegene Grenze wird zu einem Au
   umfasst 144 Zeilen (gemessen am 2026-11-16), und `src/kernel/agent/checkpointer.js` verschachtelt an einer Stelle
   fünf Ebenen tief. Beide sind als ESLint-Warnung sichtbar und bleiben es, bis der
   Lint-Rollout sie einzeln aufgreift — nicht nebenbei bei einer anderen Änderung.
-- **Zwei mittlere Schwachstellen bleiben offen.** Der Abhängigkeitsrückstand ist eingelöst:
-  seit Etappe 0c läuft `@langchain/langgraph` 1.4.14 und `npm audit` meldet `high: 0`
-  (ADR-0003). Übrig bleiben zwei **mittlere** in `qs`, das `express` 4.x mitbringt. Sie
-  verschwinden erst mit `express` 5 — ein Major-Sprung, der mit ADR-0003 nichts zu tun hat und
-  deshalb eine eigene Entscheidung braucht, nicht ein Nebenbei. Gemessen am 2026-09-09.
+- **Ein mittlerer Befund bleibt offen — nur im Werkzeug.** Der Abhängigkeitsrückstand ist
+  eingelöst: seit Etappe 0c läuft `@langchain/langgraph` 1.4.14 und `npm audit` meldet
+  `high: 0` (ADR-0003). Die zwei mittleren Befunde in `qs` schloss am 2026-11-16 ein Patch auf
+  `express` 4.22.3, das `qs` 6.16.2 mitbringt. Die frühere Aussage, dafür sei `express` 5
+  nötig, war falsch: 4.22.3 erschien am 2026-09-14, nach jener Messung. Übrig ist `minimatch`
+  über `eslint` 10.10.0 (`npm audit` zählt ihn zweimal) — eine reine devDependency; er
+  schließt mit eslint ≥ 10.15, das exakt gepinnt ist und deshalb bewusst gehoben wird.
+  Gemessen am 2026-11-16.
 
 ## 5. Beobachtbarkeit
 
@@ -180,7 +183,6 @@ die Summe der Zeilen.
 | Frage                                                   | Blockiert heute | Fällt in                    |
 | ------------------------------------------------------- | --------------- | --------------------------- |
 | Bettet Voyage 3.13 anders? — ungemessen, kein Schlüssel | nichts          | sobald ein Schlüssel da ist |
-| `express` 4 → 5 wegen der zwei mittleren Befunde        | nichts          | offen, per eigener ADR      |
 | Vollständige TypeScript-Migration                       | nichts          | offen                       |
 | Darf ein zweiter Kanal (MCP) `approve` anbieten?        | nichts          | Etappe 6, per ADR           |
 
@@ -189,6 +191,10 @@ Vier Fragen sind gefallen und stehen deshalb nicht mehr hier: **die Vertikale** 
 (ADR-0015 — ein Port mit zwei Adaptern statt eines Tauschs) und **Delta-Sync statt
 Momentaufnahme** (ADR-0016 — die Momentaufnahme bleibt, der Einbettungsaufruf wird
 zwischengespeichert).
+
+Eine fünfte Frage hat sich ohne Entscheidung aufgelöst: **`express` 4 → 5** stand hier wegen
+der zwei `qs`-Befunde. Die schloss ein Patch innerhalb von 4.x (§4); ein Grund für den
+Major-Sprung bleibt damit nicht.
 
 Was von der Embedding-Frage übrig ist, steht oben und ist bewusst schmal formuliert: 3.13 wird
 sich nach ADR-0015 **nicht** bewegen, weil der ACL-Filter vor der Bewertung läuft — aber
