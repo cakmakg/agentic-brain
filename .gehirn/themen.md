@@ -27,7 +27,7 @@ Zeile fällt. Notiert in `ARCHITECTURE.md` §4, damit die Grenze nicht verschwie
 
 ### Thema: Ingenieursdisziplin einführen
 
-**Status:** 🟡 E0-A steht (gemessen am 2026-09-20: **12** Warnungen, 0 Fehler); **E0-B ist frei** und der nächste Disziplinschritt.
+**Status:** 🟡 E0-A steht (gemessen am 2026-09-20: **12** Warnungen, 0 Fehler). **E0-B steht seit 2026-11-16**: `.dependency-cruiser.cjs` mit den zwei Regeln der Stufe 1 auf `error` (`kernel → domains`, Zyklus), CI-Schritt im Job `disziplin`; `npx depcruise src` sauber (75 Module), beide Regeln per Gegenprobe rot gesehen. Naechster Schritt: die fuenf wartenden Regeln — **eine pro Aenderung** — oder E0-C.
 Seit 2026-09-08: ESLint 10, Prettier, lefthook, alle Regeln auf `warn`, `src/` unberührt.
 E0-B (dependency-cruiser) schreibt seine Regeln auf **Pfade**; seit Etappe 0b stehen die
 Ebenenpfade fest, es kann also einmal geschrieben werden. Danach E0-C (`envLive` — erste Etappe mit
@@ -73,7 +73,7 @@ gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
 
 ### Thema: Nach dem MVP — was ohne Schluessel messbar ist, und was nicht
 
-**Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). Offen ohne Schluessel: **E0-B**, **express 5**; dazu die Frage, ob die zwei Berichte vom 2026-11-16 als Beleg ins Repo kommen. Voyage, Schicht B und echte Quelle haengen ALLE an einem Schluessel oder Zugang.
+**Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). E0-B am 2026-11-16 gefahren. Offen ohne Schluessel: **express 5**, der ehrliche Stand von **4a**. Voyage, Schicht B und echte Quelle haengen ALLE an einem Schluessel oder Zugang.
 
 **Was blockiert ist und woran:** der **Voyage-Lauf** an `VOYAGE_API_KEY`; die **erste
 Schicht-B-Messung** an `ANTHROPIC_API_KEY` plus einer Ausgabengrenze (und die Domaene muss
@@ -95,8 +95,8 @@ ehrlich vorziehen.
   ein Objekt mit Genehmigendem, der bearbeitete Entwurf laeuft erneut durch den Vertrag.
   **Jede Metrik unveraendert** — genau das war das Tor. Offen geblieben und benannt: die
   Aufbewahrungsfrist (sie steht in Spannung zur Kette) und ein Anker ausserhalb der Datei.
-- **E0-B** — dependency-cruiser. Wuerde die Kern-Domaenen-Linie MECHANISCH halten statt per
-  `grep`; seit T1 gibt es mehr Regeln zu schreiben. **Neue Abhaengigkeit, also vorher fragen.**
+- ~~**E0-B**~~ — 🟢 am 2026-11-16. dependency-cruiser 18.7.2 (exakt gepinnt), zwei Regeln auf
+  `error`, CI-Schritt. Kerntor unveraendert (303/296/0/7, evals gruen, Demos Exit 0), `src/` unberuehrt.
 - **express 4 → 5** — zwei mittlere Schwachstellen, eigene ADR, betrifft nur den HTTP-Rand.
 
 **Was aus 4b als Lehre bleibt:** der Lauf gegen den ZWEITEN Adapter fand einen Defekt, den kein

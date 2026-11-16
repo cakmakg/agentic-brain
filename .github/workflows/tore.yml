@@ -96,6 +96,10 @@ jobs:
       # auf `error` hebt. Eine Schwelle auf die 15 zu setzen waere verfrueht:
       # ob sie angehoben oder als Ausnahme notiert wird, ist offen.
       - run: npx eslint .
+      # Seit E0-B ein echtes Tor: `kernel → domains` und jeder Zyklus sind
+      # `error`. Vorher hielt nur ein `grep` die Trennlinie, und der sah nur die
+      # Domaenennamen, die man ihm nannte.
+      - run: npx depcruise src
       # Das ist ein echtes Tor: `high: 0` ist seit Etappe 0c eine Zusage.
       # Eigener Job, damit ein ueber Nacht veroeffentlichter Befund nicht wie
       # ein gefallener Test aussieht.
