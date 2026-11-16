@@ -72,7 +72,8 @@ agentic-brain/
 │   │   ├── retrieval/                ③ filter (saf ACL mantığı) · suche
 │   │   ├── agent/                    ④ Agent Runtime: build · routing · runner ·
 │   │   │                             schema · reducers · checkpointer
-│   │   ├── action/                   ⑤ queue
+│   │   ├── action/                   ⑤ queue · flaeche
+│   │   ├── policy/                   ⑤ risk (0|1|2) · engine — sınıflandırır, yönlendirmez (ADR-0023)
 │   │   ├── governance/               ⑥ guardrail · auth · rateLimiter ·
 │   │   │                             trace · eventBus · costTracker
 │   │   ├── config/env.js             altyapı — tüm ortam değişkenleri tek noktada
@@ -762,7 +763,7 @@ npx lefthook install    # git hook'larını senkronla
 # Sınama
 grep -rn "beispiel" src/kernel/                  # boş kalmalı
 grep -rn "besprechung" src/kernel/               # boş kalmalı — K6
-ls src/kernel | grep -vxE 'connectors|context|retrieval|agent|action|governance|llm|persistence|config|registry\.js'
+ls src/kernel | grep -vxE 'connectors|context|retrieval|agent|action|policy|governance|llm|persistence|config|registry\.js'
                                                  # boş kalmalı — ADR-0002
 grep -rn "process\.env" src/ | grep -v config/env.js   # E0-C sonrası boş
 npm audit                                        # bugün 0 high, 2 moderate
