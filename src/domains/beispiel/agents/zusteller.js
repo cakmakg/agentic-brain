@@ -13,8 +13,16 @@
 // abfließen lassen noch spammen — er kann nur Aktionen in die Queue legen, die
 // auf einer Whitelist stehen und schemabegrenzt sind.
 
-import { enqueueAction } from "../actions.js";
+//
+// Die Risikoklasse steht im Update (Etappe 4c), damit sie als Zahl in der
+// Knotenzeile des Traces landet — nicht nur in der Queue. Sie entscheidet
+// nichts (A5).
+
+import { klassifiziere } from "../../../kernel/policy/engine.js";
+import { enqueueAction, risikoklassen } from "../actions.js";
 import { markZugestellt } from "./ablage.js";
+
+const AKTION = "NOTIFY"; // muss auf der Whitelist stehen, sonst lehnt die Queue ab
 
 export async function zustellerNode(state) {
   // KEIN direktes fetch — nur in die Queue schreiben.
@@ -23,13 +31,14 @@ export async function zustellerNode(state) {
   // ändert sich hier nur, dass gewartet wird.
   await enqueueAction({
     threadId: state.threadId,
-    actionType: "NOTIFY", // muss auf der Whitelist stehen, sonst lehnt die Queue ab
+    actionType: AKTION,
     payload: { text: `Aufgabe abgeschlossen: ${state.task}` },
   });
   markZugestellt(state.threadId);
 
   return {
     zugestellt: true,
+    risikoklasse: klassifiziere({ actionType: AKTION, risikoklassen }),
     nextAgent: "END",
     log: [
       "📡 zusteller: Aktion in die Queue gelegt (der Worker validiert und führt aus)",

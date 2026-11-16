@@ -19,15 +19,43 @@
 // Ontologie und wird erst später freigeschaltet — sonst gäbe es eine
 // freigeschaltete Wirkung, die niemand modelliert hat (K9).
 //
-// DER KERN LIEST NUR SCHLÜSSEL. Was in den Werten von `modelliert` steht —
-// Entitätsnamen, Hinweise —, rührt diese Datei nicht an. Deshalb bleibt
+// DER KERN LIEST SCHLÜSSEL UND GENAU EIN FELD. Was sonst in den Werten von
+// `modelliert` steht — Entitätsnamen, Hinweise —, rührt diese Datei nicht
+// an. Deshalb bleibt
 //
 //   grep -rn "<domäne>" src/kernel/    # leer
 //
 // auch dann leer, wenn die Ontologie einer Domäne durch diese Funktion läuft.
 //
+// Das eine Feld ist `risikoklasse` (A19, Etappe 4c). Es ist generisch — eine
+// Zahl 0|1|2, kein Domänenbegriff — und es steht am MODELL, nicht an der
+// Umsetzung: auch ein nicht scharfer Typ trägt seine Klasse. Er ist
+// modelliert, und wenn Etappe 13 ihn freischaltet, soll seine Klasse schon
+// feststehen und nicht erst im selben Zug erfunden werden.
+//
 // REINE FUNKTION, kein IO. Sie wirft beim Laden des Domänenmoduls; ein
 // Prozess mit einer widersprüchlichen Aktionsfläche soll nicht starten.
+
+import { pruefeRisikoklasse } from "../policy/risk.js";
+
+// Jeder MODELLIERTE Typ braucht eine gültige Klasse — dieselbe Strenge wie
+// „halb umgesetzt": eine fehlende Klasse wirft beim Laden, statt im Lauf als
+// `undefined` im Trace zu stehen, wo sie aussähe wie „nicht erhoben".
+function risikoklassenAus(modelliert, modell) {
+  const risikoklassen = {};
+  for (const typ of modell) {
+    try {
+      risikoklassen[typ] = pruefeRisikoklasse(modelliert[typ]?.risikoklasse);
+    } catch (fehler) {
+      throw new Error(
+        `Aktionsfläche: der Aktionstyp "${typ}" trägt keine gültige ` +
+          `Risikoklasse — ${fehler.message}`,
+        { cause: fehler },
+      );
+    }
+  }
+  return risikoklassen;
+}
 
 // Ein Eintrag der Umsetzung ist scharf, wenn er einen Validierer UND eine
 // Befugnis trägt. Die Befugnis darf — wie in ADR-0020 — eine benannte
@@ -104,5 +132,11 @@ export function erzeugeAktionsflaeche(modelliert, umsetzung) {
     befugnisse[typ] = eintrag.befugnis;
   }
 
-  return { whitelist, validators, befugnisse, nichtScharf };
+  return {
+    whitelist,
+    validators,
+    befugnisse,
+    nichtScharf,
+    risikoklassen: risikoklassenAus(modelliert, modell),
+  };
 }

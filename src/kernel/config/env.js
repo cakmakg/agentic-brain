@@ -69,6 +69,17 @@ export const env = {
   // Quellcode.
   databaseUrl: process.env.DATABASE_URL || "",
 
+  // ── Die Frist der menschlichen Genehmigung (ab Etappe 4c) ──────────────
+  // Wie lange ein Lauf am Tor warten darf, bevor ein spätes „ja" nicht mehr
+  // zählt. Voreinstellung deny: nach Ablauf wird abgelehnt, nicht
+  // durchgewunken. Der Grund ist nicht Ordnung, sondern Gültigkeit — eine
+  // Genehmigung bezieht sich auf einen Entwurf und eine Lage von damals; eine
+  // Woche später freigegeben, bestätigt sie etwas, das niemand mehr geprüft
+  // hat. 24 Stunden decken einen Arbeitstag mit Abwesenheit ab. `??` statt
+  // `||`, damit eine ausdrücklich gesetzte `0` nicht still zu 24 h wird —
+  // der Runner lehnt sie dann laut ab.
+  genehmigungsFristMs: Number(process.env.GENEHMIGUNGS_FRIST_MS ?? 86_400_000),
+
   // Wohin der dauerhafte Zustand geschrieben wird. Überschreibbar wie
   // TRACE_DIR in governance/trace.js — Tests und der Harness zeigen damit
   // auf ein frisches Verzeichnis, sonst schleppt ein Lauf den vorigen mit und

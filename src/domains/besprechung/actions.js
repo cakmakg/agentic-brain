@@ -103,7 +103,10 @@ const umsetzung = {
 // Wirft beim Laden, absichtlich hier und nicht in einem Test allein: ein
 // Prozess, der eine widersprüchliche Aktionsfläche fahren würde, soll gar
 // nicht erst starten.
-export const { whitelist, validators, befugnisse, nichtScharf } =
+//
+// `risikoklassen` kommt aus der Ontologie, nicht aus der Umsetzung: die
+// Klasse ist eine Aussage über die Wirkung, nicht über ihren Schalter (A19).
+export const { whitelist, validators, befugnisse, nichtScharf, risikoklassen } =
   erzeugeAktionsflaeche(AKTIONSTYPEN, umsetzung);
 
 // Eine Queue je Domäne. Sie ist ein Modul-Singleton, weil der Worker und die
@@ -112,6 +115,7 @@ export const besprechungQueue = createActionQueue({
   whitelist,
   validators,
   befugnisse,
+  risikoklassen,
   logName: "aktionen-besprechung",
 });
 

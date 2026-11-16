@@ -54,7 +54,10 @@ gegenueber dem breiten Testadapter.
 
 ### Thema: Der Lint-Anstieg — drei Warnungen, die eine Entscheidung brauchen
 
-**Status:** 🟡 Nachgemessen am 2026-09-20 nach 4d: **15** Warnungen in `src/ tests/` (12 vor der Etappe). Die drei neuen stehen alle in `runner.js` und haben dieselbe Ursache.
+**Status:** 🟡 Nachgemessen am 2026-11-16 nach 4c: **15** Warnungen in `src/ tests/`, unveraendert seit 4d — aber drei bestehende wuchsen (`resolveApproval` 12→13, `createRunner` 81→105 Zeilen, `createActionQueue` 141→144 Zeilen).
+Nach 4c (ADR-0023) zusaetzlich: `evals/` hat 7 Warnungen, 0 Fehler; `laufWorkflowOhneLeseweg`
+Komplexitaet 12 → 21. Die Zahl blieb gleich, die Befunde wurden groesser — eine Zahl allein
+haette das verdeckt.
 Neu seit ADR-0022: `pruefeBearbeitung` Komplexitaet 11, `resolveApproval` Komplexitaet 12,
 `createRunner` 81 Zeilen — die Kette der Tore an der Genehmigungskante. Zweimal refaktoriert
 (eigene Funktion, dann auf Modulebene gehoben); weiter zu zerschneiden hiesse die REIHENFOLGE
@@ -70,7 +73,7 @@ gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
 
 ### Thema: Nach dem MVP — was ohne Schluessel messbar ist, und was nicht
 
-**Status:** 🟡 Stand 2026-09-20. **4b, Etappe 5 und 4d gefahren** (ADR-0020/0021/0022; A11, A4, A6 und A12 gefallen). Offen ohne Schluessel: **4c**, **E0-B**, **express 5**. Die drei grossen Kandidaten (Voyage, Schicht B, echte Quelle) haengen ALLE an einem Schluessel oder Zugang, den es hier nicht gibt.
+**Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). Offen ohne Schluessel: **E0-B**, **express 5**; dazu die Frage, ob die zwei Berichte vom 2026-11-16 als Beleg ins Repo kommen. Voyage, Schicht B und echte Quelle haengen ALLE an einem Schluessel oder Zugang.
 
 **Was blockiert ist und woran:** der **Voyage-Lauf** an `VOYAGE_API_KEY`; die **erste
 Schicht-B-Messung** an `ANTHROPIC_API_KEY` plus einer Ausgabengrenze (und die Domaene muss
@@ -83,8 +86,11 @@ ehrlich vorziehen.
 - ~~**Etappe 5**~~ — 🟢 am 2026-09-20 als ADR-0021. Die Aktionsflaeche wird erzeugt, und
   **modelliert heisst nicht mehr scharf**: `TICKET_ZUWEISEN` ist zu, bis es ein Ticketsystem
   gibt (Etappe 10). 3.2 unveraendert 0 %, Vertragstreue 37 → 38.
-- **4c** — Policy und Risikoklasse: nur die Klasse vergeben und protokollieren, wirksam erst in
-  14b. Neue Metrik 3.15 (Genehmigungs-Timeout).
+- ~~**4c**~~ — 🟢 am 2026-11-16 als ADR-0023. Jede Aktion traegt eine Risikoklasse (heute
+  ueberall Stufe 2, sie routet nicht), und ein Ja nach der Frist endet als `EXPIRED`. 3.15 =
+  100 % (1/1, GT-1), 3.13 bei 0/52 (Zaehler unveraendert), Vertragstreue 38 → 39. Offen und
+  benannt: `evals:postgres` nicht gefahren; die zwei Berichte liegen unter `.gitignore`; der
+  Kommentar „Alle fuenf Felder" in `besprechung/domain.js` (es sind sieben).
 - ~~**4d**~~ — 🟢 am 2026-09-20 als ADR-0022. Der Trace ist eine Hash-Kette, die Genehmigung
   ein Objekt mit Genehmigendem, der bearbeitete Entwurf laeuft erneut durch den Vertrag.
   **Jede Metrik unveraendert** — genau das war das Tor. Offen geblieben und benannt: die

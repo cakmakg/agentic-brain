@@ -9,7 +9,9 @@
 //
 //   grep -rn "besprechung" src/kernel/    # muss leer bleiben
 //
-// REINE DATEN PLUS PRÜFUNG, kein IO. Diese Datei importiert nichts.
+// REINE DATEN PLUS PRÜFUNG, kein IO. Der einzige Import ist die reine
+// Prüfung der Risikoklasse aus dem Kern — eine zweite Kopie der erlaubten
+// Stufen hier wäre die Drift, die sie verhindern soll.
 //
 // WOZU SIE DA IST — zwei Dinge, beide später fällig:
 //
@@ -23,6 +25,8 @@
 //      Umgekehrt ist nicht jeder modellierte Typ automatisch scharf: die
 //      Umsetzung entscheidet, und ein nicht scharfer Typ trägt dort eine
 //      benannte Begründung.
+
+import { pruefeRisikoklasse } from "../../kernel/policy/risk.js";
 
 // ── Entitäten ────────────────────────────────────────────────────────────
 // Sieben. `docs/roadmap.md` §5 setzt den Rahmen auf 5–9, und der Rahmen ist
@@ -187,23 +191,32 @@ export const RELATIONEN = [
 // Aktionsfläche: `actions.js` wird aus ihr erzeugt und kommt nicht darüber
 // hinaus (A4). Ein Typ steht hier, sobald er modelliert ist — scharf wird er
 // erst durch seine Umsetzung dort.
+//
+// `risikoklasse` (A19, Etappe 4c): alle drei Typen tragen 2, weil alle drei
+// für andere sichtbar sind — ein Ticket, eine Zuweisung, eine Mail an den
+// Verteiler erreichen jemanden, bevor ein Fehler bemerkt wird. Die Klasse
+// wird vergeben und protokolliert, sie routet nicht; die HITL-Kante gilt für
+// jeden dieser Typen unverändert.
 export const AKTIONSTYPEN = {
   TICKET_ANLEGEN: {
     wirktAuf: "Ticket",
     ausEntitaet: "Aktionspunkt",
     nachAussen: true,
+    risikoklasse: 2,
     hinweis: "Legt ein Ticket aus einem freigegebenen Aktionspunkt an.",
   },
   TICKET_ZUWEISEN: {
     wirktAuf: "Ticket",
     ausEntitaet: "Person",
     nachAussen: true,
+    risikoklasse: 2,
     hinweis: "Weist ein bestehendes Ticket einer verantwortlichen Person zu.",
   },
   ZUSAMMENFASSUNG_SENDEN: {
     wirktAuf: "Notiz",
     ausEntitaet: "Besprechung",
     nachAussen: true,
+    risikoklasse: 2,
     hinweis:
       "Schickt die Zusammenfassung an die Teilnehmer. Bewusst dabei: eine " +
       "Zustellung an den falschen Verteiler ist ein Leck ohne Retrieval.",
@@ -217,7 +230,8 @@ export const AKTIONSTYPEN = {
 //
 //   1. eine Relation zeigt auf eine Entität, die es nicht (mehr) gibt
 //   2. die Rahmen aus `docs/roadmap.md` §5 werden verlassen
-//   3. ein Aktionstyp nennt eine Entität, die es nicht gibt
+//   3. ein Aktionstyp nennt eine Entität, die es nicht gibt — oder trägt
+//      keine gültige Risikoklasse
 export const RAHMEN = {
   entitaeten: { min: 5, max: 9 },
   relationen: { min: 10, max: 20 },
@@ -237,6 +251,13 @@ function pruefeAktionstypen(namen) {
           `Ontologie: Aktionstyp "${typ}" nennt unbekannte Entität "${def[seite]}".`,
         );
       }
+    }
+    try {
+      pruefeRisikoklasse(def.risikoklasse);
+    } catch (fehler) {
+      throw new Error(`Ontologie: Aktionstyp "${typ}" — ${fehler.message}`, {
+        cause: fehler,
+      });
     }
   }
 }

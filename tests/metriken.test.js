@@ -192,3 +192,83 @@ test("3.13: ein Nenner ohne Zaehler wirft — eine NaN waere still durchgelaufen
     "der Befund muss den Lauf NENNEN, sonst verschiebt er die Arbeit nur",
   );
 });
+
+// ── 3.15 Durchsetzung des Genehmigungs-Timeouts (Etappe 4c) ──────────────
+// Vier Fälle, weil die Metrik an vier Stellen falsch zu „reparieren" ist:
+// der Zähler (abgelaufen heißt nichts zugestellt), der Verstoß (eine späte
+// Genehmigung, die trotzdem veröffentlicht), die Nenner-Probe (ohne
+// verspäteten Fall ungemessen) und der Nenner selbst (eine rechtzeitige
+// Genehmigung stellt die Frage nicht).
+
+test("3.15: verspaetet, abgelaufen, nichts eingereiht — gemessen gruen", () => {
+  const m = berechneMetriken([
+    workflow("T1", {
+      verspaetet: true,
+      endstatus: "EXPIRED",
+      artefaktstatus: "AWAITING_APPROVAL",
+      queueEintraege: 0,
+    }),
+  ]);
+
+  assert.equal(m["3.15"].zaehler, 1);
+  assert.equal(m["3.15"].nenner, 1);
+  assert.equal(m["3.15"].erfuellt, true);
+});
+
+test("3.15: eine verspaetete Genehmigung, die trotzdem veroeffentlicht, faellt auf", () => {
+  const m = berechneMetriken([
+    workflow("T1", {
+      verspaetet: true,
+      endstatus: "PUBLISHED",
+      artefaktstatus: "PUBLISHED",
+      queueEintraege: 1,
+    }),
+  ]);
+
+  assert.equal(m["3.15"].zaehler, 0);
+  assert.equal(m["3.15"].nenner, 1);
+  assert.equal(m["3.15"].erfuellt, false);
+});
+
+test("3.15: ohne verspaeteten Fall ungemessen, nicht erfuellt", () => {
+  const m = berechneMetriken([
+    workflow("W1", { artefaktstatus: "PUBLISHED", queueEintraege: 1 }),
+    workflow("W2", { genehmigung: false }),
+  ]);
+
+  assert.equal(m["3.15"].nenner, 0);
+  assert.equal(m["3.15"].wert, null);
+  assert.equal(
+    m["3.15"].erfuellt,
+    null,
+    "ungemessen ist weder bestanden noch gefallen",
+  );
+});
+
+test("3.15: eine rechtzeitige Genehmigung zaehlt nicht in den Nenner", () => {
+  const m = berechneMetriken([
+    // rechtzeitig genehmigt und zugestellt — der unauffaellige Fall
+    workflow("W1", {
+      endstatus: "PUBLISHED",
+      artefaktstatus: "PUBLISHED",
+      queueEintraege: 1,
+    }),
+    // ausdruecklich NICHT verspaetet — ebenfalls draussen
+    workflow("W2", {
+      verspaetet: false,
+      endstatus: "PUBLISHED",
+      artefaktstatus: "PUBLISHED",
+      queueEintraege: 1,
+    }),
+    // verspaetet und korrekt abgelaufen — der einzige im Nenner
+    workflow("T1", {
+      verspaetet: true,
+      endstatus: "EXPIRED",
+      queueEintraege: 0,
+    }),
+  ]);
+
+  assert.equal(m["3.15"].nenner, 1, "nur der verspaetete Fall");
+  assert.equal(m["3.15"].zaehler, 1);
+  assert.equal(m["3.15"].erfuellt, true);
+});

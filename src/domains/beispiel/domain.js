@@ -53,6 +53,11 @@ const stateFields = {
 
   abgelegt: Annotation({ reducer: lastWins, default: () => false }),
   zugestellt: Annotation({ reducer: lastWins, default: () => false }),
+
+  // Die Risikoklasse der zugestellten Aktion (Etappe 4c). `null` heißt
+  // „nichts eingereiht". Ein Feld der Domäne, nicht des Kerns: der Kern
+  // vergibt keine Klasse, er prüft nur, dass sie da ist.
+  risikoklasse: Annotation({ reducer: lastWins, default: () => null }),
 };
 
 // ── Die Bremsen, in dieser Reihenfolge ───────────────────────────────────

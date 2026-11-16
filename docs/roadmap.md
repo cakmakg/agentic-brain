@@ -573,7 +573,27 @@ Neue Metrik in `EVALS.md`:
 > Schreiben abgelehnt, auch wenn sie einen bekannten Idempotenzschlüssel mitbringt · 3.2 und
 > 3.13 unverändert.
 
-**4c — Policy, Risikoklasse, Genehmigungs-Timeout.** `policy/engine.js` und `policy/risk.js`.
+**4c — Policy, Risikoklasse, Genehmigungs-Timeout.** 🟢 **Erledigt am 2026-11-16
+(ADR-0023).** Belegt: `npm test` **296/303** (7 übersprungen ohne `DATABASE_URL`; vorher
+278/285) · `npm run evals` **3.15 = 100 % (1/1)** bei `besprechung` (GT-1) · 3.13 = 0 %
+(0/52 — Zähler unverändert, der Nenner wächst um die Chunks, die GT-1 liest) · 3.16 = 0 %
+(0/2) unverändert · 3.1 = 100 %, 3.2 = 0 %, 3.14 = 0 % (0/6), Vertragstreue 39/39 (vorher
+38/38) · `beispiel` in jeder Metrik identisch, 28/28 · `evals:postgres` **nicht gefahren**
+(kein `DATABASE_URL`) · beide Demos Rückgabewert 0 ohne Infrastruktur (K5) ·
+`grep -rn "beispiel\|besprechung" src/kernel/` leer.
+
+> **Was der Plan nicht vorhergesehen hatte: die Frist braucht einen Ort, der den Neustart
+> überlebt, und eine Uhr, die kein Kanal stellt.** Der Beginn des Wartens steht als Kernfeld
+> `wartetSeit` im Checkpoint, nicht im Prozessspeicher. Die Zeit kommt vom Prozess, der den
+> Runner baut — weder der HTTP-Rand noch `npm run fragen` können sie vorgeben; nur der
+> Eval-Harness baut mit einer festen Uhr. Und eine abgelaufene Genehmigung endet als
+> **`EXPIRED`**, nicht als `REJECTED`: abgelehnt hat niemand.
+>
+> **Die Klasse ist vergeben, nicht wirksam.** Jeder heutige Aktionstyp trägt Stufe 2; in 14b
+> ändert sich damit heute nichts. Die Frist von 24 Stunden ist eine Voreinstellung, keine
+> Messung.
+
+**Was die Etappe umfasste.** `policy/engine.js` und `policy/risk.js`.
 Die Engine **klassifiziert** das Risiko einer Aktion, sie **routet nicht** (A5): die Klasse wird
 hier vergeben und protokolliert, wirksam wird sie erst in Etappe 14b. Dazu das
 Genehmigungs-Timeout mit **Voreinstellung deny**.
@@ -897,6 +917,9 @@ je Etappe** — sonst ist nicht zuzuordnen, welche Änderung welche Zahl bewegt 
 | 13     | — (C.4 wird messbar)                            | 3.13                                   |
 | 14a    | **3.17 Durchsetzung der Rücknahme**             | 3.1, 3.16                              |
 | 14b    | 3.1 **neu definiert** (nur Stufe 2)             | 3.13, 3.16, 3.17                       |
+
+„Unverändert" heißt bei 3.13 der **Zähler**, nicht der Nenner. Jeder neue Fall, der liest,
+vergrößert den Nenner um seine Chunks — in 4c von 50 auf 52 durch GT-1, der Zähler blieb 0.
 
 Eine Neudefinition zählt hier wie eine neue Metrik: auch sie bewegt eine Zahl, und die Bewegung
 muss genau einer Etappe zuzuordnen sein. Deshalb ist 14 zweigeteilt. Die Schicht-C-Zahlen zählen

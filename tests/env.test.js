@@ -29,3 +29,15 @@ test("Ein Override betrifft nur seine eigene Rolle", () => {
     delete process.env.MODEL_CRITIC;
   }
 });
+
+// Voreinstellung deny braucht eine Frist, die es gibt: 24 Stunden, solange
+// niemand ausdrücklich eine andere setzt. Ist GENEHMIGUNGS_FRIST_MS in der
+// Umgebung gesetzt, misst dieser Fall nicht die Voreinstellung — dann wird
+// er sichtbar übersprungen statt still angepasst.
+test(
+  "genehmigungsFristMs steht ohne Override auf 24 Stunden",
+  { skip: process.env.GENEHMIGUNGS_FRIST_MS !== undefined },
+  () => {
+    assert.equal(env.genehmigungsFristMs, 86_400_000);
+  },
+);

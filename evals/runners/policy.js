@@ -52,7 +52,7 @@ if (storeArg) process.env.STORE_ADAPTER = storeArg.slice("--store=".length);
 const embArg = process.argv.find((a) => a.startsWith("--embedding="));
 if (embArg) process.env.EMBEDDING_ADAPTER = embArg.slice("--embedding=".length);
 
-const { MOCK_LLM } = await import("../../src/kernel/config/env.js");
+const { MOCK_LLM, env } = await import("../../src/kernel/config/env.js");
 if (!MOCK_LLM) {
   console.error(
     "Schicht A läuft nur im Mock-Modus. ANTHROPIC_API_KEY ist gesetzt — " +
@@ -144,6 +144,23 @@ async function laufWorkflowOhneLeseweg(aufgabe, adapter) {
     aufgabe.principal ?? adapter.identitaet?.genehmigender,
   );
 
+  // Ein verspäteter Fall ohne Uhr oder ohne Frist liefe still RECHTZEITIG —
+  // und meldete dann eine Genehmigung, die nie ablaufen konnte, als
+  // Befund über das Timeout. Laut, bevor der Lauf beginnt.
+  const verspaetet = aufgabe.verspaetet === true;
+  if (verspaetet && !adapter.uhr) {
+    throw new Error(
+      `Aufgabe "${aufgabe.id}" ist verspätet, aber der Adapter "${adapter.name}" ` +
+        "bringt keine Uhr mit — die Frist ließe sich nicht überschreiten.",
+    );
+  }
+  if (verspaetet && !Number.isFinite(env.genehmigungsFristMs)) {
+    throw new Error(
+      `Aufgabe "${aufgabe.id}" ist verspätet, aber env.genehmigungsFristMs ist ` +
+        "keine Zahl — es gibt keine Frist, die überschritten werden könnte.",
+    );
+  }
+
   if (aufgabe.gedrosselt) cost.setThrottled(true);
   try {
     const { interrupted } = await startWorkflow({
@@ -158,11 +175,34 @@ async function laufWorkflowOhneLeseweg(aufgabe, adapter) {
     endstatus = interrupted ? "AWAITING_APPROVAL" : "DONE";
 
     if (interrupted && aufgabe.genehmigung !== null) {
-      await resolveApproval({
-        threadId,
-        entscheidung: { genehmigt: aufgabe.genehmigung, genehmigender },
-      });
-      endstatus = aufgabe.genehmigung ? "PUBLISHED" : "REJECTED";
+      // Um EINE Millisekunde über die Frist: genau die Grenze, an der „zu
+      // spät" beginnt. Die Frist kommt aus dem Code, nicht als zweite Kopie
+      // der Zahl — sonst misst der Harness eine Frist, die das System nicht hat.
+      if (verspaetet) adapter.uhr.vorspulen(env.genehmigungsFristMs + 1);
+      let antwort;
+      try {
+        antwort = await resolveApproval({
+          threadId,
+          entscheidung: { genehmigt: aufgabe.genehmigung, genehmigender },
+        });
+      } finally {
+        if (verspaetet) adapter.uhr.zuruecksetzen();
+      }
+      // Der Endstatus folgt der ANTWORT des Runners, nicht der Absicht des
+      // Falls. Bis Etappe 4c stand hier allein `aufgabe.genehmigung` — eine
+      // abgelaufene Genehmigung hätte dann PUBLISHED gemeldet, obwohl nichts
+      // veröffentlicht wurde. Abgelaufen ist, was der Runner im Trace als
+      // abgelaufen vermerkt; eine nicht angewandte Entscheidung ohne diesen
+      // Vermerk (etwa eine verworfene Bearbeitung) wartet weiter.
+      if (antwort?.angewandt === false) {
+        endstatus = leseTrace(threadId).some(
+          (z) => z.type === "entscheidung_abgelaufen",
+        )
+          ? "EXPIRED"
+          : "AWAITING_APPROVAL";
+      } else {
+        endstatus = aufgabe.genehmigung ? "PUBLISHED" : "REJECTED";
+      }
     }
   } catch (e) {
     fehler = e.message;
@@ -170,6 +210,10 @@ async function laufWorkflowOhneLeseweg(aufgabe, adapter) {
     if (aufgabe.gedrosselt) cost.setThrottled(false);
     abmelden();
   }
+
+  const eintraege = adapter.aktionen
+    .getQueue()
+    .filter((a) => a.threadId === threadId);
 
   // Der Trace ist die Quelle für Reihenfolge und Bedrohungswert.
   const zeilen = leseTrace(threadId);
@@ -182,12 +226,17 @@ async function laufWorkflowOhneLeseweg(aufgabe, adapter) {
     gruppe: aufgabe.gruppe,
     art: "workflow",
     genehmigung: aufgabe.genehmigung,
+    // Der Nenner von 3.15. Ein Feld des FALLS, nicht des Laufs: ob die
+    // Genehmigung zu spät kam, legt der Datensatz fest, nicht das Ergebnis.
+    verspaetet,
     sequenz,
     endstatus,
     artefaktstatus: adapter.artefaktstatus(threadId),
-    queueEintraege: adapter.aktionen
-      .getQueue()
-      .filter((a) => a.threadId === threadId).length,
+    queueEintraege: eintraege.length,
+    // Etappe 4c: jede eingereihte Aktion trägt eine Risikoklasse. Die Liste
+    // steht im Lauf, damit `pruefe` eine fehlende Klasse benennen kann —
+    // wirksam wird die Klasse erst in Etappe 14b, sichtbar sein muss sie jetzt.
+    risikoklassen: eintraege.map((a) => a.risikoklasse),
     threatScore,
     guardrail: bewerteGuardrail(sequenz, threatScore, aufgabe, adapter),
     llmAufrufe: inputTokens.length,
@@ -598,6 +647,12 @@ function pruefe(lauf, sequenzen) {
     lauf.queueEintraege !== e.queueEintraege
   )
     ab.push(`queueEintraege: ${lauf.queueEintraege} statt ${e.queueEintraege}`);
+  // Keine Erwartung im Datensatz, sondern eine Zusage für JEDE Aktion
+  // (Etappe 4c): eine Klasse außerhalb von 0|1|2 ist so gut wie keine.
+  for (const klasse of lauf.risikoklassen ?? []) {
+    if (![0, 1, 2].includes(klasse))
+      ab.push(`Aktion ohne Risikoklasse: ${JSON.stringify(klasse ?? null)}`);
+  }
   if (e.threatScore !== undefined && lauf.threatScore !== e.threatScore)
     ab.push(`threatScore: ${lauf.threatScore} statt ${e.threatScore}`);
   if (e.guardrail !== undefined && lauf.guardrail !== e.guardrail)
@@ -742,6 +797,7 @@ async function fahreDomaene(adapter) {
   console.log(zeile(metriken["3.2"]));
   console.log(zeile(metriken["3.13"]));
   console.log(zeile(metriken["3.16"]));
+  console.log(zeile(metriken["3.15"]));
   // Die Zyklenzahl steht in derselben Zeile: „0,0 %" allein ließe offen,
   // worauf sich die Dichtheit bezieht — und die Antwort ist nicht „Sekunden".
   console.log(
@@ -790,7 +846,16 @@ async function fahreDomaene(adapter) {
   // nicht mehr zutrifft, ist selbst ein Befund: sonst bliebe sie stehen,
   // nachdem die Domäne einen Connector bekommen hat, und deckte von da an
   // genau den Ausfall wieder zu, gegen den sie geschrieben wurde.
-  const PFLICHTMETRIKEN = ["3.1", "3.2", "3.3", "3.4", "3.13", "3.14", "3.16"];
+  const PFLICHTMETRIKEN = [
+    "3.1",
+    "3.2",
+    "3.3",
+    "3.4",
+    "3.13",
+    "3.14",
+    "3.15",
+    "3.16",
+  ];
   const befunde = PFLICHTMETRIKEN.map((schluessel) => {
     const { erfuellt, nenner } = metriken[schluessel];
     const grund = adapter.ungemessen[schluessel];

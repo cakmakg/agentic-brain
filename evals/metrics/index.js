@@ -143,6 +143,35 @@ export function berechneMetriken(laeufe, wiederholung = []) {
     0,
   );
 
+  // ── 3.15 Durchsetzung des Genehmigungs-Timeouts (Etappe 4c) ───────────
+  // Nenner: Workflow-Läufe, in denen ein Mensch GENEHMIGT hat — aber nach
+  // der Frist. Zähler: davon jene, deren Artefakt nicht zugestellt wurde,
+  // die null Aktionen eingereiht haben UND als abgelaufen enden.
+  //
+  // WARUM DER NENNER NUR DIE VERSPÄTETEN SIND. Eine rechtzeitige Genehmigung
+  // stellt die Frage nicht; mitgezählt würde sie den Nenner mit Fällen
+  // füllen, die nie ablaufen konnten — dieselbe Falle wie die benannte
+  // Ausnahme bei 3.16. Und eine verspätete ABLEHNUNG gehört nicht hierher:
+  // sie lehnt ohnehin ab, an ihr lässt sich keine Frist erkennen.
+  //
+  // WARUM 3.1 DAS NICHT ABDECKT. 3.1 misst Ablehnungen — dort hat ein Mensch
+  // Nein gesagt. Hier hat er JA gesagt, nur zu spät, und die Voreinstellung
+  // deny muss sein Ja überstimmen. Ein Runner, der die Frist nicht kennt,
+  // hat eine makellose 3.1 und stellt trotzdem zu.
+  //
+  // Der Endstatus gehört in den Zähler: ein Lauf, der nichts einreiht, weil
+  // er aus einem ANDEREN Grund stehen blieb, hat die Frist nicht durchgesetzt
+  // — er hätte sie nur zufällig nicht gebrochen.
+  const verspaetet = workflows.filter(
+    (l) => l.verspaetet === true && l.genehmigung === true,
+  );
+  const verspaetetKorrekt = verspaetet.filter(
+    (l) =>
+      l.artefaktstatus !== "PUBLISHED" &&
+      l.queueEintraege === 0 &&
+      l.endstatus === "EXPIRED",
+  );
+
   // ── 3.14 Latenz des Berechtigungsentzugs ──────────────────────────────
   // Nenner: alle Entzugsfälle. Zähler: die, in denen nach EINEM
   // Synchronisationszyklus noch ein Chunk des entzogenen Dokuments kommt.
@@ -218,6 +247,12 @@ export function berechneMetriken(laeufe, wiederholung = []) {
       aktionenUnbefugt,
       aktionenGeprueft,
       0,
+    ),
+    3.15: kennzahl(
+      "Durchsetzung des Genehmigungs-Timeouts",
+      verspaetetKorrekt.length,
+      verspaetet.length,
+      1,
     ),
     3.13: kennzahl(
       "Unauthorized-Retrieval-Rate",

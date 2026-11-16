@@ -18,8 +18,10 @@ import { erzeugeAktionsflaeche } from "../src/kernel/action/flaeche.js";
 import { createActionQueue } from "../src/kernel/action/queue.js";
 
 const MODELL = {
-  A_TUN: { hinweis: "egal — der Kern liest die Werte nicht" },
-  B_TUN: { hinweis: "egal" },
+  // `risikoklasse` ist das EINE Feld, das der Kern aus dem Modell liest
+  // (Etappe 4c); der Rest der Werte bleibt ihm fremd.
+  A_TUN: { hinweis: "egal — der Kern liest die Werte nicht", risikoklasse: 2 },
+  B_TUN: { hinweis: "egal", risikoklasse: 1 },
 };
 
 const scharf = { validator: () => true, befugnis: () => true };
@@ -100,14 +102,16 @@ test("DAS TOR VON ETAPPE 5: ein nicht scharfer Typ wird nicht einmal geschrieben
   // Der Befund, den `docs/roadmap.md` §5 verlangt — und zwar durch die Queue
   // hindurch, nicht nur an der reinen Funktion. Ohne `logName` bleibt diese
   // Queue flüchtig und fasst keine Datei an.
-  const { whitelist, validators, befugnisse } = erzeugeAktionsflaeche(MODELL, {
-    A_TUN: scharf,
-    B_TUN: "modelliert, aber nicht freigeschaltet",
-  });
+  const { whitelist, validators, befugnisse, risikoklassen } =
+    erzeugeAktionsflaeche(MODELL, {
+      A_TUN: scharf,
+      B_TUN: "modelliert, aber nicht freigeschaltet",
+    });
   const { enqueueAction, getQueue } = createActionQueue({
     whitelist,
     validators,
     befugnisse,
+    risikoklassen,
   });
 
   await assert.rejects(

@@ -94,3 +94,16 @@ test("Eine Domäne darf ein Kernfeld NICHT überschreiben", () => {
     /Kernfeld/,
   );
 });
+
+test("Frist: wartetSeit ist ein Kernfeld, startet als null und lässt sich auf null zurücksetzen", () => {
+  // null heißt „Wartebeginn unbekannt" und gilt als abgelaufen (Etappe 4c).
+  // Ein Reducer mit Leer-Schutz könnte dieses null nie schreiben — und ein
+  // Lauf ohne bekannten Wartebeginn behielte den alten.
+  assert.equal(standard("wartetSeit"), null);
+  assert.equal(reduziere("wartetSeit", 5, null), null);
+  assert.equal(reduziere("wartetSeit", null, 7), 7);
+  assert.throws(
+    () => buildState({ name: "boese", stateFields: { wartetSeit: {} } }),
+    /Kernfeld/,
+  );
+});

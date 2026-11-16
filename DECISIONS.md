@@ -2241,3 +2241,179 @@ rot („ein bearbeiteter Entwurf … wird NICHT zugestellt", „eine LEERE Bearb
 Ablehnung"). Die Verkettungsprüfung aus `pruefeKette` entfernen → zwei Tests rot („ein
 Fälscher, der den Hash mitzieht", „eine gelöschte Zeile fällt an der Lücke auf"). Beide
 zurückgenommen, `sha1sum` gleich.
+
+---
+
+## ADR-0023 — Die Aktion trägt eine Risikoklasse, und eine späte Genehmigung ist keine
+
+**Datum:** 2026-11-16
+**Status:** Angenommen
+
+Löst Etappe 4c aus `docs/roadmap.md` §5 ein (A5; vergibt die Stufen aus A19, ohne sie wirken
+zu lassen). Ergänzt ADR-0020 (Prüfung beim Bau) und ADR-0022 (Entscheidungsobjekt) und
+präzisiert `ARCHITECTURE.md` §5.
+
+### Kontext
+
+Zwei Lücken, beide an der Aktion, die beim Menschen anhält.
+
+**Eine Aktion hatte keine Klasse.** A19 plant drei Risikostufen und erlaubt einem Aktionstyp
+den Aufstieg nur, wenn Schicht-C-Daten ihn über einen festgelegten Zeitraum stützen. Daten
+über eine Klasse, die nie vergeben wurde, gibt es nicht. Wer die Klasse erst in Etappe 14b
+einführt, wo sie routet, vergibt sie und lässt sie wirken im selben Zug — zwei Änderungen,
+eine Zahl, und für den Rückblick ist nichts da.
+
+**Eine Genehmigung galt unbegrenzt.** Ein Lauf, der an `human_approval` hielt, wartete
+beliebig lang; ein Ja nach drei Wochen stellte genauso zu wie eines nach drei Minuten. Eine
+Genehmigung bestätigt aber einen Entwurf und eine Lage von damals. Zu spät gegeben, bestätigt
+sie etwas, das niemand mehr angesehen hat — und weil der Checkpoint jeden Neustart überlebt,
+ist ausgerechnet die Dauerhaftigkeit des Laufs das, was ihn spät noch zustellen lässt.
+
+### Entscheidung
+
+**Jeder modellierte Aktionstyp trägt eine Risikoklasse, die vergeben und protokolliert wird
+und nichts entscheidet. Eine Genehmigung nach Ablauf der Frist wird zu einem Nein — unter
+eigenem Status.**
+
+1. Neu im Kern: `policy/risk.js` mit `RISIKOSTUFEN` (0 nur für den Nutzer sichtbar · 1 intern
+   und zurücknehmbar · 2 für andere sichtbar oder unumkehrbar, A19) und `pruefeRisikoklasse`;
+   `policy/engine.js` mit `klassifiziere({ actionType, risikoklassen })`. Die Engine gibt eine
+   **Zahl** zurück und **routet nicht** (A5). Fehlt die Klasse, wirft sie.
+2. Eine unbekannte Stufe wird **abgelehnt**, nicht auf 2 hochgerundet.
+3. `erzeugeAktionsflaeche` liest aus dem Modell der Domäne neben den Schlüsseln genau **ein**
+   generisches Feld: `risikoklasse`. Jeder modellierte Typ braucht eine gültige — auch ein
+   nicht scharfer. Sonst wirft es beim Laden.
+4. `createActionQueue` verlangt `risikoklassen` als Pflicht und prüft beim **Bau**, wie
+   `befugnisse` (ADR-0020). Jede eingereihte Aktion trägt `risikoklasse` im Queue-Log und in
+   `getQueue()`.
+5. Beide Domänen vergeben heute **Stufe 2 für jeden Typ**: `besprechung` in `ontology.js` für
+   alle drei `AKTIONSTYPEN` — `pruefeOntologie` prüft die Klasse mit `pruefeRisikoklasse` aus
+   dem Kern —, `beispiel` in `actions.js` für `NOTIFY`, `WEBHOOK` und `EMAIL`. Die
+   Terminalknoten geben `risikoklasse` im Update zurück; die Zahl steht damit in der
+   Knotenzeile des Trace. Jede Domäne führt dafür ein eigenes State-Feld.
+6. Neues Kernfeld **`wartetSeit`**: der Beginn des Wartens an `human_approval`. Im Kern aus
+   demselben Grund wie `humanApproval` — die Zusage hängt daran. Der Runner schreibt es per
+   `updateState` in den **Checkpoint**, damit die Frist einen Neustart zwischen Start und
+   Entscheidung überlebt.
+7. Die Frist ist `GENEHMIGUNGS_FRIST_MS`, Voreinstellung 86 400 000 (24 h). Die Uhr ist
+   einspeisbar — `createRunner(domain, { jetzt, genehmigungsFristMs })`, wie beim
+   Identitäts-Auflöser (ADR-0018). `getRunner(name, optionen)` wirkt nur beim ersten Bau;
+   Optionen an einen schon gebauten Runner **werfen**.
+8. `resolveApproval` prüft in dieser Reihenfolge: Boolean → Genehmigender → **Frist** →
+   bearbeiteter Entwurf (`pruefeBearbeitung`) → Fortsetzung. Ablaufen kann nur
+   `genehmigt === true`. Abgelaufen ist, wenn `wartetSeit` fehlt (fail-closed) oder
+   `jetzt() − wartetSeit > Frist`. Exakt an der Frist ist noch rechtzeitig.
+9. Abgelaufen heißt: `run_resume` mit `genehmigt: false` und dem Genehmigenden, eine eigene
+   Trace-Zeile `entscheidung_abgelaufen` (`wartet_ms`, `frist_ms`), `humanApproval: false` in
+   den Checkpoint, der Graph geht über **dieselbe Kante wie bei der Ablehnung** nach END,
+   `run_end` mit Status **`EXPIRED`**, Rückgabe `{ angewandt: false, grund }`. Eine späte
+   **Ablehnung** bleibt `REJECTED`.
+10. **`build.js` wird nicht angefasst.** Die Kante prüft weiter auf exakt `true`; was sich
+    ändert, ist allein, was vor ihr ankommt — dieselbe Linie wie in ADR-0022.
+11. Neue Metrik **3.15 Durchsetzung des Genehmigungs-Timeouts · Ziel 100 %**, Pflichtmetrik,
+    Pflichtfall GT-1 (`EVALS.md` §3).
+
+### Begründung
+
+**Warum die Klasse jetzt vergeben wird, obwohl sie nichts entscheidet.** Ein Aufstieg nach A19
+braucht einen Rückblick auf gemessene Klassen, und der beginnt erst mit der ersten vergebenen.
+Dass heute jeder Typ Stufe 2 trägt, ist kein Leerlauf, sondern die Ausgangslage, gegen die
+Etappe 9 messen kann.
+
+**Warum die Engine nicht routet.** Entschiede sie, ob eine Aktion beim Menschen anhält, läge
+die zentrale Zusage des Repos an zwei Stellen — und die zweite könnte die erste still
+überholen. Die HITL-Bremse bleibt deterministisch und an erster Stelle (A5).
+
+**Warum nur die Genehmigung abläuft.** Eine Ablehnung ändert nichts in der Welt (ADR-0022).
+Sie als abgelaufen zu buchen, machte eine bewusste Entscheidung zu einem Versäumnis.
+
+**Warum ein fehlendes `wartetSeit` abgelaufen heißt.** Ein Lauf, dessen Wartebeginn niemand
+kennt, könnte sonst beliebig spät genehmigt werden — und ein fehlendes Feld sähe aus wie ein
+frisches.
+
+**Warum die Frist vor dem bearbeiteten Entwurf steht.** Eine abgelaufene Genehmigung ist
+keine; ein bearbeiteter Entwurf, der sie begleitet, ist damit gegenstandslos. Stünde die
+Vertragsprüfung davor, bekäme ein zu spätes Ja mit fehlerhafter Fassung die Antwort „Vertrag
+verletzt" und bliebe am Tor stehen (ADR-0022, Entscheidung 8) — als ließe es sich noch
+korrigieren.
+
+**Warum die Uhr vom Prozess kommt.** Die Frist begrenzt den, der entscheidet. Läge die Zeit in
+seiner Hand, wäre jede Genehmigung so rechtzeitig, wie der Kanal es behauptet. Weder der
+HTTP-Rand noch `npm run fragen` können deshalb eine Uhr vorgeben; die Zeit kommt vom Prozess,
+der den Runner baut.
+
+**Warum 24 Stunden.** Nicht begründet — es ist eine **Voreinstellung, keine Messung**. Welche
+Frist eine Genehmigung trägt, ohne Menschen zu hetzen, kann erst Schicht C zeigen.
+
+### Alternativen
+
+**Ein Zeitstempel im Entscheidungsobjekt.** Verworfen: ein Kanal dürfte die Zeit vorgeben, und
+die Frist läge in der Hand dessen, den sie begrenzen soll.
+
+**Die Frist nur im Prozessspeicher.** Verworfen: sie überlebt keinen Neustart. Der Lauf, der
+am längsten wartet, ist der, der am ehesten einen erlebt — die Frist fiele ausgerechnet dort
+weg, wo sie gebraucht wird.
+
+**Abgelaufen als `REJECTED` buchen.** Verworfen: eine Frist, die zuschlägt, wäre von einem
+Menschen, der ablehnt, nicht zu unterscheiden. Im Trace stünde ein Nein, das niemand gesagt
+hat.
+
+**Die Klasse aus `nachAussen` ableiten.** Verworfen: `nachAussen` ist ein Begriff der
+Ontologie von `besprechung`. Der Kern läse einen Domänenbegriff, und jede nächste Domäne
+müsste ihn übernehmen, um überhaupt eine Klasse zu bekommen.
+
+**Stufe 2 als Voreinstellung bei fehlender Klasse.** Verworfen: heute folgenlos, weil jeder
+Typ ohnehin Stufe 2 trägt — aber eine geratene Klasse sähe im Trace genauso aus wie eine
+vergebene, und in 14b wäre sie eine Klasse, die niemand vergeben hat.
+
+**`getRunner`-Optionen an einen gebauten Runner still ignorieren.** Verworfen: der zweite
+Aufrufer glaubte, seine Uhr und seine Frist wirkten, und mäße in Wahrheit die des ersten. Ein
+stilles Ignorieren ist ein Moduswechsel, den niemand bemerkt.
+
+### Konsequenzen
+
+- **In Etappe 14b ändert sich heute nichts.** Jeder Typ trägt Stufe 2 und hält ohnehin beim
+  Menschen. Die Klasse existiert, damit Schicht-C-Daten (Etappe 9) auf gemessene Klassen
+  zurückblicken können.
+- **Nur der Eval-Harness setzt eine Uhr.** `evals/domains/besprechung/adapter.js` baut den
+  Runner mit einer festen, deterministischen Uhr (`Date.UTC(2026, 0, 1)` plus Versatz) und
+  spult für einen verspäteten Fall um `Frist + 1 ms` vor, danach sofort zurück. Er **wirft**,
+  wenn ein verspäteter Fall ohne Uhr oder ohne Frist liefe — sonst liefe er still
+  rechtzeitig.
+- **Die Vertragstreue prüft bei jedem Workflow-Lauf mit,** dass jede eingereihte Aktion eine
+  Klasse 0, 1 oder 2 trägt. Neu ist GT-1; `besprechung` steigt von 38 auf 39 Fälle.
+- **`beispiel` erklärt 3.15 in `ungemessen`:** keine Harness-Uhr, kein verspäteter Fall.
+- **Der Nenner von 3.13 wächst** bei `besprechung` von 50 auf 52 — um die Chunks, die GT-1
+  liest. Der Zähler bleibt 0.
+- **Ein neues Verzeichnis unter `src/kernel/`.** Der Prüfbefehl aus ADR-0002 meldet seither
+  `policy`; `ARCHITECTURE.md` §7 führt es im Baum und im Befehl.
+- **Die Lint-Zahl bleibt, drei Warnungen wachsen** (15 in `src/ tests/`, 0 Fehler):
+  `resolveApproval` Komplexität 12 → 13, `createRunner` 81 → 105 Zeilen, `createActionQueue`
+  141 → 144 Zeilen. In `evals/` 7 Warnungen, darunter `laufWorkflowOhneLeseweg` Komplexität
+  12 → 21. Dieselbe Antwort wie in ADR-0022: die Kette der Tore ist dort die Aussage.
+- **Die Schuld aus Doktor §10 ist erledigt:** `runner.js` nennt keinen Domänennamen mehr im
+  Kommentar.
+- **Offen und benannt:** die Aufbewahrungsfrist des Trace (ADR-0022) bleibt offen. Eine
+  verspätete Genehmigung aus einem **anderen** Kanal als dem Fragenden bleibt ungemessen
+  (Etappe 11), wie bei ADR-0022. Der Postgres-Pfad ist für diese Etappe **nicht gefahren**.
+  In `src/domains/besprechung/domain.js` steht noch der Kommentar „Alle fünf Felder" — es
+  sind sieben; kleine Schuld, nicht angefasst.
+
+### Prüfkriterium
+
+```bash
+npm test          # eine abgelaufene Genehmigung → EXPIRED, nichts eingereiht, nichts zugestellt
+                  # ein fehlendes wartetSeit gilt als abgelaufen; eine spaete Ablehnung bleibt REJECTED
+                  # ein modellierter Typ ohne gueltige Risikoklasse wirft beim Laden
+npm run evals     # 3.15 = 100 %, 3.13 und 3.16 unveraendert
+npm run demo      # K5: laeuft ohne Infrastruktur durch
+grep -rn "beispiel\|besprechung" src/kernel/    # muss leer bleiben
+```
+
+🟢 **Eingelöst am 2026-11-16.** `npm test` **296/303** (7 übersprungen, ohne `DATABASE_URL`;
+vorher 278/285) · `npm run evals` bei `besprechung` **3.15 = 100 % (1/1)**, 3.1 = 100 %,
+3.2 = 0 %, 3.13 = 0 % (0/52, Zähler unverändert), 3.14 = 0 % (0/6), 3.16 = 0 % (0/2),
+Vertragstreue 39/39 · `beispiel` in jeder Metrik identisch mit dem 2026-09-20, 28/28 ·
+beide Durchgänge identisch · `evals:postgres` **nicht gefahren** (kein `DATABASE_URL`) ·
+`npm run demo` und `npm run demo:besprechung` Rückgabewert 0 ohne Infrastruktur (K5) · der
+`grep` leer.

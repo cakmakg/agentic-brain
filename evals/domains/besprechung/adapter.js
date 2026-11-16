@@ -74,6 +74,29 @@ for (const fall of aclDatensatz.faelle) {
   erlaubtProPrincipal[fall.principal] = fall.erwartet.sichtbareDokumente;
 }
 
+// ── Die Uhr des Harness (Etappe 4c, Metrik 3.15) ─────────────────────────
+// Ob eine Genehmigung abgelaufen ist, entscheidet der Runner aus SEINER Uhr —
+// nicht aus einem Zeitstempel in der Entscheidung. Ein Kanal, der die Zeit
+// mitbringen dürfte, könnte jede späte Genehmigung rechtzeitig machen; die
+// Frist wäre dann eine Bitte an den Aufrufer. Also liegt die Uhr dort, wo
+// auch im Betrieb die Zeit herkommt: beim Prozess, der den Runner baut.
+//
+// Fest statt `Date.now`: zwei Durchgänge müssen dieselbe Zeit sehen, sonst
+// ist der Determinismus-Nachweis eine Aussage über die Wanduhr. Vorgespult
+// wird nur für einen verspäteten Fall, und danach sofort zurück — der
+// nächste Fall darf nicht erben, was der vorige vorgespult hat.
+const UHR_BASIS = Date.UTC(2026, 0, 1);
+let uhrVersatz = 0;
+const uhr = {
+  jetzt: () => UHR_BASIS + uhrVersatz,
+  vorspulen: (ms) => {
+    uhrVersatz += ms;
+  },
+  zuruecksetzen: () => {
+    uhrVersatz = 0;
+  },
+};
+
 export const adapter = {
   name: besprechungDomain.name,
 
@@ -84,7 +107,13 @@ export const adapter = {
   // Dieselbe Grenze wie im Code, nicht eine zweite Kopie der Zahl.
   guardrailSchwellen,
 
-  runner: getRunner(besprechungDomain.name),
+  // Die Uhr wirkt nur beim ERSTEN Bau des Runners dieser Domäne. Deshalb
+  // hier, beim ersten Import, und nirgends sonst.
+  runner: getRunner(besprechungDomain.name, { jetzt: uhr.jetzt }),
+
+  // Damit der Runner einen verspäteten Fall vorspulen kann, ohne die Domäne
+  // zu kennen. Eine Domäne ohne dieses Feld misst 3.15 nicht.
+  uhr,
 
   // Der Artefaktstatus ist Bedeutung der Domäne. Der Runner vergleicht nur
   // Zeichenketten — wie der Endzustand heißt, entscheidet die Domäne.

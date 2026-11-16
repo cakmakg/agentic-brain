@@ -97,6 +97,19 @@ Diese Liste ist absichtlich sichtbar. Eine verschwiegene Grenze wird zu einem Au
   und aus einem verketteten Log Zeilen zu löschen bricht die Kette. Verträglich wäre nur das
   Löschen ganzer Laufdateien. Dieselbe Familie wie das unbegrenzt wachsende Log des
   Persistenzspeichers; beides braucht eine eigene Entscheidung.
+- **Die Genehmigungsfrist ist eine Voreinstellung, keine Messung.** 24 Stunden
+  (`GENEHMIGUNGS_FRIST_MS`, ADR-0023). 3.15 misst, dass die Frist durchgesetzt wird — nicht,
+  ob sie richtig ist. Welche Frist trägt, ohne Menschen zu hetzen, kann erst Schicht C zeigen.
+- **Die Uhr der Frist kommt vom Prozess, der den Runner baut.** Weder der HTTP-Rand noch
+  `npm run fragen` können eine Zeit vorgeben, und das ist Absicht: ein Kanal, der die Zeit
+  stellt, stellt auch die Rechtzeitigkeit. Nur der Eval-Harness baut mit einer festen Uhr.
+  Eine verspätete Genehmigung aus einem anderen Kanal als dem Fragenden ist ungemessen
+  (Etappe 11).
+- **Der Postgres-Pfad ist für Etappe 4c nicht gefahren.** Am 2026-11-16 gab es kein
+  `DATABASE_URL`; `evals:postgres` lief zuletzt am 2026-09-20. Dass beide Adapter auch mit
+  `wartetSeit` und `risikoklasse` dieselben Zahlen liefern, ist nicht gemessen.
+- **Die Risikoklasse entscheidet nichts.** Sie wird vergeben und protokolliert (A5); jeder
+  heutige Aktionstyp trägt Stufe 2. Wirksam wird sie erst in Etappe 14b, per eigener ADR.
 - **Der HTTP-Rand kennt nur eine vorgeführte Identität.** `/api/approve` verlangt seit
   ADR-0022 einen Nachweis und löst ihn über den Identitäts-Port auf, aber sein Verzeichnis
   hat EINEN Eintrag und ist ausdrücklich eine Vorführung. `/api/run` hat weiterhin gar keine
@@ -118,7 +131,7 @@ Diese Liste ist absichtlich sichtbar. Eine verschwiegene Grenze wird zu einem Au
 - **Der Action-Worker simuliert.** Der echte externe Aufruf steht als Kommentar in
   `action/queue.js`. Wer ihn einsetzt, erbt die Idempotenz — und muss die Ausgabengrenze prüfen.
 - **Zwei Stellen sind zu groß geraten.** `createActionQueue` in `src/kernel/action/queue.js`
-  umfasst 101 Zeilen, und `src/kernel/agent/checkpointer.js` verschachtelt an einer Stelle
+  umfasst 144 Zeilen (gemessen am 2026-11-16), und `src/kernel/agent/checkpointer.js` verschachtelt an einer Stelle
   fünf Ebenen tief. Beide sind als ESLint-Warnung sichtbar und bleiben es, bis der
   Lint-Rollout sie einzeln aufgreift — nicht nebenbei bei einer anderen Änderung.
 - **Zwei mittlere Schwachstellen bleiben offen.** Der Abhängigkeitsrückstand ist eingelöst:
@@ -149,6 +162,14 @@ hat, nie was.
 `pruefeTraceKette(runId)` hält die Datei gegen sich selbst und nennt den INDEX der ersten
 schadhaften Zeile. Sie erkennt das Ändern, Einfügen und Löschen einzelner Zeilen — nicht das
 vollständige Neuschreiben der Datei (siehe §4).
+
+**Seit ADR-0023 trägt der Trace die Frist und die Klasse.** Läuft eine Genehmigung ab, steht
+nach `run_resume` (mit `genehmigt: false` und dem Genehmigenden, der zu spät Ja sagte) eine
+eigene Zeile `entscheidung_abgelaufen` mit `wartet_ms` und `frist_ms`, und `run_end` trägt den
+Status **`EXPIRED`** — nicht `REJECTED`, damit eine Frist, die zuschlägt, von einem Menschen,
+der ablehnt, unterscheidbar bleibt. Die `risikoklasse` einer Aktion steht an zwei Stellen: in
+der Knotenzeile des Terminalknotens (als Teil seines Deltas) und im Queue-Log an jeder
+eingereihten Aktion.
 
 Eine Knotenzeile trägt das **Delta** — was der Knoten geschrieben hat —, nicht den
 akkumulierten Zustand. Bei einem `sum`-Reducer steht in jeder Zeile der Zuwachs; der Stand ist
@@ -203,6 +224,7 @@ src/
     agent/                   ④ build · routing · runner · schema · reducers · checkpointer
     action/                  ⑤ queue
     governance/              ⑥ guardrail · auth · rateLimiter · trace · eventBus · costTracker
+    policy/                  risk · engine — klassifiziert, routet nicht (A5, ADR-0023)
 
     llm/                     Infrastruktur · adapter · mock — keine der sechs Ebenen
     persistence/store.js     Infrastruktur · von agent/ UND action/ benutzt
@@ -263,9 +285,13 @@ Die Ebenenliste ist damit **nicht vollständig** — `llm/`, `persistence/`, `co
 `registry.js` sind Infrastruktur. Wer den Baum liest, muss das wissen; der Prüfbefehl weiß es:
 
 ```bash
-ls src/kernel | grep -vxE 'connectors|context|retrieval|agent|action|governance|llm|persistence|config|registry\.js'
+ls src/kernel | grep -vxE 'connectors|context|retrieval|agent|action|governance|policy|llm|persistence|config|registry\.js'
 # erwartet: keine Ausgabe
 ```
+
+`policy` steht seit ADR-0023 in der Liste. Ohne den Eintrag meldet der Befehl das neue
+Verzeichnis — genau dafür ist er da. Ob `policy/` eine eigene Ebene ist oder zu ⑤/⑥ gehört,
+ist damit **nicht** entschieden; der Baum führt es deshalb ohne Ebenennummer.
 
 Er prüft beide Richtungen — dass keine alte Struktur zurückkehrt **und** dass niemand später
 ein siebtes Verzeichnis daneben erfindet.

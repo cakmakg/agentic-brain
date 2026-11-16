@@ -106,6 +106,8 @@ test("Eine Genehmigung stellt zu und reiht genau eine Aktion ein", async () => {
   const aktionen = queueFor(threadId);
   assert.equal(aktionen.length, 1, "Genau eine Aktion je zugestelltem Lauf");
   assert.equal(aktionen[0].actionType, "NOTIFY");
+  // Vergeben und protokolliert, nicht geroutet (Etappe 4c, A5).
+  assert.equal(aktionen[0].risikoklasse, 2);
   assert.equal(
     aktionen[0].status,
     "PENDING",

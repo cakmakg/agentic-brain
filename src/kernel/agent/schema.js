@@ -14,6 +14,11 @@
 // hängt der gefilterte Leseweg. Läge er bei der Domäne, könnte eine Domäne ihn
 // weglassen — und ihre Agenten läsen ungefiltert, ohne dass eine Zeile falsch
 // aussieht.
+//
+// `wartetSeit` steht seit Etappe 4c aus dem Grund von `humanApproval` im
+// Kern: an ihm hängt die Zusage, dass eine abgelaufene Genehmigung abgelehnt
+// wird. Eine Domäne, die das Feld vergäße, hätte eine Genehmigung ohne Frist
+// — und nichts sähe falsch aus.
 
 import { Annotation } from "@langchain/langgraph";
 import { lastWins, sum, append, einmalGesetzt } from "./reducers.js";
@@ -37,6 +42,10 @@ const coreFields = {
 
   // HITL — die Entscheidung des Menschen. true / false / null
   humanApproval: Annotation({ reducer: lastWins, default: () => null }),
+
+  // HITL — seit wann der Lauf am Tor wartet (Millisekunden, vom Runner
+  // gesetzt). `null` heißt „unbekannt" und gilt als abgelaufen.
+  wartetSeit: Annotation({ reducer: lastWins, default: () => null }),
 
   // Sicherheit
   threatScore: Annotation({ reducer: lastWins, default: () => 0 }),

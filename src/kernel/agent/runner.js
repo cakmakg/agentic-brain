@@ -14,6 +14,78 @@
 import { buildGraph, HUMAN_NODE } from "./build.js";
 import { emitToThread, scheduleBufferGc } from "../governance/eventBus.js";
 import { startTrace, resumeTrace } from "../governance/trace.js";
+import { env } from "../config/env.js";
+
+// ── Die Frist der Genehmigung (Etappe 4c) ──────────────────────────────
+// Ein „ja" nach Ablauf der Frist wird zu einem „nein": Voreinstellung deny.
+// Eine Genehmigung bestätigt einen Entwurf und eine Lage von damals; zu spät
+// gegeben, bestätigt sie etwas, das niemand mehr angesehen hat.
+//
+// Nur die GENEHMIGUNG läuft ab. Eine späte Ablehnung bleibt eine Ablehnung:
+// sie ändert nichts in der Welt, und sie als „abgelaufen" zu buchen, machte
+// eine bewusste Entscheidung zu einem Versäumnis.
+//
+// Fehlt `wartetSeit`, gilt die Frist als abgelaufen (fail-closed). Ein Lauf,
+// dessen Wartebeginn niemand kennt, könnte sonst beliebig spät genehmigt
+// werden — und ein fehlendes Feld sähe aus wie ein frisches.
+//
+// Abgelaufen heißt: der Lauf wird mit `humanApproval: false` zu Ende geführt
+// — dieselbe Kante in `build.js` wie bei der Ablehnung, nichts eingereiht,
+// nichts zugestellt —, aber unter eigenem Status `EXPIRED`. Als REJECTED
+// gebucht, wäre eine Frist, die zuschlägt, von einem Menschen, der ablehnt,
+// nicht zu unterscheiden.
+//
+// Eigene Funktion aus demselben Grund wie `pruefeBearbeitung`.
+async function pruefeFrist({
+  genehmigt,
+  genehmigender,
+  app,
+  threadId,
+  config,
+  jetzt,
+  genehmigungsFristMs,
+  uebergang,
+}) {
+  if (genehmigt !== true) return { ok: true };
+
+  const snap = await app.getState(config);
+  const wartetSeit = snap.values?.wartetSeit;
+  const bekannt = Number.isFinite(wartetSeit);
+  const wartetMs = bekannt ? jetzt() - wartetSeit : null;
+  if (bekannt && wartetMs <= genehmigungsFristMs) return { ok: true };
+
+  // Im Audit steht, was WIRKSAM wurde — ein Nein —, mit dem, der zu spät Ja
+  // sagte. Die eigene Zeile darunter sagt, warum.
+  const trace = resumeTrace({
+    runId: threadId,
+    entscheidung: { genehmigt: false, genehmigender },
+  });
+  trace.line?.({
+    type: "entscheidung_abgelaufen",
+    wartet_ms: wartetMs,
+    frist_ms: genehmigungsFristMs,
+  });
+
+  await app.updateState(config, { humanApproval: false });
+  for await (const step of await app.stream(null, config)) {
+    uebergang(trace, threadId, step);
+  }
+
+  trace.end("EXPIRED");
+  emitToThread(threadId, { type: "workflow_complete", status: "EXPIRED" });
+
+  return {
+    ok: false,
+    antwort: {
+      angewandt: false,
+      grund: bekannt
+        ? `Genehmigung abgelaufen: ${wartetMs} ms gewartet, die Frist ist ` +
+          `${genehmigungsFristMs} ms — abgelehnt (Voreinstellung deny).`
+        : "Genehmigung abgelaufen: der Wartebeginn ist unbekannt — abgelehnt " +
+          "(fail-closed, Voreinstellung deny).",
+    },
+  };
+}
 
 // ── Der bearbeitete Entwurf (A12, ADR-0022) ────────────────────────────
 // Er hat den Prüfer NIE gesehen. Deshalb läuft er erneut durch den
@@ -90,7 +162,22 @@ async function pruefeBearbeitung({
   };
 }
 
-export function createRunner(domain) {
+// `jetzt` ist einspeisbar, damit der Ablauf der Frist PRÜFBAR ist, ohne zu
+// warten — dieselbe Linie wie beim Auflöser der Identität: ein Test, der
+// schläft, misst die Uhr und nicht die Regel.
+export function createRunner(
+  domain,
+  {
+    jetzt = () => Date.now(),
+    genehmigungsFristMs = env.genehmigungsFristMs,
+  } = {},
+) {
+  if (!Number.isFinite(genehmigungsFristMs) || genehmigungsFristMs <= 0) {
+    throw new Error(
+      "createRunner: `genehmigungsFristMs` muss positiv und endlich sein. " +
+        "Null ließe jede Genehmigung ablaufen, unendlich keine.",
+    );
+  }
   const app = buildGraph(domain);
 
   // Ein Knotenübergang: erst messen, dann anzeigen.
@@ -108,8 +195,8 @@ export function createRunner(domain) {
   //
   // `principal` ist die Identität, in deren Namen der Lauf liest (ADR-0019,
   // T1). Fehlt er, bleibt das Feld auf `null` — der Leseweg antwortet dann
-  // leer und mit Grund, statt ungefiltert. Eine Domäne ohne Leseweg (etwa
-  // `beispiel`) merkt von diesem Feld nichts.
+  // leer und mit Grund, statt ungefiltert. Eine Domäne ohne Leseweg merkt
+  // von diesem Feld nichts.
   async function startWorkflow({ task, threadId, principal = null }) {
     const config = { configurable: { thread_id: threadId } };
     const trace = startTrace({ runId: threadId, task });
@@ -127,6 +214,10 @@ export function createRunner(domain) {
     const snap = await app.getState(config);
     if (snap.next && snap.next.includes(HUMAN_NODE)) {
       interrupted = true;
+      // Der Wartebeginn gehört in den Checkpoint, nicht in den Speicher
+      // dieses Prozesses: die Genehmigung kommt mit einer zweiten Anfrage,
+      // und die Frist muss einen Neustart dazwischen überleben.
+      await app.updateState(config, { wartetSeit: jetzt() });
       trace.pause("AWAITING_APPROVAL");
       emitToThread(threadId, {
         type: "workflow_complete",
@@ -179,6 +270,20 @@ export function createRunner(domain) {
     }
 
     const config = { configurable: { thread_id: threadId } };
+
+    // Die Frist steht VOR der Bearbeitung: ein abgelaufenes „ja" soll nicht
+    // erst einen Vertrag prüfen lassen, dessen Ergebnis ohnehin nicht zählt.
+    const frist = await pruefeFrist({
+      genehmigt,
+      genehmigender,
+      app,
+      threadId,
+      config,
+      jetzt,
+      genehmigungsFristMs,
+      uebergang,
+    });
+    if (!frist.ok) return frist.antwort;
 
     const bearbeitung = await pruefeBearbeitung({
       domain,

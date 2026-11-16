@@ -110,5 +110,6 @@ export const adapter = {
   ungemessen: {
     3.14: "keine Connector-Quelle (ADR-0004) — nichts, das entzogen werden kann",
     3.16: "diese Domaene hat keine Befugnis-Politik: ohne Connector und ohne Leseweg gibt es kein Ziel, gegen das eine Befugnis zu pruefen waere (ADR-0004, ADR-0020)",
+    3.15: "keine Harness-Uhr und kein verspaeteter Fall: diese Referenzdomaene misst die Zusage des Genehmigungs-Timeouts nicht — die Frist ist Mechanik des Kerns und wird an `besprechung` gemessen (Etappe 4c)",
   },
 };

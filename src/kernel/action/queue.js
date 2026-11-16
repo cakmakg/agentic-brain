@@ -33,6 +33,26 @@ import { appendLog, readLog } from "../persistence/store.js";
 // hier wäre die Drift, die ein doppeltes Ticket oder einen grundlosen
 // Kettenbruch erzeugt — die Begründung steht im Kopf jener Datei.
 import { stabil } from "../persistence/stabil.js";
+import { klassifiziere } from "../policy/engine.js";
+
+// ── Die Risikoklasse wird beim BAU geprüft (A19, Etappe 4c) ────────────
+// Anders als `befugnisse` ist sie PFLICHT: jede eingereihte Aktion trägt eine
+// Klasse, und eine Queue, die einen Typ ohne Klasse annähme, schriebe genau
+// die Zeile, in der sie fehlt. Die Klasse entscheidet hier nichts — sie wird
+// vergeben und protokolliert (A5); wirksam wird sie erst in Etappe 14b.
+function pruefeRisikoklassen(erlaubt, risikoklassen) {
+  for (const typ of erlaubt) {
+    try {
+      klassifiziere({ actionType: typ, risikoklassen });
+    } catch (fehler) {
+      throw new Error(
+        `createActionQueue: der Aktionstyp "${typ}" steht auf der Whitelist, ` +
+          `hat aber keine gültige Risikoklasse — ${fehler.message}`,
+        { cause: fehler },
+      );
+    }
+  }
+}
 
 function schluesselAus({ threadId, actionType, payload }) {
   // Längenpräfixe statt eines Trennzeichens: so kann kein Feldinhalt die Grenze
@@ -50,9 +70,11 @@ export function createActionQueue({
   whitelist,
   validators,
   befugnisse,
+  risikoklassen,
   logName,
 }) {
   const erlaubt = new Set(whitelist);
+  pruefeRisikoklassen(erlaubt, risikoklassen);
 
   // ── Die Politik wird beim BAU geprüft, nicht im Lauf (ADR-0020) ────────
   // Bringt eine Domäne `befugnisse` mit, muss JEDER Typ ihrer Whitelist darin
@@ -74,7 +96,7 @@ export function createActionQueue({
       }
     }
   }
-  const queue = []; // { id, threadId, actionType, payload, status, attempts, idempotencyKey }
+  const queue = []; // { id, threadId, actionType, payload, risikoklasse, status, attempts, idempotencyKey }
   const nachSchluessel = new Map(); // idempotencyKey -> id
   let _id = 0;
   let timer = null;
@@ -182,6 +204,10 @@ export function createActionQueue({
       // Vorgang bleibt derselbe, gleich wer ihn einreicht (ADR-0020).
       principal,
       befugnis,
+      // Vergeben und protokolliert, nicht geroutet (A5). Sie steht in der
+      // Aktion und damit im Queue-Log, damit Etappe 14b auf gemessene Klassen
+      // zurückblicken kann statt auf eine nachträglich zugeordnete.
+      risikoklasse: klassifiziere({ actionType, risikoklassen }),
       idempotencyKey: schluessel,
       status: "PENDING",
       attempts: 0,

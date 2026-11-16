@@ -24,11 +24,20 @@ export const validators = {
     (p.body || "").length <= 5000,
 };
 
+// Je Typ eine Risikoklasse (A19, Etappe 4c). Alle drei tragen 2: eine
+// Benachrichtigung, ein Webhook, eine Mail erreichen jemand anderen, bevor
+// ein Fehler bemerkt wird. Ausdrücklich und je Typ geschrieben, nicht als
+// Voreinstellung — diese Domäne hat keine Ontologie, aus der die Klasse
+// käme, und eine Voreinstellung sähe im Log aus wie eine vergebene Klasse.
+// Die Klasse routet nicht; die HITL-Kante gilt unverändert.
+export const risikoklassen = { NOTIFY: 2, WEBHOOK: 2, EMAIL: 2 };
+
 // Eine Queue je Domäne. Sie ist ein Modul-Singleton, weil der Worker und die
 // Beobachtung über /api/queue dieselbe Liste sehen müssen.
 export const beispielQueue = createActionQueue({
   whitelist,
   validators,
+  risikoklassen,
   logName: "aktionen-beispiel",
 });
 

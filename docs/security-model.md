@@ -15,6 +15,9 @@ Wovor das System schützt:
 3. **Unbegrenzter Verbrauch.** Eine Schleife oder ein Kontext, der über die Runden wächst.
 4. **Wirkung ohne menschliche Freigabe.** Der teuerste Fall: etwas passiert in der Welt,
    das niemand genehmigt hat.
+5. **Eine Genehmigung, die auf einen alten Entwurf trifft.** Ein Ja nach Tagen bestätigt eine
+   Lage, die niemand mehr angesehen hat — und ein Kanal, der die Zeit selbst angibt, könnte
+   jedes Ja rechtzeitig aussehen lassen.
 
 Wovor es **nicht** schützt (bewusst):
 
@@ -151,6 +154,32 @@ erneut durch den Ausgabevertrag der Domäne und danach durch die Validierer der 
 Verletzt er den Vertrag, wird er verworfen und der Lauf bleibt stehen, wo er stand — nichts
 eingereiht, nichts zugestellt. Die Herkunft (`notizId`) lässt sich dabei **nicht** ändern:
 sonst wäre der Beleg entwertet, den ein Ticket mitführen muss.
+
+**Eine Genehmigung hat eine Frist, und die Voreinstellung ist deny** (ADR-0023). Die Zusage:
+ein Ja, das später als `GENEHMIGUNGS_FRIST_MS` nach dem Beginn des Wartens kommt, stellt
+nichts zu und reiht nichts ein. Der Lauf endet über dieselbe Kante wie eine Ablehnung, aber
+unter eigenem Status `EXPIRED` — im Audit steht kein Nein, das niemand gesagt hat. Abgewehrt
+werden zwei Angriffe:
+
+- **Ein Kanal, der die Zeit vorgibt.** Das Entscheidungsobjekt trägt keinen Zeitstempel; die
+  Uhr kommt vom Prozess, der den Runner baut, und der Beginn des Wartens (`wartetSeit`) steht
+  im Checkpoint. Wer genehmigt, kann seine eigene Rechtzeitigkeit nicht behaupten.
+- **Eine Genehmigung, die auf einen alten Entwurf trifft.** Die Frist wird **vor** dem
+  bearbeiteten Entwurf geprüft; ein zu spätes Ja wird nicht erst inhaltlich beurteilt. Fehlt
+  `wartetSeit`, gilt die Genehmigung als abgelaufen — fail-closed, ein fehlendes Feld sieht
+  sonst aus wie ein frisches.
+
+Nur die Genehmigung läuft ab. Eine späte Ablehnung bleibt `REJECTED`: sie ändert nichts in der
+Welt.
+
+**Jede Aktion trägt eine Risikoklasse** (0 · 1 · 2, A19), vergeben von der Domäne und beim
+Laden geprüft; eine fehlende oder unbekannte Klasse wirft, statt auf 2 hochgerundet zu werden.
+Sie steht im Trace und im Queue-Log. **Sie entscheidet nichts** (A5): heute trägt jeder Typ
+Stufe 2 und hält beim Menschen. Die Klasse ist Vorbereitung, keine Abwehr — wirksam wird sie
+erst in Etappe 14b, und dort bricht sie eine Zusage (A19).
+
+**Bekannte Grenze der Frist:** 24 Stunden sind eine Voreinstellung, keine Messung. Eine
+verspätete Genehmigung aus einem anderen Kanal als dem Fragenden ist ungemessen (Etappe 11).
 
 **Bekannte Grenze:** der Worker simuliert. Der echte Aufruf steht als Kommentar. Wer ihn
 einsetzt, braucht ein hartes Timeout.

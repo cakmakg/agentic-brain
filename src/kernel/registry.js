@@ -46,9 +46,24 @@ export function getDomain(name) {
 
 // Ein Runner je Domäne. Der Checkpointer lebt im Arbeitsspeicher; zwei Runner
 // derselben Domäne hätten getrennte Zustände und die Genehmigung liefe ins Leere.
-export function getRunner(name) {
-  if (!runners.has(name)) runners.set(name, createRunner(getDomain(name)));
-  return runners.get(name);
+//
+// `optionen` (Uhr, Genehmigungsfrist) wirken nur beim ERSTEN Bau. Kommen sie
+// bei einem schon gebauten Runner an, wird geworfen statt still ignoriert:
+// sonst glaubte ein Aufrufer, mit seiner Frist zu laufen, und liefe mit der
+// eines anderen — und ein Test für die Frist bestünde aus dem falschen Grund.
+export function getRunner(name, optionen) {
+  if (runners.has(name)) {
+    if (optionen !== undefined) {
+      throw new Error(
+        `getRunner: der Runner der Domäne "${name}" ist schon gebaut — ` +
+          "Optionen wirken nur beim ersten Aufruf.",
+      );
+    }
+    return runners.get(name);
+  }
+  const runner = createRunner(getDomain(name), optionen);
+  runners.set(name, runner);
+  return runner;
 }
 
 export function listDomains() {
