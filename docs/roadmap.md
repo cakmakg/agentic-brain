@@ -582,7 +582,26 @@ Genehmigungs-Timeout mit **Voreinstellung deny**.
 > neue Metrik **3.15 Durchsetzung des Genehmigungs-Timeouts = 100 %** · jede Aktion trägt eine
 > Risikoklasse im Trace · 3.13 und 3.16 unverändert.
 
-**4d — Audit-Kette und Entscheidungsobjekt (A6, A12).** `audit/log.js` als Hash-Kette über
+**4d — Audit-Kette und Entscheidungsobjekt (A6, A12).** 🟢 **Erledigt am 2026-09-20
+(ADR-0022).** Belegt: `npm test` **278/285** (mit Datenbank **285/285**, vorher 268) ·
+`npm run evals` **jede Metrik unverändert** — 3.1 = 100 %, 3.2 = 0 %, 3.13 = 0 %,
+3.14 = 0 %, 3.16 = 0 %, Vertragstreue 28/28 und 38/38 · `evals:postgres` dieselben Zahlen,
+beide Berichte zeichengleich · gegen den Stand davor unterscheidet sich **ein einziges
+Feld**: `identitaetAdapter` bei `beispiel` (`keiner` → `fixtures`) · beide Demos
+Rückgabewert 0 ohne Infrastruktur (K5).
+
+> **Was der Plan nicht vorhergesehen hatte: die Forderung trifft den KANAL, nicht die
+> Domäne.** „Ein Genehmigender ohne aufgelöste Identität ist keiner" heißt, dass jeder Weg,
+> auf dem jemand genehmigt, einen Menschen nennen muss. Der HTTP-Rand hatte bis dahin gar
+> keine Identität — `authMiddleware` prüft einen Schlüssel, und ein Schlüssel ist kein
+> Mensch. Und `beispiel` konnte plötzlich überhaupt nicht mehr genehmigen: drei Eval-Fälle
+> fielen, bis die Referenzdomäne ein Verzeichnis aus ihrem eigenen `acl.json` bekam.
+>
+> **Die Aufbewahrungsfrist bleibt draußen und ist benannt.** Kein Tor dieser Etappe misst
+> sie, niemand führt sie aus — und aus einem verketteten Log Zeilen zu löschen bricht die
+> Kette. Das ist eine eigene Entscheidung (ADR-0022, Alternativen).
+
+**Was die Etappe umfasste.** `audit/log.js` als Hash-Kette über
 dem Trace, mit Aufbewahrungsfrist. Die Genehmigung wird zum Entscheidungsobjekt: statt
 `{ threadId, approved }` nimmt sie den **Genehmigenden** und optional einen **bearbeiteten
 Entwurf** entgegen, und der bearbeitete Entwurf läuft erneut durch `vertrag.js` und die

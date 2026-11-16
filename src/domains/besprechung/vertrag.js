@@ -72,3 +72,68 @@ export function pruefeVertrag(aktionspunkte) {
       maengel.length === 0 ? "Ausgabevertrag erfuellt." : maengel.join(" "),
   };
 }
+
+// ── Der bearbeitete Entwurf (A12, ADR-0022) ──────────────────────────────
+// Ein Mensch darf am Genehmigungstor nicht nur ja oder nein sagen, sondern
+// den Entwurf BEARBEITEN. Diese Fassung hat der Pruefer nie gesehen — sie
+// laeuft deshalb erneut durch denselben Vertrag, und danach ohnehin durch die
+// Validierer der Queue.
+//
+// WARUM EINE LEERE BEARBEITUNG ABGELEHNT WIRD, obwohl `pruefeVertrag` sie
+// durchlaesst: dort heisst die leere Liste „diese Besprechung hat keine
+// offenen Punkte" — eine Aussage des Extrahierers, die BREMSE 5 vor dem
+// Entwurf beendet. Hier gibt es den Entwurf schon. Eine Bearbeitung, die
+// alles streicht, ist keine Bearbeitung, sondern eine Ablehnung; und fuer die
+// gibt es den anderen Knopf. Ohne diese Zeile ginge sie in die Queue und
+// fiele erst am Validierer — eingereiht statt abgelehnt.
+export function pruefeEntwurf({ bearbeiteterEntwurf, zustand }) {
+  const neu = bearbeiteterEntwurf?.aktionspunkte;
+
+  if (!Array.isArray(neu) || neu.length === 0) {
+    return {
+      ok: false,
+      gruende:
+        "Der bearbeitete Entwurf hat keine Aktionspunkte. Eine leere " +
+        "Bearbeitung ist eine Ablehnung — dafuer gibt es den anderen Weg.",
+    };
+  }
+
+  const urteil = pruefeVertrag(neu);
+  if (!urteil.istFreigegeben) {
+    return { ok: false, gruende: urteil.gruende };
+  }
+
+  return {
+    ok: true,
+    gruende: urteil.gruende,
+    // Was in den Zustand zurueckfliesst. NUR die Aktionspunkte: Herkunft
+    // (`notizId`) und Freigabe bleiben, wie der Lauf sie erarbeitet hat. Ein
+    // Mensch, der am Genehmigungstor die Herkunft aendern koennte, haette
+    // genau den Beleg entwertet, den `Ticket verweist_auf Notiz` verlangt.
+    patch: { aktionspunkte: neu },
+    unterschied: zaehleUnterschied(zustand?.aktionspunkte, neu),
+  };
+}
+
+// EINE ZAHL, nicht der Text. Der Trace belegt, DASS und WIE VIEL ein Mensch
+// geaendert hat, nie WAS — sonst stuende der Entwurf im Klartext im Audit
+// (`ARCHITECTURE.md` §5).
+//
+// Gezaehlt werden Stellen, nicht Zeichen: eine umformulierte Zeile und eine
+// geloeschte zaehlen gleich, weil beide eine menschliche Entscheidung sind.
+export function zaehleUnterschied(vorher, nachher) {
+  const a = Array.isArray(vorher) ? vorher : [];
+  const b = Array.isArray(nachher) ? nachher : [];
+  let unterschiedlich = Math.abs(a.length - b.length);
+
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    if (
+      a[i]?.text !== b[i]?.text ||
+      a[i]?.verantwortlich !== b[i]?.verantwortlich
+    ) {
+      unterschiedlich++;
+    }
+  }
+
+  return unterschiedlich;
+}

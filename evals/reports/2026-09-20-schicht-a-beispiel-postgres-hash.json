@@ -1,11 +1,11 @@
 {
-  "erzeugt": "2026-09-20T22:05:55.591Z",
+  "erzeugt": "2026-09-20T23:25:20.168Z",
   "schicht": "A",
   "modus": "mock",
   "domaene": "beispiel",
   "storeAdapter": "postgres",
   "embeddingAdapter": "hash",
-  "identitaetAdapter": "keiner",
+  "identitaetAdapter": "fixtures",
   "aufgaben": 22,
   "abrufe": 6,
   "entzuege": 0,

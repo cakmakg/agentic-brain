@@ -127,6 +127,31 @@ Solange der Worker simuliert, ist eine doppelte Zeile harmlos. Mit einem echten 
 sie eine zweite Wirkung in der Welt — deshalb steht die Regel **hier und jetzt**, nicht
 später.
 
+---
+
+## Die Entscheidung und ihr Nachweis
+
+`src/kernel/governance/audit.js` (Kette) · `src/kernel/agent/runner.js` (Entscheidung)
+
+**Der Trace ist eine Hash-Kette** (ADR-0022). Jede Zeile trägt das Glied der vorigen und ihr
+eigenes. Wer eine Zeile ändert, ändert ihren Hash; wer ihn mitändert, bricht das `prev` der
+nächsten. Gedacht ist sie für genau einen Eingriff: aus einer Ablehnung nachträglich eine
+Genehmigung machen.
+
+**Was sie nicht leistet:** das vollständige Neuschreiben der Datei. Wer alle Zeilen ab der
+geänderten neu hasht, erhält eine stimmige Kette. Dagegen hilft nur ein Anker außerhalb der
+Datei. Die Grenze ist getestet, nicht nur behauptet.
+
+**Die Genehmigung ist ein Entscheidungsobjekt, kein Boolean.** Sie trägt ihren
+**Genehmigenden** — aufgelöst, nicht behauptet —, und ohne ihn ist eine Genehmigung keine.
+Eine Ablehnung braucht ihn nicht: sie ändert nichts in der Welt.
+
+**Ein vom Menschen bearbeiteter Entwurf hat den Prüfer nie gesehen.** Er läuft deshalb
+erneut durch den Ausgabevertrag der Domäne und danach durch die Validierer der Queue.
+Verletzt er den Vertrag, wird er verworfen und der Lauf bleibt stehen, wo er stand — nichts
+eingereiht, nichts zugestellt. Die Herkunft (`notizId`) lässt sich dabei **nicht** ändern:
+sonst wäre der Beleg entwertet, den ein Ticket mitführen muss.
+
 **Bekannte Grenze:** der Worker simuliert. Der echte Aufruf steht als Kommentar. Wer ihn
 einsetzt, braucht ein hartes Timeout.
 

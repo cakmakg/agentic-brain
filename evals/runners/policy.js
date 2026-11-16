@@ -119,6 +119,31 @@ async function laufWorkflowOhneLeseweg(aufgabe, adapter) {
   let fehler = null;
   let endstatus = null;
 
+  // Zwei Rollen, zwei Aufloesungen — und ab ADR-0022 sind es wirklich zwei.
+  //
+  // WER FRAGT (ADR-0018): der Fall nennt eine Person, der Kanal legt ihren
+  // Nachweis vor, das Verzeichnis antwortet. Es gibt keinen zweiten Weg zu
+  // einem Principal — kennt das Verzeichnis den Nachweis nicht, bleibt es
+  // null, und der Leseweg antwortet leer mit Grund.
+  const aufloesen = (name) =>
+    adapter.identitaet && name
+      ? adapter.identitaet.aufloeser.aufloese(adapter.identitaet.nachweis(name))
+      : null;
+
+  const principal = await aufloesen(aufgabe.principal);
+
+  // WER ENTSCHEIDET (ADR-0022): eine Genehmigung ohne aufgeloesten
+  // Genehmigenden ist keine. Nennt der Fall eine Person, ist sie es — in
+  // Schicht A fallen Fragender und Genehmigender zusammen, weil der
+  // Datensatz nur EINE Rolle je Fall kennt. Nennt er keine, greift die
+  // Person, die der Adapter der Domaene dafuer benennt.
+  //
+  // Dass beide auseinanderfallen koennen, ist wahr und hier UNGEMESSEN: es
+  // gehoert zu Etappe 11, wo die Genehmigung aus einem anderen Kanal kommt.
+  const genehmigender = await aufloesen(
+    aufgabe.principal ?? adapter.identitaet?.genehmigender,
+  );
+
   if (aufgabe.gedrosselt) cost.setThrottled(true);
   try {
     const { interrupted } = await startWorkflow({
@@ -128,16 +153,15 @@ async function laufWorkflowOhneLeseweg(aufgabe, adapter) {
       // Kanal legt ihren Nachweis vor, das Verzeichnis antwortet. Es gibt keinen
       // zweiten Weg zu einem Principal — kennt das Verzeichnis den Nachweis
       // nicht, bleibt es `null`, und der Leseweg antwortet leer mit Grund.
-      principal: adapter.identitaet
-        ? await adapter.identitaet.aufloeser.aufloese(
-            adapter.identitaet.nachweis(aufgabe.principal),
-          )
-        : null,
+      principal,
     });
     endstatus = interrupted ? "AWAITING_APPROVAL" : "DONE";
 
     if (interrupted && aufgabe.genehmigung !== null) {
-      await resolveApproval({ threadId, approved: aufgabe.genehmigung });
+      await resolveApproval({
+        threadId,
+        entscheidung: { genehmigt: aufgabe.genehmigung, genehmigender },
+      });
       endstatus = aufgabe.genehmigung ? "PUBLISHED" : "REJECTED";
     }
   } catch (e) {

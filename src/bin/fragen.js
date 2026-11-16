@@ -229,7 +229,13 @@ console.log(
     ? "\n▶  GENEHMIGT — der Ticketdienst läuft...\n"
     : "\n▶  ABGELEHNT — es wird nichts zugestellt und nichts eingereiht.\n",
 );
-await resolveApproval({ threadId, approved: genehmigt });
+// Der Genehmigende ist der Mensch, der eben am Terminal entschieden hat —
+// aufgeloest, nicht behauptet (ADR-0018, ADR-0022). Genau das ist der
+// Unterschied zwischen diesem Kanal und einer Vorfuehrung.
+await resolveApproval({
+  threadId,
+  entscheidung: { genehmigt, genehmigender: principal },
+});
 
 const aktionen = getQueue().filter((a) => a.threadId === threadId);
 console.log(

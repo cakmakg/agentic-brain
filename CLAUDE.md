@@ -75,6 +75,7 @@ ist bewusst: sie verhindert, dass zwei Gedächtnisse auseinanderdriften.
 | Berechtigungsmodell einer Quelle → Envelope           | `src/domains/<domäne>/acl.js` — reine Funktionen, das Regelwerk steht im Dateikopf                             |
 | Entitäten, Relationen, Aktionstypen                   | `src/domains/<domäne>/ontology.js` — prüft sich selbst, die Aktionsfläche wird daraus erzeugt                  |
 | Ausgabevertrag einer Domäne (auch für Schicht B)      | `src/domains/<domäne>/vertrag.js` — ohne LLM, sonst misst der Prüfer zwei Unbekannte                           |
+| Audit-Kette, Nachweis einer Entscheidung              | `src/kernel/governance/audit.js` — rein; `trace.js` schreibt die Glieder, `runner.js` die Entscheidung         |
 | Auth, Rate-Limit, Guardrail, Trace, Kosten            | `src/kernel/governance/`                                                                                       |
 | Aktions-Isolation                                     | `src/kernel/action/queue.js` (Tore) · `flaeche.js` (Erzeugung) · `src/domains/<domäne>/actions.js` (Umsetzung) |
 | LLM-Adapter und Mock-Modus                            | `src/kernel/llm/`                                                                                              |

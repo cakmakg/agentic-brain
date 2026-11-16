@@ -54,7 +54,12 @@ gegenueber dem breiten Testadapter.
 
 ### Thema: Der Lint-Anstieg — drei Warnungen, die eine Entscheidung brauchen
 
-**Status:** 🟡 Neu am 2026-09-10, nachgemessen am 2026-09-20: **12** Warnungen (nicht 15 — der Anstieg aus 3b ist teils wieder abgebaut). Die Frage bleibt dieselbe.
+**Status:** 🟡 Nachgemessen am 2026-09-20 nach 4d: **15** Warnungen in `src/ tests/` (12 vor der Etappe). Die drei neuen stehen alle in `runner.js` und haben dieselbe Ursache.
+Neu seit ADR-0022: `pruefeBearbeitung` Komplexitaet 11, `resolveApproval` Komplexitaet 12,
+`createRunner` 81 Zeilen — die Kette der Tore an der Genehmigungskante. Zweimal refaktoriert
+(eigene Funktion, dann auf Modulebene gehoben); weiter zu zerschneiden hiesse die REIHENFOLGE
+der Tore zu zerlegen, und die ist dort die Aussage.
+
 `darfSehen` Komplexitaet 11 und `pruefeEnvelope` Komplexitaet 13 sind der Preis, den ADR-0012
 in seinem eigenen Konsequenzen-Abschnitt benennt: eine Regel mehr. Die geordnete Regelliste in
 `darfSehen` zu zerschneiden waere schlechter als die Warnung — die Reihenfolge IST dort die
@@ -65,7 +70,7 @@ gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
 
 ### Thema: Nach dem MVP — was ohne Schluessel messbar ist, und was nicht
 
-**Status:** 🟡 Stand 2026-09-20. **4b und Etappe 5 gefahren** (ADR-0020, ADR-0021; A11 und A4 gefallen). Offen ohne Schluessel: **4c**, **4d**, **E0-B**, **express 5**. Die drei grossen Kandidaten (Voyage, Schicht B, echte Quelle) haengen ALLE an einem Schluessel oder Zugang, den es hier nicht gibt.
+**Status:** 🟡 Stand 2026-09-20. **4b, Etappe 5 und 4d gefahren** (ADR-0020/0021/0022; A11, A4, A6 und A12 gefallen). Offen ohne Schluessel: **4c**, **E0-B**, **express 5**. Die drei grossen Kandidaten (Voyage, Schicht B, echte Quelle) haengen ALLE an einem Schluessel oder Zugang, den es hier nicht gibt.
 
 **Was blockiert ist und woran:** der **Voyage-Lauf** an `VOYAGE_API_KEY`; die **erste
 Schicht-B-Messung** an `ANTHROPIC_API_KEY` plus einer Ausgabengrenze (und die Domaene muss
@@ -80,8 +85,10 @@ ehrlich vorziehen.
   gibt (Etappe 10). 3.2 unveraendert 0 %, Vertragstreue 37 → 38.
 - **4c** — Policy und Risikoklasse: nur die Klasse vergeben und protokollieren, wirksam erst in
   14b. Neue Metrik 3.15 (Genehmigungs-Timeout).
-- **4d** — Audit-Kette als Hash-Kette und die Genehmigung als Entscheidungsobjekt. Braucht 4a,
-  das steht.
+- ~~**4d**~~ — 🟢 am 2026-09-20 als ADR-0022. Der Trace ist eine Hash-Kette, die Genehmigung
+  ein Objekt mit Genehmigendem, der bearbeitete Entwurf laeuft erneut durch den Vertrag.
+  **Jede Metrik unveraendert** — genau das war das Tor. Offen geblieben und benannt: die
+  Aufbewahrungsfrist (sie steht in Spannung zur Kette) und ein Anker ausserhalb der Datei.
 - **E0-B** — dependency-cruiser. Wuerde die Kern-Domaenen-Linie MECHANISCH halten statt per
   `grep`; seit T1 gibt es mehr Regeln zu schreiben. **Neue Abhaengigkeit, also vorher fragen.**
 - **express 4 → 5** — zwei mittlere Schwachstellen, eigene ADR, betrifft nur den HTTP-Rand.

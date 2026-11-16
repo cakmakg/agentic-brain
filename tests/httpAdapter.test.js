@@ -103,7 +103,11 @@ async function wartenderLauf() {
 test("Fall C: `true` stellt zu — die Probe misst wirklich", async () => {
   const threadId = await wartenderLauf();
 
-  const res = await genehmige({ threadId, approved: true });
+  const res = await genehmige({
+    threadId,
+    approved: true,
+    nachweis: "nachweis-vorfuehrung",
+  });
   assert.equal(res.status, 200);
 
   assert.equal(await wartetAufZustellung(threadId), true);

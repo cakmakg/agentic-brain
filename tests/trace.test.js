@@ -88,7 +88,13 @@ test("resumeTrace schreibt in dieselbe Datei und zählt seq weiter", () => {
   t1.node("ablage", { abgelegt: true });
   t1.pause("AWAITING_APPROVAL");
 
-  const t2 = resumeTrace({ runId: "lauf-e", humanApproval: true });
+  const t2 = resumeTrace({
+    runId: "lauf-e",
+    entscheidung: {
+      genehmigt: true,
+      genehmigender: { tenantId: "t-test", benutzerId: "pruefende-person" },
+    },
+  });
   t2.node("zusteller", { zugestellt: true });
   t2.end("PUBLISHED");
 
@@ -100,6 +106,9 @@ test("resumeTrace schreibt in dieselbe Datei und zählt seq weiter", () => {
   );
   assert.equal(z[3].type, "run_resume");
   assert.equal(z[3].humanApproval, true);
+  // Der Genehmigende steht im Klartext, nicht als Laenge (ADR-0022): eine
+  // Genehmigung, deren Genehmigender nur eine Zahl ist, ist kein Nachweis.
+  assert.equal(z[3].genehmigender, "pruefende-person");
   assert.equal(z.at(-1).status, "PUBLISHED");
   assert.equal(z.filter((x) => x.type === "run_end").length, 1);
 });

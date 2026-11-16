@@ -12,6 +12,17 @@ import crypto from "node:crypto";
 import { getRunner } from "../kernel/registry.js";
 import { agentEventBus } from "../kernel/governance/eventBus.js";
 import "../domains/beispiel/domain.js";
+
+// Wer drueckt den Knopf? Seit ADR-0022 traegt jede Genehmigung ihren
+// Genehmigenden. Diese Vorfuehrung genehmigt sich selbst — sie hat also
+// keinen Menschen, den sie nennen koennte, und nennt deshalb einen
+// ausdruecklich als Vorfuehrung markierten. Der echte Kanal ist
+// `npm run fragen` (T3): dort kommt der Genehmigende aus dem Verzeichnis.
+const VORFUEHRUNG = {
+  tenantId: "t-demo",
+  benutzerId: "vorfuehrung",
+  gruppen: [],
+};
 import { getArtifact } from "../domains/beispiel/agents/ablage.js";
 
 const { startWorkflow, resolveApproval } = getRunner("beispiel");
@@ -36,7 +47,10 @@ if (interrupted) {
   );
   console.log("   status:", getArtifact(threadId)?.status);
   console.log("\n▶  Der Mensch GENEHMIGT → zusteller läuft...\n");
-  await resolveApproval({ threadId, approved: true });
+  await resolveApproval({
+    threadId,
+    entscheidung: { genehmigt: true, genehmigender: VORFUEHRUNG },
+  });
   console.log("✓ Endgültiger Artefaktstatus:", getArtifact(threadId)?.status);
 }
 process.exit(0);

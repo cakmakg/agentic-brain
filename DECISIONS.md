@@ -2077,3 +2077,167 @@ ab. Das belegt die Reihenfolge, nicht die Metrik. Dann der Stand **vor** dieser 
 (`eingereiht: true statt false`, `endstatus: DONE statt null`, `abgelehnt: null statt
 whitelist`), Vertragstreue 37/38, Rückgabewert 1. Zurückgenommen, `sha1sum` beider Dateien
 gleich.
+
+---
+
+## ADR-0022 — Der Trace wird zur Hash-Kette, und die Genehmigung zu einem Entscheidungsobjekt
+
+**Datum:** 2026-09-20
+**Status:** Angenommen
+
+Löst A6 und A12 aus `docs/roadmap.md` §4 ein (Etappe 4d). Ergänzt ADR-0019 (der MVP-Schnitt
+ließ 4d ausdrücklich draußen) und präzisiert ARCHITECTURE.md §5.
+
+### Kontext
+
+Zwei Lücken, beide an derselben Stelle: an der Kante, an der ein Mensch entscheidet.
+
+**Der Trace war nicht fälschungssicher.** Er ist seit dem ersten Tag die Grundlage der
+Messschicht — „die Messung liest den Trace, nicht den Bus" (`ARCHITECTURE.md` §5) —, und er
+hält die einzige Zeile, an der die zentrale Zusage dieses Repos hängt: `run_resume` mit
+`humanApproval`. Jede Zeile stand dort für sich. Wer `false` zu `true` machte, änderte eine
+Zahl in einer Datei, und nichts und niemand hätte es bemerkt. Ein Nachweis, den man
+unbemerkt umschreiben kann, ist kein Nachweis.
+
+**Die Genehmigung war ein nacktes Boolean.** `resolveApproval({ threadId, approved })` —
+mehr wusste der Kern nicht. Wer genehmigt hat, stand nirgends: nicht im Trace, nicht im
+Checkpoint, nicht in der Aktion. Seit T2 (ADR-0018) wird der FRAGENDE aufgelöst statt
+geglaubt; der GENEHMIGENDE existierte als Begriff überhaupt nicht. Und ein Mensch, der den
+Entwurf für fast richtig hält, hatte genau zwei Möglichkeiten: ganz ablehnen oder eine
+Fassung durchwinken, die er lieber geändert hätte.
+
+Dass beides zusammengehört, zeigt sich am Angriff, den es abwehrt: eine Genehmigung
+fälschen heißt entweder die Zeile umschreiben (A6) oder sie niemandem zuordnen zu können
+(A12).
+
+### Entscheidung
+
+**Der bestehende Trace wird zur Hash-Kette, und die Genehmigung wird ein Objekt, das seinen
+Genehmigenden trägt.**
+
+1. Neu im Kern: `governance/audit.js` mit `gliedHash` und `pruefeKette` — reine Funktionen,
+   `node:crypto`, keine neue Abhängigkeit. `trace.js` hängt an jede Zeile `prev` und `hash`
+   und liefert `pruefeTraceKette(runId)`.
+2. **Über dem Trace, nicht daneben.** Ein zweites Log wäre eine zweite Wahrheit: es müsste
+   dieselben Ereignisse noch einmal aufschreiben und könnte ab dem ersten Tag driften.
+3. `prev` steht **im gehashten Inhalt**. Sonst ließe sich eine Zeile an eine andere Stelle der
+   Kette hängen, ohne dass ihr eigener Hash sich ändert.
+4. Das Glied rückt **nur bei erfolgreichem Schreiben** vor. Eine volle Platte darf keinen
+   Kettenbruch erzeugen, den niemand verursacht hat.
+5. `resolveApproval({ threadId, entscheidung })` mit `{ genehmigt, genehmigender,
+bearbeiteterEntwurf }`. Kein `approved` mehr, **kein zweiter Weg**: alle zehn Aufrufstellen
+   sind umgestellt.
+6. **Ein Genehmigender ohne aufgelöste Identität ist keiner** — für die GENEHMIGUNG. Die
+   Ablehnung braucht keinen: sie ändert nichts in der Welt. Wer auch sie zuordnen will, gibt
+   ihn trotzdem mit.
+7. Ein **bearbeiteter Entwurf** läuft erneut durch den Ausgabevertrag der Domäne. Der Kern
+   kennt keinen Vertrag; die Domäne liefert ihn als `pruefeEntwurf` — die siebte Nahtstelle.
+   Eine Domäne ohne dieses Feld nimmt **keine** Bearbeitung entgegen (fail-closed).
+8. Verletzt die Bearbeitung den Vertrag, wird sie **verworfen und der Lauf bleibt stehen**,
+   wo er stand. Nichts eingereiht, nichts zugestellt; der Versuch steht im Audit.
+9. **`build.js` wird nicht angefasst.** Die Kante prüft weiter auf exakt `true`. Was sich
+   ändert, ist allein, was vor ihr ankommt — Zusage 5 aus `docs/roadmap.md` §2 bleibt.
+10. Im Audit steht der Genehmigende **im Klartext**, vom bearbeiteten Entwurf dagegen **nur
+    eine Zahl**. Keine neue Metrik.
+
+### Begründung
+
+**Warum die Kennung des Genehmigenden nicht als Länge im Trace steht.** Grenze 1 in
+`trace.js` („kein Volltext, nur Längen") gilt dem INHALT, den ein Lauf verarbeitet — sie
+schützt fremde Dokumente davor, über die Messschicht abzufließen. Eine Identität ist kein
+solcher Inhalt, sondern die Zuordnung der Entscheidung. `genehmigender_length: 4` wäre kein
+Nachweis, sondern eine Zahl. Beim bearbeiteten Entwurf gilt Grenze 1 dagegen voll: dort
+landet nur, WIE VIEL sich geändert hat, nie WAS.
+
+**Warum eine leere Bearbeitung abgelehnt wird**, obwohl `pruefeVertrag` sie durchlässt: dort
+heißt die leere Liste „diese Besprechung hat keine offenen Punkte" — eine Aussage des
+Extrahierers, die BREMSE 5 vor dem Entwurf beendet. Am Genehmigungstor gibt es den Entwurf
+schon; eine Bearbeitung, die alles streicht, ist eine Ablehnung, und dafür gibt es den
+anderen Weg. Ohne diese Zeile ginge die leere Fassung in die Queue und fiele erst am
+Validierer — **eingereiht statt abgelehnt**.
+
+**Warum die Herkunft am Tor nicht änderbar ist.** Der Patch der Domäne trägt allein die
+Aktionspunkte. Ein Mensch, der hier `notizId` umschreiben könnte, hätte genau den Beleg
+entwertet, den die Relation `Ticket verweist_auf Notiz` verlangt (ADR-0010).
+
+**Warum eine verworfene Bearbeitung den Lauf nicht tötet.** Eine schlechte Formulierung ist
+kein Sicherheitsereignis. Der Lauf bleibt am Tor stehen und kann mit einer korrigierten
+Fassung erneut entschieden werden. Fail-closed heißt „nichts wirkt", nicht „alles verloren".
+
+### Alternativen
+
+**Ein eigenes Audit-Log neben dem Trace.** Verworfen: zwei Wahrheiten über dieselben
+Ereignisse, siehe oben.
+
+**Die Kette über die ganze Datei statt Zeile für Zeile.** Verworfen: sie sagte nur, DASS
+etwas kaputt ist, nicht WO. `gebrochenBei` nennt den Index — wer nachsehen muss, braucht
+eine Zeilennummer, kein Urteil.
+
+**`resolveApproval` beide Formen annehmen lassen** (Boolean oder Objekt). Verworfen: ein
+zweiter Code-Pfad, den niemand misst, und genau die Art Altlast, die dieses Repo ohne
+Nutzer nicht anlegt.
+
+**Den Genehmigenden auch für die Ablehnung verlangen.** Verworfen — aber knapp. Es wäre die
+strengere Regel; sie hätte jedoch jeden Kanal gezwungen, für einen folgenlosen Vorgang eine
+Identität aufzulösen. Die Zeile ist eine, wenn man es später anders will.
+
+**Die Aufbewahrungsfrist mitbauen** (`docs/roadmap.md` nennt sie im Text von 4d). Verworfen
+und BENANNT: kein Tor dieser Etappe misst sie, und niemand führt sie aus — sie wäre gebaut
+und ungemessen. Dazu steht sie in echter Spannung zur Kette: aus einem verketteten Log
+Zeilen zu löschen bricht die Kette; nur das Löschen ganzer Laufdateien wäre verträglich.
+Das ist eine eigene Entscheidung und gehört in eine eigene ADR. Die Grenze steht in
+`ARCHITECTURE.md` §4 neben der bereits benannten „das Log wächst unbegrenzt".
+
+### Konsequenzen
+
+- **Die Kette erkennt das Ändern, Einfügen und Löschen EINZELNER Zeilen — nicht das
+  vollständige Neuschreiben der Datei.** Wer alle Zeilen ab der geänderten neu hasht, erhält
+  eine in sich stimmige Kette. Dagegen hilft nur ein Anker außerhalb der Datei. Diese Grenze
+  ist ausdrücklich getestet (`tests/audit.test.js`), damit niemand der Kette später mehr
+  zutraut, als sie leistet.
+- **`stabil()` ist aus `action/queue.js` nach `persistence/stabil.js` gewandert.** Die Kette
+  serialisiert eine GELESENE Zeile neu; käme dabei eine andere Reihenfolge heraus, meldete
+  sie einen Bruch, den es nicht gibt. Zwei Kopien wären genau diese Drift. Reine
+  Verschiebung, mit eigenem Tor gefahren: alle Zahlen identisch.
+- **Jeder Kanal, der genehmigt, muss jetzt einen Menschen nennen.** Das traf auch den
+  HTTP-Rand, der bis hierher gar keine Identität hatte — `authMiddleware` prüft einen
+  Schlüssel, und ein Schlüssel ist kein Mensch. `/api/approve` nimmt deshalb einen `nachweis`
+  und löst ihn über denselben Port auf. Sein Verzeichnis ist EIN Eintrag und ausdrücklich
+  eine Vorführung; die Grenze steht in `ARCHITECTURE.md` §4.
+- **Der Harness trennt jetzt zwei Rollen**: wer fragt und wer entscheidet. In Schicht A
+  fallen sie zusammen, weil der Datensatz je Fall nur eine Person kennt; dass sie
+  auseinanderfallen können, ist wahr und **ungemessen** — es gehört zu Etappe 11.
+- **`beispiel` hat ein Identitätsverzeichnis bekommen** (aus den Principalen seines eigenen
+  `acl.json`, kein erfundener Name), weil sonst kein Fall dieser Domäne mehr genehmigen
+  könnte. Folge im Bericht: `identitaetAdapter` wechselt von `keiner` auf `fixtures`. **Jede
+  Metrik bleibt identisch** — das ist der einzige Unterschied beider Berichte.
+- **Drei neue Lint-Warnungen, alle in `runner.js`** (12 → 15 in `src/ tests/`):
+  `pruefeBearbeitung` Komplexität 11, `resolveApproval` Komplexität 12, `createRunner` 81
+  Zeilen. Zweimal refaktoriert — der Block wurde eine eigene Funktion und danach auf
+  Modulebene gehoben —, weiter zu zerschneiden hieße die REIHENFOLGE DER TORE zu zerlegen,
+  und die ist dort die Aussage. Dieselbe Antwort wie bei `darfSehen` (ADR-0012): benannt
+  statt still angepasst.
+
+### Prüfkriterium
+
+```bash
+npm test          # eine geaenderte Audit-Zeile bricht die Kette und wird BENANNT
+                  # ein bearbeiteter Entwurf gegen den Vertrag wird abgelehnt, nichts eingereiht
+                  # jede Genehmigung nennt im Audit ihren Genehmigenden
+npm run evals     # 3.1 = 100 % unveraendert, jede andere Metrik ebenso
+npm run demo      # K5: laeuft ohne Infrastruktur durch
+```
+
+🟢 **Eingelöst am 2026-09-20.** `npm test` **278/285** (7 übersprungen), mit `DATABASE_URL`
+**285/285** (vorher 268) · `npm run evals` 3.1 = 100 %, 3.2 = 0 %, 3.13 = 0 %, 3.14 = 0 %,
+3.16 = 0 %, Vertragstreue 28/28 und 38/38 — **jede Metrik unverändert** · `evals:postgres`
+dieselben Zahlen, beide Berichte nach Abzug von `erzeugt` und `storeAdapter` zeichengleich ·
+gegen den Stand vor dieser Etappe unterscheidet sich **ein einziges Feld**:
+`identitaetAdapter` bei `beispiel` · `npm run demo` und `npm run demo:besprechung` beide
+Rückgabewert 0 ohne Infrastruktur (K5).
+
+🔴 **Mutationsprobe, zwei Stellen.** Das Urteil von `pruefeEntwurf` ignorieren → zwei Tests
+rot („ein bearbeiteter Entwurf … wird NICHT zugestellt", „eine LEERE Bearbeitung ist eine
+Ablehnung"). Die Verkettungsprüfung aus `pruefeKette` entfernen → zwei Tests rot („ein
+Fälscher, der den Hash mitzieht", „eine gelöschte Zeile fällt an der Lücke auf"). Beide
+zurückgenommen, `sha1sum` gleich.

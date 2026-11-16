@@ -1,11 +1,11 @@
 {
-  "erzeugt": "2026-09-20T22:14:40.424Z",
+  "erzeugt": "2026-09-20T23:30:58.111Z",
   "schicht": "A",
   "modus": "mock",
   "domaene": "beispiel",
   "storeAdapter": "memory",
   "embeddingAdapter": "hash",
-  "identitaetAdapter": "keiner",
+  "identitaetAdapter": "fixtures",
   "aufgaben": 22,
   "abrufe": 6,
   "entzuege": 0,

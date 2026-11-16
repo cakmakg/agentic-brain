@@ -34,6 +34,17 @@ const { getQueue } = await import("../src/domains/beispiel/actions.js");
 const { cost } = await import("../src/kernel/governance/costTracker.js");
 
 const AUFGABE = "Eine kurze Zusammenfassung der Quartalszahlen.";
+
+// Seit ADR-0022 traegt jede Genehmigung ihren Genehmigenden — eine
+// Genehmigung ohne aufgeloeste Identitaet wirft. Hier genuegt ein Principal
+// der Form nach: was dieser Test misst, ist die HITL-Kante, nicht das
+// Verzeichnis. Dass ein NICHT aufgeloester Genehmigender abgelehnt wird,
+// prueft tests/entscheidung.test.js.
+const GENEHMIGENDER = {
+  tenantId: "t-test",
+  benutzerId: "pruefende-person",
+  gruppen: [],
+};
 const queueFor = (threadId) =>
   getQueue().filter((a) => a.threadId === threadId);
 
@@ -65,7 +76,10 @@ test("Der goldene Pfad hält vor der Genehmigung an (HITL)", async () => {
 test("Eine Ablehnung stoppt die Zustellung", async () => {
   const threadId = crypto.randomUUID();
   await startWorkflow({ task: AUFGABE, threadId });
-  await resolveApproval({ threadId, approved: false });
+  await resolveApproval({
+    threadId,
+    entscheidung: { genehmigt: false, genehmigender: GENEHMIGENDER },
+  });
 
   assert.equal(
     getArtifact(threadId)?.status,
@@ -82,7 +96,10 @@ test("Eine Ablehnung stoppt die Zustellung", async () => {
 test("Eine Genehmigung stellt zu und reiht genau eine Aktion ein", async () => {
   const threadId = crypto.randomUUID();
   await startWorkflow({ task: AUFGABE, threadId });
-  await resolveApproval({ threadId, approved: true });
+  await resolveApproval({
+    threadId,
+    entscheidung: { genehmigt: true, genehmigender: GENEHMIGENDER },
+  });
 
   assert.equal(getArtifact(threadId)?.status, "ZUGESTELLT");
 
@@ -119,7 +136,10 @@ test("Der Budget-Kill-Switch bricht ab, bevor ein LLM-Aufruf entsteht", async ()
 test("Jeder Lauf hinterlässt genau eine Trace-Datei", async () => {
   const threadId = crypto.randomUUID();
   await startWorkflow({ task: AUFGABE, threadId });
-  await resolveApproval({ threadId, approved: true });
+  await resolveApproval({
+    threadId,
+    entscheidung: { genehmigt: true, genehmigender: GENEHMIGENDER },
+  });
 
   const datei = path.join(traceDir, `${threadId}.jsonl`);
   assert.equal(fs.existsSync(datei), true);

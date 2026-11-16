@@ -20,7 +20,16 @@ const { getQueue } = await import("../../src/domains/beispiel/actions.js");
 const davor = getArtifact(threadId)?.status ?? null;
 
 const { resolveApproval } = getRunner("beispiel");
-await resolveApproval({ threadId, approved: genehmigt });
+// Seit ADR-0022 traegt die Entscheidung ihren Genehmigenden. Hier steht ein
+// Principal der Form nach: diese Fixture misst den NEUSTART, nicht das
+// Verzeichnis.
+await resolveApproval({
+  threadId,
+  entscheidung: {
+    genehmigt,
+    genehmigender: { tenantId: "t-test", benutzerId: "neustart", gruppen: [] },
+  },
+});
 
 console.log(
   JSON.stringify({

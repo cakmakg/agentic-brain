@@ -17,6 +17,9 @@ import {
   beispielDomain,
 } from "../../../src/domains/beispiel/domain.js";
 import { getRunner } from "../../../src/kernel/registry.js";
+import { createAufloeser } from "../../../src/kernel/governance/identitaet/index.js";
+import { createFixturesAufloeser } from "../../../src/kernel/governance/identitaet/fixtures.js";
+import { istPrincipalAufloesbar } from "../../../src/kernel/context/envelope.js";
 import { getArtifact } from "../../../src/domains/beispiel/agents/ablage.js";
 import {
   enqueueAction,
@@ -44,6 +47,33 @@ export const adapter = {
   artefaktstatus: (threadId) => getArtifact(threadId)?.status ?? null,
 
   aktionen: { enqueueAction, getQueue, startActionWorker, stopActionWorker },
+
+  // ── Wer entscheidet hier? (ADR-0022) ──────────────────────────────────
+  // Seit A12 ist eine Genehmigung ohne aufgeloesten Genehmigenden keine — auch
+  // im Harness, der die menschliche Hand nachstellt. Diese Domaene braucht das
+  // Verzeichnis NUR dafuer: ihre Faelle nennen keine Person, weil ihr Ablauf
+  // nicht liest (ADR-0004).
+  //
+  // `anna` ist kein erfundener Name, sondern ein Principal DIESES Datensatzes.
+  // Eine Genehmigung im Bericht traegt damit eine Kennung, die man nachschlagen
+  // kann — und nicht eine, die jemand an dieser Stelle erdacht hat.
+  identitaet: {
+    aufloeser: createAufloeser({
+      adapter: createFixturesAufloeser({
+        verzeichnis: Object.fromEntries(
+          Object.entries(
+            JSON.parse(
+              fs.readFileSync(path.join(hier, "golden", "acl.json"), "utf8"),
+            ).principale,
+          )
+            .filter(([, p]) => istPrincipalAufloesbar(p))
+            .map(([name, p]) => [`nachweis-${name}`, p]),
+        ),
+      }),
+    }),
+    nachweis: (name) => `nachweis-${name}`,
+    genehmigender: "anna",
+  },
 
   datensatz: JSON.parse(
     fs.readFileSync(path.join(hier, "golden", "tasks.json"), "utf8"),

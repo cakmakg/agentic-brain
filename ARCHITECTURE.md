@@ -87,6 +87,20 @@ Diese Liste ist absichtlich sichtbar. Eine verschwiegene Grenze wird zu einem Au
   Verzeichnis für Empfänger. `TICKET_ZUWEISEN` trug dieselbe Ausnahme, bis Etappe 5 ihn ganz
   schloss: er ist **modelliert, aber nicht scharf**, und kommt gar nicht mehr bis zur Befugnis
   (ADR-0021). Frei wird er mit einem Ticketsystem (Etappe 10).
+- **Die Audit-Kette erkennt kein vollständiges Neuschreiben der Datei.** Sie fängt das
+  Ändern, Einfügen und Löschen EINZELNER Zeilen (ADR-0022). Wer alle Zeilen ab der
+  geänderten neu hasht, erhält eine in sich stimmige Kette. Dagegen hilft nur ein Anker
+  außerhalb der Datei — ein anderswo notiertes letztes Glied. Die Grenze ist getestet, nicht
+  nur behauptet.
+- **Es gibt keine Aufbewahrungsfrist für den Trace.** `docs/roadmap.md` nennt sie im Text
+  von 4d; sie blieb bewusst draußen (ADR-0022). Kein Tor misst sie, niemand führt sie aus —
+  und aus einem verketteten Log Zeilen zu löschen bricht die Kette. Verträglich wäre nur das
+  Löschen ganzer Laufdateien. Dieselbe Familie wie das unbegrenzt wachsende Log des
+  Persistenzspeichers; beides braucht eine eigene Entscheidung.
+- **Der HTTP-Rand kennt nur eine vorgeführte Identität.** `/api/approve` verlangt seit
+  ADR-0022 einen Nachweis und löst ihn über den Identitäts-Port auf, aber sein Verzeichnis
+  hat EINEN Eintrag und ist ausdrücklich eine Vorführung. `/api/run` hat weiterhin gar keine
+  Identität. Der Kanal, an dem ein echter Mensch entscheidet, ist `npm run fragen` (T3).
 - **Es gibt keinen echten Identitätsanbieter.** Aufgelöst wird gegen ein Verzeichnis aus
   Fixtures; ein OIDC-Adapter kommt, wenn es etwas gibt, wogegen er laufen kann (Etappe 7 und
   11). Bis dahin gilt: die Auflösung ist gemessen, der Anbieter ist keiner.
@@ -123,6 +137,18 @@ Zwei getrennte Wege, absichtlich:
 
 Der Trace trägt **keinen Volltext**, nur Längen. Er belegt Routing und Richtlinien, nicht
 Inhalte.
+
+**Zwei Präzisierungen seit ADR-0022.** Die Regel gilt dem INHALT, den ein Lauf verarbeitet —
+sie schützt fremde Dokumente davor, über die Messschicht abzufließen. Sie gilt deshalb
+**nicht** für die Identität, die über einen Lauf entscheidet: der **Genehmigende** steht im
+Klartext, weil `genehmigender_length: 4` kein Nachweis wäre, sondern eine Zahl. Vom **vom
+Menschen bearbeiteten Entwurf** landet umgekehrt nur eine Zahl dort — wie viel sich geändert
+hat, nie was.
+
+**Der Trace ist seit ADR-0022 eine Hash-Kette.** Jede Zeile trägt `prev` und `hash`;
+`pruefeTraceKette(runId)` hält die Datei gegen sich selbst und nennt den INDEX der ersten
+schadhaften Zeile. Sie erkennt das Ändern, Einfügen und Löschen einzelner Zeilen — nicht das
+vollständige Neuschreiben der Datei (siehe §4).
 
 Eine Knotenzeile trägt das **Delta** — was der Knoten geschrieben hat —, nicht den
 akkumulierten Zustand. Bei einem `sum`-Reducer steht in jeder Zeile der Zuwachs; der Stand ist

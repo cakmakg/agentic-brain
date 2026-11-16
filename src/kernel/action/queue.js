@@ -29,19 +29,10 @@
 import crypto from "node:crypto";
 
 import { appendLog, readLog } from "../persistence/store.js";
-
-// Stabile Serialisierung: dasselbe Payload muss denselben Schlüssel ergeben,
-// auch wenn seine Felder in anderer Reihenfolge entstanden sind. JSON.stringify
-// allein leistet das nicht — es schreibt in Einfügereihenfolge.
-function stabil(wert) {
-  if (wert === null || typeof wert !== "object")
-    return JSON.stringify(wert) ?? "null";
-  if (Array.isArray(wert)) return `[${wert.map(stabil).join(",")}]`;
-  return `{${Object.keys(wert)
-    .sort()
-    .map((k) => `${JSON.stringify(k)}:${stabil(wert[k])}`)
-    .join(",")}}`;
-}
+// Dieselbe Serialisierung nutzt die Audit-Kette (ADR-0022). Eine zweite Kopie
+// hier wäre die Drift, die ein doppeltes Ticket oder einen grundlosen
+// Kettenbruch erzeugt — die Begründung steht im Kopf jener Datei.
+import { stabil } from "../persistence/stabil.js";
 
 function schluesselAus({ threadId, actionType, payload }) {
   // Längenpräfixe statt eines Trennzeichens: so kann kein Feldinhalt die Grenze

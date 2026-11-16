@@ -27,6 +27,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { gliedHash, pruefeKette, KETTEN_ANFANG } from "./audit.js";
+
 const TRACE_DIR =
   process.env.TRACE_DIR || path.join(process.cwd(), "evals", "traces");
 
@@ -72,16 +74,47 @@ function writeLine(runId, entry) {
   }
 }
 
-// Zählt die bereits geschriebenen Zeilen, damit seq über eine Fortsetzung
-// hinweg weiterläuft, statt bei 0 neu zu beginnen. Ein Lauf, der auf die
-// Genehmigung wartet, wird später mit derselben run_id fortgesetzt.
-function existingLines(runId) {
+// Liest die vorhandene Datei EINMAL und holt beides daraus: die Zahl der
+// Zeilen, damit seq über eine Fortsetzung hinweg weiterläuft statt bei 0 neu
+// zu beginnen, und das letzte Kettenglied, damit die Fortsetzung an die
+// bestehende Kette anschließt. Ein Lauf, der auf die Genehmigung wartet, wird
+// später mit derselben run_id fortgesetzt — begänne die Kette dort neu, wäre
+// genau die Naht ungeschützt, an der die menschliche Entscheidung steht.
+//
+// Eine unlesbare oder fehlende Datei ergibt einen frischen Anfang. Das ist
+// kein Verstecken: pruefeTraceKette urteilt über die Datei, die DA ist.
+function bestehendeKette(runId) {
   try {
-    return fs.readFileSync(traceFile(runId), "utf8").split("\n").filter(Boolean)
-      .length;
+    const zeilen = fs
+      .readFileSync(traceFile(runId), "utf8")
+      .split("\n")
+      .filter(Boolean);
+    const letzte = zeilen.length ? JSON.parse(zeilen[zeilen.length - 1]) : null;
+    return {
+      anzahl: zeilen.length,
+      letztesGlied:
+        typeof letzte?.hash === "string" ? letzte.hash : KETTEN_ANFANG,
+    };
   } catch {
-    return 0;
+    return { anzahl: 0, letztesGlied: KETTEN_ANFANG };
   }
+}
+
+// Liest den Trace eines Laufs und hält ihn gegen sich selbst (A6). Gibt
+// { ok, laenge, gebrochenBei, grund } zurück; eine fehlende Datei ist eine
+// leere Kette, kein Bruch.
+export function pruefeTraceKette(runId) {
+  let zeilen;
+  try {
+    zeilen = fs
+      .readFileSync(traceFile(runId), "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((z) => JSON.parse(z));
+  } catch {
+    return pruefeKette([]);
+  }
+  return pruefeKette(zeilen);
 }
 
 // Gleiche Form, schreibt nichts: für eine abgelehnte run_id. So braucht der
@@ -100,16 +133,33 @@ function createTrace(runId) {
     return SILENT_TRACE;
   }
 
-  let seq = existingLines(runId);
+  const kette = bestehendeKette(runId);
+  let seq = kette.anzahl;
+  let letztesGlied = kette.letztesGlied;
   let lastTs = Date.now();
 
-  const line = (entry) =>
-    writeLine(runId, {
+  // Jede Zeile trägt ihr Kettenglied (A6, ADR-0022). prev steht IM gehashten
+  // Inhalt, hash kommt zuletzt dazu.
+  //
+  // Das Glied rückt NUR bei erfolgreichem Schreiben vor. Sonst zeigte die
+  // nächste Zeile auf eine, die es nicht gibt — ein Kettenbruch, den nicht
+  // eine Manipulation verursacht hätte, sondern eine volle Platte. Eine
+  // Prüfung, die aus dem falschen Grund rot wird, wird bald nicht mehr
+  // gelesen.
+  const line = (entry) => {
+    const ohneHash = {
       ts: new Date().toISOString(),
       run_id: runId,
-      seq: seq++,
+      seq,
       ...entry,
-    });
+      prev: letztesGlied,
+    };
+    const hash = gliedHash(ohneHash);
+    if (!writeLine(runId, { ...ohneHash, hash })) return false;
+    letztesGlied = hash;
+    seq++;
+    return true;
+  };
 
   return {
     runId,
@@ -158,10 +208,23 @@ export function startTrace({ runId, task }) {
 // Fortsetzung nach der menschlichen Entscheidung — dieselbe run_id, dieselbe
 // Datei. Die Entscheidung selbst ist eine eigene Zeile: sie ist der Punkt, an
 // dem die zentrale Zusage dieses Repos geprüft werden kann.
-export function resumeTrace({ runId, humanApproval }) {
+//
+// SIE NENNT IHREN GENEHMIGENDEN (A12, ADR-0022). Die Kennung steht im Klartext
+// und nicht als Länge — Grenze 1 oben gilt dem INHALT, den ein Lauf
+// verarbeitet, nicht der Identität, die über ihn entscheidet. Eine Genehmigung,
+// deren Genehmigender nur als Zahl im Audit steht, ist kein Nachweis.
+//
+// Vom bearbeiteten Entwurf landet dagegen NUR EINE ZAHL hier: wie viel sich
+// geändert hat, nicht was. Das ist Inhalt und fällt unter Grenze 1.
+export function resumeTrace({ runId, entscheidung }) {
   const trace = createTrace(runId);
   if (trace.active) {
-    trace.line({ type: "run_resume", humanApproval });
+    trace.line({
+      type: "run_resume",
+      humanApproval: entscheidung?.genehmigt ?? null,
+      genehmigender: entscheidung?.genehmigender?.benutzerId ?? null,
+      entwurf_geaendert: entscheidung?.unterschied ?? null,
+    });
   }
   return trace;
 }

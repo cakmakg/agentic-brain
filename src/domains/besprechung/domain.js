@@ -25,6 +25,7 @@ import { llmStructured } from "../../kernel/llm/adapter.js";
 import { modelFor } from "../../kernel/config/env.js";
 
 import { prompts } from "./prompts.js";
+import { pruefeEntwurf } from "./vertrag.js";
 import { extrahiererNode } from "./agents/extrahierer.js";
 import { prueferNode } from "./agents/pruefer.js";
 import { entwurfNode } from "./agents/entwurf.js";
@@ -238,6 +239,13 @@ export const besprechungDomain = registerDomain({
   hub: "orchestrator",
   spokes: ["extrahierer", "pruefer", "entwurf"],
   terminal: "ticketdienst",
+
+  // Die Naht fuer den bearbeiteten Entwurf (A12, ADR-0022). Der Kern kennt
+  // keinen Vertrag; er fragt hier nach, bevor er eine vom Menschen bearbeitete
+  // Fassung in den Zustand laesst. Eine Domaene ohne dieses Feld nimmt keine
+  // Bearbeitung entgegen — die Referenzdomaene beispiel tut das bewusst nicht
+  // (ADR-0004).
+  pruefeEntwurf,
 });
 
 // Für Tests und Evaluationen: die Bausteine einzeln prüfbar halten.

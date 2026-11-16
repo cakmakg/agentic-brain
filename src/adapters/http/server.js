@@ -32,6 +32,8 @@ import {
   agentEventBus,
   drainBuffer,
 } from "../../kernel/governance/eventBus.js";
+import { createAufloeser } from "../../kernel/governance/identitaet/index.js";
+import { createFixturesAufloeser } from "../../kernel/governance/identitaet/fixtures.js";
 
 // Die Domäne wird hier registriert — der Adapter wählt sie, der Kern kennt sie nicht.
 import "../../domains/beispiel/domain.js";
@@ -39,6 +41,29 @@ import { getArtifact } from "../../domains/beispiel/agents/ablage.js";
 import { getQueue } from "../../domains/beispiel/actions.js";
 
 const { startWorkflow, resolveApproval } = getRunner("beispiel");
+
+// ── Wer genehmigt hier? (A12, ADR-0022) ────────────────────────────────
+// Seit ADR-0022 ist eine Genehmigung ohne aufgeloesten Genehmigenden keine.
+// Dieser Rand hatte bis dahin ueberhaupt keine Identitaet: `authMiddleware`
+// prueft einen SCHLUESSEL, und ein Schluessel ist kein Mensch.
+//
+// Deshalb verlangt `/api/approve` jetzt einen Nachweis und loest ihn ueber
+// denselben Port auf wie jeder andere Kanal (ADR-0018). Das Verzeichnis
+// dahinter ist EIN Eintrag und ausdruecklich eine Vorfuehrung — dieser
+// Adapter bedient `beispiel`, die Referenzdomaene ohne Quelle und ohne
+// Verzeichnis (ADR-0004). Die Grenze steht in `ARCHITECTURE.md` §4.
+// Der Kanal, an dem ein echter Mensch entscheidet, ist `npm run fragen`.
+const genehmigungsAufloeser = createAufloeser({
+  adapter: createFixturesAufloeser({
+    verzeichnis: {
+      "nachweis-vorfuehrung": {
+        tenantId: "t-demo",
+        benutzerId: "vorfuehrung",
+        gruppen: [],
+      },
+    },
+  }),
+});
 
 export const app = express();
 app.use(express.json({ limit: "2mb" })); // Begrenzung der Body-Größe = DoS-Schutz
@@ -79,17 +104,34 @@ app.post("/api/run", authMiddleware, workflowLimiter, async (req, res) => {
 // Rand darf den Wert davor nicht zurechtbiegen, sonst gilt die Zusage im Kern
 // und nicht am Rand. Dieselbe Regel gilt fuer jeden spaeteren Kanal.
 app.post("/api/approve", authMiddleware, approveLimiter, async (req, res) => {
-  const { threadId, approved } = req.body || {};
+  const { threadId, approved, nachweis } = req.body || {};
   if (!threadId)
     return res.status(400).json({ error: "threadId erforderlich" });
   if (typeof approved !== "boolean")
     return res
       .status(400)
       .json({ error: "approved muss ein JSON-Boolean sein (true oder false)" });
+
+  // Eine GENEHMIGUNG braucht einen aufgeloesten Menschen; eine Ablehnung
+  // nicht. Der Unterschied ist nicht Bequemlichkeit: eine Ablehnung aendert
+  // nichts in der Welt, eine Genehmigung schon. Wer auch die Ablehnung
+  // zuordnen will, schickt den Nachweis trotzdem mit — er landet dann
+  // ebenso im Audit.
+  const genehmigender = nachweis
+    ? await genehmigungsAufloeser.aufloese(nachweis)
+    : null;
+  if (approved === true && !genehmigender)
+    return res.status(403).json({
+      error:
+        "nachweis erforderlich und aufloesbar: eine Genehmigung ohne " +
+        "Genehmigenden ist keine",
+    });
+
   res.json({ ok: true });
-  resolveApproval({ threadId, approved }).catch((e) =>
-    console.error("Genehmigungsfehler:", e.message),
-  );
+  resolveApproval({
+    threadId,
+    entscheidung: { genehmigt: approved, genehmigender },
+  }).catch((e) => console.error("Genehmigungsfehler:", e.message));
 });
 
 app.get("/api/artifact/:threadId", authMiddleware, (req, res) => {

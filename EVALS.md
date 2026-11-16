@@ -429,5 +429,20 @@ Defekt also nicht gefunden — gefunden hat ihn die **Vertragstreue**. Das ist k
 sondern die Arbeitsteilung aus §3: eine Metrik misst eine Rate, ein Golden-Fall misst ein
 Verhalten. Wer nur auf die Raten schaut, sieht eine offene Aktionsfläche nicht.
 
+**Etappe 4d (ADR-0022): die Etappe, deren Beweis das AUSBLEIBEN einer Bewegung ist.** Sie
+hat die Genehmigung zu einem Entscheidungsobjekt gemacht und den Trace zu einer Hash-Kette —
+zwei Eingriffe mitten in die Kante, an der 3.1 misst. Genau deshalb lautet ihr Tor „3.1 = 100 %
+unverändert": eine Zahl, die sich hier bewegt, wäre ein Defekt und kein Fortschritt. Sie hat
+sich nicht bewegt, und keine andere auch nicht. Zwischen dem Stand vor und nach der Etappe
+unterscheidet sich in beiden Berichten **ein einziges Feld**: `identitaetAdapter` bei
+`beispiel`, von `keiner` auf `fixtures` — die Referenzdomäne brauchte ein Verzeichnis, weil
+ohne aufgelösten Genehmigenden niemand mehr genehmigen kann.
+
+Belegbar bleibt auch das: das Urteil des Ausgabevertrags über einen bearbeiteten Entwurf zu
+ignorieren macht zwei Tests rot, die Verkettungsprüfung zu entfernen zwei weitere. **Keine
+dieser vier Zusagen hängt an einer Metrik** — sie hängen an Fällen. Das ist dieselbe
+Arbeitsteilung wie bei Etappe 5, nur deutlicher: eine Rate misst eine Rate, ein
+Manipulationsversuch ist ein Ereignis.
+
 <!-- Erste Zeile: dein erster eigener Lauf. Trag ihn ein, auch wenn er rot ist —
      besonders dann. Der Übergang von Rot zu Grün ist der Beweis. -->

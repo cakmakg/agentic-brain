@@ -176,7 +176,16 @@ if (interrupted) {
   console.log("   status:", getEntwurf(threadId)?.status);
   console.log("   titel :", getEntwurf(threadId)?.titel);
   console.log("\n▶  Der Mensch GENEHMIGT → ticketdienst läuft...\n");
-  await resolveApproval({ threadId, approved: true });
+  // Der Genehmigende ist dieselbe aufgeloeste Person, die gefragt hat
+  // (ADR-0022). Eine Vorfuehrung darf sich selbst genehmigen, aber sie
+  // darf nicht anonym genehmigen.
+  await resolveApproval({
+    threadId,
+    entscheidung: {
+      genehmigt: true,
+      genehmigender: await alsWer("nachweis-dora"),
+    },
+  });
   console.log("✓ Entwurfsstatus:", getEntwurf(threadId)?.status);
   console.log(
     "✓ Aktions-Queue:",
