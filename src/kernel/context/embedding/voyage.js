@@ -32,11 +32,47 @@ const STAPEL = 128;
 // einem Raum, für den es nicht trainiert wurde.
 const INPUT_TYPE = { dokument: "document", anfrage: "query" };
 
+// ── 429: warten statt abbrechen ─────────────────────────────────────────
+// Ein Konto ohne hinterlegte Zahlungsart hat bei Voyage 3 Anfragen je Minute;
+// ein Lauf braucht rund 480 (gezählt am 2026-11-16). Ohne Warten bricht er
+// nach der dritten ab. NUR 429 wird wiederholt: 401 und 400 werden durch
+// Warten nicht richtiger, und ein Wiederholen verschleierte sie.
+//
+// Die Obergrenze ist Absicht. Ein Lauf, der endlos wartet, sieht aus wie einer,
+// der rechnet; nach MAX_VERSUCHE fällt er mit derselben Meldung wie zuvor.
+const MAX_VERSUCHE = 8;
+const wartezeitMs = (versuch, retryAfter) => {
+  const sekunden = Number(retryAfter);
+  if (Number.isFinite(sekunden) && sekunden > 0) return sekunden * 1000;
+  return Math.min(60_000, 5_000 * 2 ** (versuch - 1));
+};
+const schlafe = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Fragt, und wartet bei 429 — höchstens MAX_VERSUCHE Mal. Liefert die letzte
+// Antwort, gleich welchen Status; die Auswertung bleibt bei `frage`.
+async function holeMitGeduld({ hole, warte }, anfrage) {
+  let antwort = await hole(ENDPUNKT, anfrage);
+  for (
+    let versuch = 1;
+    antwort.status === 429 && versuch < MAX_VERSUCHE;
+    versuch++
+  ) {
+    const ms = wartezeitMs(versuch, antwort.headers?.get?.("retry-after"));
+    console.error(
+      `[voyage] 429 — warte ${Math.round(ms / 1000)} s (Versuch ${versuch + 1}/${MAX_VERSUCHE})`,
+    );
+    await warte(ms);
+    antwort = await hole(ENDPUNKT, anfrage);
+  }
+  return antwort;
+}
+
 // Eine Anfrage an Voyage. Ausserhalb der Fabrik, damit die Fabrik klein
 // bleibt und diese Funktion fuer sich lesbar ist — sie ist der einzige Ort im
 // Repo, der ein fremdes Netz anspricht.
-async function frage({ hole, schluessel, name, breite }, texte, art) {
-  const antwort = await hole(ENDPUNKT, {
+async function frage(zugang, texte, art) {
+  const { schluessel, name, breite } = zugang;
+  const anfrage = {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -48,7 +84,9 @@ async function frage({ hole, schluessel, name, breite }, texte, art) {
       input_type: INPUT_TYPE[art],
       output_dimension: breite,
     }),
-  });
+  };
+
+  const antwort = await holeMitGeduld(zugang, anfrage);
 
   if (!antwort.ok) {
     // Der Statuscode gehört in die Meldung: 401 ist ein falscher Schlüssel,
@@ -87,6 +125,7 @@ export function createVoyageAdapter({
   modell,
   dimensionen,
   fetchImpl,
+  warte = schlafe,
 } = {}) {
   const schluessel = apiKey || env.voyageApiKey;
   if (!schluessel) {
@@ -107,6 +146,7 @@ export function createVoyageAdapter({
     schluessel,
     name,
     breite,
+    warte,
   };
 
   return {

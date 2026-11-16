@@ -173,12 +173,86 @@ test("Voyage: ein Fehlerstatus steht in der Meldung", async () => {
   // grosser Stapel. Ein „Fehler beim Einbetten" ohne Code schickt den
   // Naechsten auf die falsche Faehrte.
   for (const status of [401, 429, 400]) {
-    const { port } = voyage({}, { status });
+    // `warte` leer: 429 wird seit 2026-11-16 wiederholt, der Test soll nicht schlafen.
+    const { port } = voyage({ warte: async () => {} }, { status });
     await assert.rejects(
       () => port.einbetteViele(["a"], "dokument"),
       new RegExp(`Voyage ${status}`),
     );
   }
+});
+
+// ── 429: warten statt abbrechen ──────────────────────────────────────────
+// Ein `fetch`, das der Reihe nach die genannten Status liefert; danach 200.
+function folgeFetch(statusFolge, { retryAfter } = {}) {
+  const ok = fakeFetch();
+  let n = 0;
+  const impl = async (url, optionen) => {
+    const status = statusFolge[n++];
+    if (status === undefined) return ok(url, optionen);
+    return {
+      ok: false,
+      status,
+      statusText: "Nope",
+      headers: { get: (k) => (k === "retry-after" ? retryAfter : null) },
+      text: async () => `{"detail":"zu schnell"}`,
+    };
+  };
+  impl.anzahl = () => n;
+  return impl;
+}
+
+const mitFolge = (statusFolge, optionen) => {
+  const f = folgeFetch(statusFolge, optionen);
+  const gewartet = [];
+  const port = createEmbedding(
+    createVoyageAdapter({
+      apiKey: "test-schluessel",
+      modell: "voyage-4",
+      dimensionen: 4,
+      fetchImpl: f,
+      warte: async (ms) => gewartet.push(ms),
+    }),
+  );
+  return { port, f, gewartet };
+};
+
+test("Voyage: 429 wird abgewartet und wiederholt — der Lauf bricht nicht ab", async () => {
+  const { port, f, gewartet } = mitFolge([429, 429]);
+  const v = await port.einbetteViele(["a"], "dokument");
+  assert.equal(v.length, 1);
+  assert.equal(f.anzahl(), 3, "zwei 429, dann der Treffer");
+  assert.deepEqual(gewartet, [5_000, 10_000], "wachsende Wartezeit");
+});
+
+test("Voyage: Retry-After des Dienstes schlaegt die eigene Wartezeit", async () => {
+  const { port, gewartet } = mitFolge([429], { retryAfter: "21" });
+  await port.einbetteViele(["a"], "dokument");
+  assert.deepEqual(gewartet, [21_000]);
+});
+
+test("Voyage: nach acht Versuchen faellt 429 laut, statt endlos zu warten", async () => {
+  const { port, f, gewartet } = mitFolge(new Array(20).fill(429));
+  await assert.rejects(
+    () => port.einbetteViele(["a"], "dokument"),
+    /Voyage 429/,
+  );
+  assert.equal(f.anzahl(), 8);
+  assert.equal(gewartet.length, 7);
+  assert.ok(
+    gewartet.every((ms) => ms <= 60_000),
+    "Obergrenze 60 s",
+  );
+});
+
+test("Voyage: 401 wird NICHT wiederholt — Warten macht einen Schluessel nicht richtig", async () => {
+  const { port, f, gewartet } = mitFolge([401, 401]);
+  await assert.rejects(
+    () => port.einbetteViele(["a"], "dokument"),
+    /Voyage 401/,
+  );
+  assert.equal(f.anzahl(), 1);
+  assert.equal(gewartet.length, 0);
 });
 
 test("Voyage: eine Antwort ohne data-Liste wird abgelehnt", async () => {
