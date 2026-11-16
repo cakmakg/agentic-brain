@@ -127,7 +127,10 @@ export function createVoyageAdapter({
   fetchImpl,
   warte = schlafe,
 } = {}) {
-  const schluessel = apiKey || env.voyageApiKey;
+  // `??`, nicht `||`: ein ausdrücklich leerer Schlüssel heißt „keiner" und
+  // fällt NICHT auf die Umgebung zurück. Mit `||` bestand der Test „ohne
+  // Schlüssel wirft" nur, solange in der `.env` zufällig keiner stand.
+  const schluessel = apiKey ?? env.voyageApiKey;
   if (!schluessel) {
     throw new Error(
       "createVoyageAdapter: VOYAGE_API_KEY fehlt. Der Adapter rät keinen Schlüssel — " +
