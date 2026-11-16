@@ -165,6 +165,35 @@ Diese drei sind der eigentliche Grund für `checkJs` — ohne Typinformation gib
 `complexity` ≤ 10 · `max-lines-per-function` ≤ 60 · `max-depth` ≤ 4 — alle als **warn** mit
 Baseline. Sie erziehen, sie blockieren nicht.
 
+#### Bekannte Ausnahmen — gemessen am 2026-11-16
+
+Eine Warnung, die bleibt, steht hier mit ihrem **Messwert**. Der Wert ist die Obergrenze:
+wächst er, ist das ein neuer Befund, auch wenn die Zahl der Warnungen gleich bleibt. Genau
+so blieb `createRunner` von 81 auf 105 Zeilen unbemerkt. Sinkt der Wert, wird die Zeile
+nachgezogen; fällt die Warnung weg, fällt die Zeile.
+
+**„Nicht begründet"** heißt: eingefroren, nicht gerechtfertigt. Die Zeile verhindert nur,
+dass der Befund still wächst.
+
+| Ort                                    | Funktion                  | Regel      | Wert     | Warum sie bleibt                                                                                     |
+| -------------------------------------- | ------------------------- | ---------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| `src/kernel/agent/runner.js`           | `createRunner`            | Zeilen     | 105      | Kette der Tore an der Genehmigungskante; zweimal zerlegt, die Reihenfolge ist die Aussage (ADR-0022) |
+| `src/kernel/agent/runner.js`           | `resolveApproval`         | C          | 13       | dieselbe Kette                                                                                       |
+| `src/kernel/agent/runner.js`           | `pruefeBearbeitung`       | C          | 11       | dieselbe Kette                                                                                       |
+| `src/kernel/context/envelope.js`       | `pruefeEnvelope`          | C          | 13       | der Preis einer Regel mehr, benannt in ADR-0012                                                      |
+| `evals/metrics/index.js`               | `berechneMetriken`        | Zeilen     | 146      | bewusst lineare Liste, ein Block je Metrik                                                           |
+| `src/kernel/action/queue.js`           | `createActionQueue`       | Zeilen     | 144      | nicht begründet                                                                                      |
+| `src/kernel/action/queue.js`           | `enqueueAction`           | C          | 13       | nicht begründet                                                                                      |
+| `src/kernel/agent/checkpointer.js`     | `#abspielen`              | Tiefe      | 5        | nicht begründet                                                                                      |
+| `src/kernel/context/store/postgres.js` | `createPostgresAdapter`   | Zeilen     | 83       | nicht begründet                                                                                      |
+| `src/kernel/context/store/memory.js`   | `createMemoryAdapter`     | Zeilen     | 63       | nicht begründet                                                                                      |
+| `evals/runners/policy.js`              | `pruefe`                  | C / Zeilen | 47 / 108 | nicht begründet                                                                                      |
+| `evals/runners/policy.js`              | `laufWorkflowOhneLeseweg` | C / Zeilen | 21 / 96  | nicht begründet                                                                                      |
+| `evals/runners/policy.js`              | `fahreDomaene`            | C / Zeilen | 15 / 105 | nicht begründet                                                                                      |
+
+Nicht in dieser Tabelle: die drei `process.env`-Stellen. Sie sind keine Ausnahme, sondern
+der offene Befund B1, und E0-C schließt sie.
+
 ### Stufe 5 — Sobald der Prüfer existiert
 
 | Regel                                                           | Stufe     | Mechanisiert                                                |

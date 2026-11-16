@@ -43,25 +43,6 @@ sind beide 0 %. Bewegt sich der **Zaehler**, hing eine Berechtigung an der Sorti
 waere der Befund, nicht das Embedding. Bis dahin gilt „der Adapter ist austauschbar" nur
 gegenueber dem breiten Testadapter.
 
-### Thema: Der Lint-Anstieg — drei Warnungen, die eine Entscheidung brauchen
-
-**Status:** 🟡 Nachgemessen am 2026-11-16 nach 4c: **15** Warnungen in `src/ tests/`, unveraendert seit 4d — aber drei bestehende wuchsen (`resolveApproval` 12→13, `createRunner` 81→105 Zeilen, `createActionQueue` 141→144 Zeilen).
-Nach 4c (ADR-0023) zusaetzlich: `evals/` hat 7 Warnungen, 0 Fehler; `laufWorkflowOhneLeseweg`
-Komplexitaet 12 → 21. Die Zahl blieb gleich, die Befunde wurden groesser — eine Zahl allein
-haette das verdeckt.
-Neu seit ADR-0022: `pruefeBearbeitung` Komplexitaet 11, `resolveApproval` Komplexitaet 12,
-`createRunner` 81 Zeilen — die Kette der Tore an der Genehmigungskante. Zweimal refaktoriert
-(eigene Funktion, dann auf Modulebene gehoben); weiter zu zerschneiden hiesse die REIHENFOLGE
-der Tore zu zerlegen, und die ist dort die Aussage.
-
-`darfSehen` Komplexitaet 11 und `pruefeEnvelope` Komplexitaet 13 sind der Preis, den ADR-0012
-in seinem eigenen Konsequenzen-Abschnitt benennt: eine Regel mehr. Die geordnete Regelliste in
-`darfSehen` zu zerschneiden waere schlechter als die Warnung — die Reihenfolge IST dort die
-Aussage. `berechneMetriken` mit 104 Zeilen ist eine Metrik mehr in einer bewusst linearen
-Liste. Zu entscheiden ist nicht, ob refaktoriert wird, sondern ob die drei Schwellen fuer
-diese Dateien angehoben oder die Befunde als bekannte Ausnahme notiert werden — beides
-gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
-
 ### Thema: Nach dem MVP — was ohne Schluessel messbar ist, und was nicht
 
 **Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). E0-B, der `qs`-Patch und die 4a-Messung (🟡, Tore gegen Fixtures erfuellt) am 2026-11-16. Ohne Schluessel ist nichts Grosses mehr offen. Voyage, Schicht B und echte Quelle haengen ALLE an einem Schluessel oder Zugang.
@@ -105,6 +86,29 @@ konkreter Befund: `TICKET_ZUWEISEN` war scharf, von keinem Fall geuebt und konnt
 gelingen. **Eine erledigte Zusage lohnt sich nachzurechnen**, nicht nur abzuhaken.
 
 ## Abgeschlossene Themen
+
+### Thema: Der Lint-Anstieg — drei Warnungen, die eine Entscheidung brauchen
+
+**Status:** 🟢 Abgeschlossen am 2026-11-16 — als bekannte Ausnahme notiert, Schwellen NICHT angehoben. Tabelle mit Messwert je Funktion in `docs/engineering-discipline.md` §4 Stufe 4; der Wert ist die Obergrenze. Offen als eigener Schritt: die mechanische Pruefung gegen diese Werte (Skript + CI).
+Nach 4c (ADR-0023) zusaetzlich: `evals/` hat 7 Warnungen, 0 Fehler; `laufWorkflowOhneLeseweg`
+Komplexitaet 12 → 21. Die Zahl blieb gleich, die Befunde wurden groesser — eine Zahl allein
+haette das verdeckt.
+Neu seit ADR-0022: `pruefeBearbeitung` Komplexitaet 11, `resolveApproval` Komplexitaet 12,
+`createRunner` 81 Zeilen — die Kette der Tore an der Genehmigungskante. Zweimal refaktoriert
+(eigene Funktion, dann auf Modulebene gehoben); weiter zu zerschneiden hiesse die REIHENFOLGE
+der Tore zu zerlegen, und die ist dort die Aussage.
+
+`darfSehen` Komplexitaet 11 und `pruefeEnvelope` Komplexitaet 13 sind der Preis, den ADR-0012
+in seinem eigenen Konsequenzen-Abschnitt benennt: eine Regel mehr. Die geordnete Regelliste in
+`darfSehen` zu zerschneiden waere schlechter als die Warnung — die Reihenfolge IST dort die
+Aussage. `berechneMetriken` mit 104 Zeilen ist eine Metrik mehr in einer bewusst linearen
+Liste. Zu entscheiden ist nicht, ob refaktoriert wird, sondern ob die drei Schwellen fuer
+diese Dateien angehoben oder die Befunde als bekannte Ausnahme notiert werden — beides
+gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
+
+**Beim Abschluss gemessen:** 19 Warnungen (3 ungenutzte Importe in `tests/schichtB.test.js` getilgt).
+`berechneMetriken` steht bei **146** Zeilen, nicht 104 — 42 Zeilen ungemeldet gewachsen, genau
+der Fall, den die Tabelle kuenftig sichtbar macht. `darfSehen` warnt nicht mehr.
 
 ### Thema: Ein Dateiname je Tag — drei Laeufe teilen sich inzwischen einen Bericht
 

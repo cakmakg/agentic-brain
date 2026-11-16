@@ -130,10 +130,12 @@ Diese Liste ist absichtlich sichtbar. Eine verschwiegene Grenze wird zu einem Au
   `resolveApproval` erzeugte Events können erneut gepuffert werden. Kleines Leck.
 - **Der Action-Worker simuliert.** Der echte externe Aufruf steht als Kommentar in
   `action/queue.js`. Wer ihn einsetzt, erbt die Idempotenz — und muss die Ausgabengrenze prüfen.
-- **Zwei Stellen sind zu groß geraten.** `createActionQueue` in `src/kernel/action/queue.js`
-  umfasst 144 Zeilen (gemessen am 2026-11-16), und `src/kernel/agent/checkpointer.js` verschachtelt an einer Stelle
-  fünf Ebenen tief. Beide sind als ESLint-Warnung sichtbar und bleiben es, bis der
-  Lint-Rollout sie einzeln aufgreift — nicht nebenbei bei einer anderen Änderung.
+- **Dreizehn Funktionen sind zu groß geraten.** Darunter `createActionQueue` in
+  `src/kernel/action/queue.js` (144 Zeilen) und `#abspielen` in
+  `src/kernel/agent/checkpointer.js` (fünf Ebenen tief). Jede steht mit ihrem Messwert vom
+  2026-11-16 in `docs/engineering-discipline.md` §4, „Bekannte Ausnahmen" — der Wert ist
+  die Obergrenze, Wachstum ist ein neuer Befund. Acht davon sind nicht begründet, nur
+  eingefroren. Zerlegt wird jede einzeln, nicht nebenbei bei einer anderen Änderung.
 - **`npm audit` meldet keinen Befund.** Der Abhängigkeitsrückstand ist eingelöst: seit
   Etappe 0c läuft `@langchain/langgraph` 1.4.14 und `npm audit` meldet `high: 0` (ADR-0003).
   Die zwei mittleren Befunde in `qs` schloss am 2026-11-16 ein Patch auf `express` 4.22.3, das
