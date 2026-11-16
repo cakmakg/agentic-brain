@@ -64,7 +64,7 @@ gehoert nach `docs/engineering-discipline.md`, nicht in eine stille Anpassung.
 
 ### Thema: Nach dem MVP — was ohne Schluessel messbar ist, und was nicht
 
-**Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). E0-B und der `qs`-Patch am 2026-11-16 gefahren. Offen ohne Schluessel: der ehrliche Stand von **4a**. Voyage, Schicht B und echte Quelle haengen ALLE an einem Schluessel oder Zugang.
+**Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). E0-B, der `qs`-Patch und die 4a-Messung (🟡, Tore gegen Fixtures erfuellt) am 2026-11-16. Ohne Schluessel ist nichts Grosses mehr offen. Voyage, Schicht B und echte Quelle haengen ALLE an einem Schluessel oder Zugang.
 
 **Was blockiert ist und woran:** der **Voyage-Lauf** an `VOYAGE_API_KEY`; die **erste
 Schicht-B-Messung** an `ANTHROPIC_API_KEY` plus einer Ausgabengrenze (und die Domaene muss
@@ -90,8 +90,9 @@ ehrlich vorziehen.
   `error`, CI-Schritt. Kerntor unveraendert (303/296/0/7, evals gruen, Demos Exit 0), `src/` unberuehrt.
 - ~~**express 4 → 5**~~ — 🟢 am 2026-11-16 entfallen: `express` 4.22.3 schloss die `qs`-Befunde
   ohne Major-Sprung (siehe Abgeschlossene Themen).
-- **4a ehrlich messen** — gibt es die Fixture-Tore (unaufloesbarer Principal → leeres Ergebnis,
-  kein LLM-Aufruf)? Danach die Roadmap-Zeile so schreiben, wie es gemessen ist.
+- ~~**4a ehrlich messen**~~ — 🟡 am 2026-11-16 in `docs/roadmap.md` eingetragen: alle drei Tore
+  gegen `fixtures` erfuellt und per Gegenprobe rot gesehen; die Etappe bleibt offen, bis ein
+  echter Identitaetsanbieter da ist (ADR-0018, Etappe 7/11).
 
 **Was aus 4b als Lehre bleibt:** der Lauf gegen den ZWEITEN Adapter fand einen Defekt, den kein
 Test gesucht hatte — eine Befugnispruefung mit leerer Zielkennung fiel still in die

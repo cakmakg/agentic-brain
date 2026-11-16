@@ -552,6 +552,16 @@ jeder Principal eine Behauptung.
 > (fail-closed vor den Kosten) · Test — ein abgelaufener Identitätseintrag wird neu aufgelöst,
 > nicht weiterverwendet · 3.13 unverändert.
 
+> **🟡 Tore erfüllt, Etappe nicht (gemessen am 2026-11-16, ADR-0018).** Belegt gegen den
+> Adapter `fixtures`: Test — nicht auflösbarer Principal → leer, mit Grund, **0 LLM-Aufrufe**
+> (`tests/naht.test.js`, Extrahierer und Kanal) · Test — ein abgelaufener Eintrag wird neu
+> aufgelöst (`tests/identitaet.test.js`, `verzeichnisAufrufe` 2 statt 1) · 3.13 = 0 %
+> (`besprechung` 0/52, `beispiel` 0/10, Zähler unverändert). Gegenprobe: Wächter in
+> `extrahierer.js` ausgeschaltet → 4 Tests rot; Fristvergleich in `identitaet/index.js`
+> ausgeschaltet → 1 Test rot. **Offen:** die Auflösung gegen einen echten Identitätsanbieter
+> (SSO/OIDC) — nach ADR-0018 bewusst nicht gebaut, solange es keinen Dienst gibt, gegen den
+> der Adapter laufen kann (Etappe 7, 11); `/api/run` löst nicht auf.
+
 **4b — Handlungsbefugnis je Principal (A11).** Die Aktion trägt den Principal, in dessen
 Namen sie läuft. Die Queue prüft **vor dem Schreiben** gegen eine Politik der Domäne, ob dieser
 Principal diesen Aktionstyp an diesem Ziel auslösen darf. Fehlt die Befugnis oder lässt sie sich
