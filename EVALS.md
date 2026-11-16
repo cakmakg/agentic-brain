@@ -336,7 +336,17 @@ Ausgeben greift, ist keine.
 
 ## 6. Berichte
 
-Je Lauf und Domäne eine Datei: `evals/reports/JJJJ-MM-TT-schicht-a-<domäne>.json`.
+Je Lauf und Domäne eine Datei:
+`evals/reports/JJJJ-MM-TT-schicht-a-<domäne>-<store>-<embedding>-<stand>.json`.
+
+`<stand>` ist der Kurz-Hash des gemessenen Commits, mit `-dirty`, wenn verfolgte Dateien
+uncommittete Änderungen tragen, und `ohne-git` ohne Repo (seit 2026-11-16,
+`evals/runners/berichtsname.js`). Er steht auch im Feld `stand` des Berichts. Zwei Läufe
+gegen verschiedenen Code bekommen damit zwei Dateien; ein Lauf gegen denselben Code
+überschreibt den vorigen, und das ist harmlos, weil Schicht A deterministisch ist. **Daraus
+folgt die Reihenfolge für einen Beleg: erst committen, dann messen.** Ein Bericht mit
+`-dirty` im Namen ist ein Versuch, kein Beleg. Ältere Berichte tragen den Namen ohne
+`<stand>` und behalten ihn.
 
 Jeder Bericht nennt die **Adapter**, gegen die gemessen wurde: `storeAdapter`,
 `embeddingAdapter` und — seit T2 (ADR-0018) — `identitaetAdapter`. Ohne diese Zeilen wäre ein
@@ -374,6 +384,10 @@ Guardrail-Blockierschwelle auf die Summe aller Gewichte setzen.
 > Berichtsdateien liegen im Commit `862c6ac`. Dieselbe Grenze wie am 2026-09-10; sie ist
 > nicht heilbar, nur benennbar. **Sie wird mit jeder Etappe teurer**, weil sie inzwischen
 > dreimal an einem Tag zugeschlagen hat — als offenes Thema notiert.
+>
+> **Seit 2026-11-16 geschlossen — für künftige Läufe.** Der Dateiname trägt den Code-Stand
+> (§6). Die überschriebenen Zwischenstände vom 2026-09-10 und 2026-09-20 bleiben verloren;
+> rückwirkend heilt der neue Name nichts.
 
 | Datum      | Domäne        | Bericht                                               | 3.1   | 3.2 | 3.3   | 3.4   | 3.13       | 3.14          | 3.16       | 3.15        | Vertragstreue |
 | ---------- | ------------- | ----------------------------------------------------- | ----- | --- | ----- | ----- | ---------- | ------------- | ---------- | ----------- | ------------- |

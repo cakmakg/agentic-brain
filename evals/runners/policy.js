@@ -22,6 +22,8 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 
+import { berichtsName, codeStand } from "./berichtsname.js";
+
 const hier = path.dirname(fileURLToPath(import.meta.url));
 const evalsDir = path.resolve(hier, "..");
 const wurzel = path.resolve(evalsDir, "..");
@@ -744,6 +746,9 @@ async function fahreDomaene(adapter) {
 
   const bericht = {
     erzeugt: new Date().toISOString(),
+    // Gegen welchen Code gemessen wurde. Steht auch im Dateinamen; hier, damit
+    // ein umbenannter Bericht seinen Stand nicht verliert.
+    stand: codeStand(),
     schicht: "A",
     modus: "mock",
     domaene: adapter.name,
@@ -779,8 +784,16 @@ async function fahreDomaene(adapter) {
     berichtDir,
     // Der Adaptername steht im Dateinamen, sonst überschriebe der
     // Postgres-Lauf den Beleg des memory-Laufs — und übrig bliebe genau der
-    // Vergleich nicht mehr, um den es in dieser Etappe geht.
-    `${bericht.erzeugt.slice(0, 10)}-schicht-a-${adapter.name}-${STORE_ADAPTER}-${EMBEDDING_ADAPTER}.json`,
+    // Vergleich nicht mehr, um den es in dieser Etappe geht. Der Code-Stand
+    // ebenso, sonst überschriebe der zweite Lauf eines Tages den ersten
+    // (berichtsname.js).
+    berichtsName({
+      erzeugt: bericht.erzeugt,
+      domaene: adapter.name,
+      store: STORE_ADAPTER,
+      embedding: EMBEDDING_ADAPTER,
+      stand: bericht.stand,
+    }),
   );
   fs.writeFileSync(datei, JSON.stringify(bericht, null, 2) + "\n");
 

@@ -104,9 +104,11 @@ unerledigte Haelfte war das Eigentliche. Aus der Frage „ist A4 nicht schon da?
 konkreter Befund: `TICKET_ZUWEISEN` war scharf, von keinem Fall geuebt und konnte gar nicht
 gelingen. **Eine erledigte Zusage lohnt sich nachzurechnen**, nicht nur abzuhaken.
 
+## Abgeschlossene Themen
+
 ### Thema: Ein Dateiname je Tag — drei Laeufe teilen sich inzwischen einen Bericht
 
-**Status:** 🟠 Neu am 2026-09-20. Am selben UTC-Tag liefen T1–T3, Etappe 4b und Etappe 5; jeder Lauf ueberschrieb den Bericht des vorigen, denn der Dateiname traegt nur das Datum.
+**Status:** 🟢 Abgeschlossen am 2026-11-16. Der Name traegt den Code-Stand (`<hash>`, `<hash>-dirty`, `ohne-git`; `evals/runners/berichtsname.js`, 4 Tests, Gegenprobe rot). Folge: erst committen, dann messen. Die alten Zwischenstaende bleiben verloren.
 
 Der Name entsteht in `evals/runners/policy.js` aus `bericht.erzeugt.slice(0, 10)` plus
 Store- und Embedding-Adapter. Zwei Etappen an einem Tag kollidieren also zwangslaeufig. Bisher
@@ -118,8 +120,6 @@ Zu entscheiden ist, **was in den Namen gehoert** — die Uhrzeit (mechanisch, ab
 eine Etappenmarke (lesbar, aber von Hand gesetzt und damit faelschbar). Nicht nebenbei: der
 Name ist in `EVALS.md`, `DECISIONS.md` und `projekt-doktor` §13 zitiert. Eigene Aenderung,
 eigenes Tor — genau deshalb steht es hier und nicht in Etappe 5.
-
-## Abgeschlossene Themen
 
 ### Thema: `express` 4 → 5 — die zwei `qs`-Befunde
 

@@ -39,8 +39,10 @@ evals/reports/*
 !evals/reports/.gitkeep
 # Diese beiden trägt PRODUCT.md §6 als Beleg — ein Dokument, das sich auf einen
 # Bericht beruft, den es im Repo nicht gibt, hat keine Belege, sondern Zahlen.
-# Den Namen baut evals/runners/policy.js:567 zusammen:
-#   <datum>-schicht-a-<domäne>-<STORE_ADAPTER>-<EMBEDDING_ADAPTER>.json
+# Den Namen baut evals/runners/berichtsname.js zusammen, seit 2026-11-16 mit
+# dem Code-Stand am Ende (Kurz-Hash, `-dirty` bei uncommitteten Änderungen):
+#   <datum>-schicht-a-<domäne>-<STORE_ADAPTER>-<EMBEDDING_ADAPTER>-<stand>.json
+# Ältere Berichte tragen den Namen ohne <stand>; sie behalten ihn.
 # Bis 2026-09-16 stand hier dreimal ein Name OHNE Adaptersuffix. Keiner traf eine
 # Datei, git check-ignore meldete IGNORIERT — zu keiner Zahl aus §6 lag ein Beleg
 # im Repo. Eine Ausnahme, die danebengreift, bricht nichts und ist deshalb blind.

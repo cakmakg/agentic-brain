@@ -180,7 +180,7 @@ schreiben, den Befehl fahren, die Zeile wieder entfernen.
 
 ```bash
 git ls-files evals/reports/ | grep '\.json$' || echo "KEIN BERICHT IM REPO"
-grep -rhoE "[0-9]{4}-[0-9]{2}-[0-9]{2}-schicht-a-[a-z-]+\.json" *.md docs/*.md 2>/dev/null | sort -u | while read -r b; do git ls-files --error-unmatch "evals/reports/$b" >/dev/null 2>&1 && echo "ok   $b" || echo "TOT  $b"; done
+grep -rhoE "[0-9]{4}-[0-9]{2}-[0-9]{2}-schicht-a-[a-z0-9-]+\.json" *.md docs/*.md 2>/dev/null | sort -u | while read -r b; do git ls-files --error-unmatch "evals/reports/$b" >/dev/null 2>&1 && echo "ok   $b" || echo "TOT  $b"; done
 grep -nE "[0-9]+([,.][0-9]+)? ?%" README.md PRODUCT.md EVALS.md ARCHITECTURE.md 2>/dev/null | head -20
 ```
 
