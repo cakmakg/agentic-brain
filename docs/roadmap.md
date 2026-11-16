@@ -12,7 +12,12 @@
 >
 > **Die Sofortmaßnahme (§5) ist am 2026-09-14 gefallen.** Der HTTP-Adapter wandelte
 > `"approved": "false"` in eine Genehmigung um; jetzt ist nur ein JSON-Boolean `true` eine
-> Genehmigung, jeder Nicht-Boolean endet mit 400. Als Nächstes Etappe 4a.
+> Genehmigung, jeder Nicht-Boolean endet mit 400.
+>
+> **Stand 2026-11-16.** Seither gefahren: 4b (ADR-0020), Etappe 5 (ADR-0021), 4d (ADR-0022) und
+> 4c (ADR-0023). 4a steht auf 🟡: seine Tore sind gegen Fixtures erfüllt, ein echter
+> Identitätsanbieter fehlt. Was jetzt noch offen ist, hängt an einem Schlüssel oder Zugang —
+> der Voyage-Lauf, die erste Schicht-B-Messung, die erste echte Quelle (Etappe 7).
 >
 > **Diese Fassung löst die vom 2026-09-08 ab und erweitert die vom 2026-09-10.** Die
 > Etappenreihenfolge hat sich damals sachlich geändert, nicht nur die Nummerierung. Am
@@ -562,7 +567,7 @@ jeder Principal eine Behauptung.
 > (SSO/OIDC) — nach ADR-0018 bewusst nicht gebaut, solange es keinen Dienst gibt, gegen den
 > der Adapter laufen kann (Etappe 7, 11); `/api/run` löst nicht auf.
 
-**4b — Handlungsbefugnis je Principal (A11).** Die Aktion trägt den Principal, in dessen
+**4b — Handlungsbefugnis je Principal (A11).** 🟢 **Erledigt am 2026-09-20 (ADR-0020).** Die Aktion trägt den Principal, in dessen
 Namen sie läuft. Die Queue prüft **vor dem Schreiben** gegen eine Politik der Domäne, ob dieser
 Principal diesen Aktionstyp an diesem Ziel auslösen darf. Fehlt die Befugnis oder lässt sie sich
 nicht auflösen, wird die Aktion abgelehnt und nicht eingereiht. 4b braucht 4a nicht zwingend:
@@ -582,6 +587,13 @@ Neue Metrik in `EVALS.md`:
 > **Tor:** `npm run evals` → **3.16 = 0 %** · Test — eine Aktion ohne Befugnis wird vor dem
 > Schreiben abgelehnt, auch wenn sie einen bekannten Idempotenzschlüssel mitbringt · 3.2 und
 > 3.13 unverändert.
+
+> **Belegt (nachgemessen am 2026-11-16):** `npm run evals` → 3.16 = 0 % (0/2) bei
+> `besprechung`, 3.2 = 0 % (0/2), 3.13 = 0 % (0/52). Der Pflichtfall ist kein Unit-Test, sondern
+> der Golden-Fall **BF-1**: zeichengleiches Payload wie AI-3, also derselbe
+> Idempotenzschlüssel, aber ein Principal ohne Befugnis — abgelehnt mit `befugnis`.
+> Gegenprobe: TOR 1b in `action/queue.js` ausgeschaltet → 3.16 = 2/4 🔴, Exit 1, danach
+> zurückgesetzt.
 
 **4c — Policy, Risikoklasse, Genehmigungs-Timeout.** 🟢 **Erledigt am 2026-11-16
 (ADR-0023).** Belegt: `npm test` **296/303** (7 übersprungen ohne `DATABASE_URL`; vorher
