@@ -33,7 +33,7 @@ Zur Zahl 15 siehe das eigene Thema zum Lint-Anstieg.
 
 ### Thema: Nach dem MVP — was ohne Schluessel messbar ist, und was nicht
 
-**Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). E0-B, der `qs`-Patch und die 4a-Messung (🟡, Tore gegen Fixtures erfuellt) am 2026-11-16. Ohne Schluessel ist nichts Grosses mehr offen. Voyage am 2026-11-17 gemessen (3d 🟢). Schicht B am 2026-11-17 gebaut und als RAUCHTEST gefahren (ADR-0024, Haiku 4.5, 0,006 USD): 5/5 leere Listen, richtig — die ACL-Notizen haben keine Handlung; Extraktion noch NICHT gemessen, Notizen mit Handlungen folgen. Echte Quelle haengt an Drive-Zugang. Offen dazu: ein Schluessel in `.env` schaltet den ganzen Prozess aus dem Mock — Schalter trennen.
+**Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). E0-B, der `qs`-Patch und die 4a-Messung (🟡, Tore gegen Fixtures erfuellt) am 2026-11-16. Ohne Schluessel ist nichts Grosses mehr offen. Voyage am 2026-11-17 gemessen (3d 🟢). Schicht B am 2026-11-17 gebaut und gefahren (ADR-0024, Haiku 4.5): Rauchtest 5/5 leer (richtig), dann sechs eigene Faelle — Verantwortliche 4/6; bei „niemand zustaendig" schreibt das Modell `<UNKNOWN>`, und der Vertrag laesst es durch. OFFEN: Produktentscheidung, ob ein Punkt ohne Verantwortliche als unbesetztes Ticket durchgeht oder vor dem Menschen abgelehnt wird; danach Prompt + Vertrag. Echte Quelle haengt an Drive-Zugang. Offen dazu: ein Schluessel in `.env` schaltet den ganzen Prozess aus dem Mock — Schalter trennen.
 
 **Was blockiert ist und woran:** der **Voyage-Lauf** an `VOYAGE_API_KEY`; die **erste
 Schicht-B-Messung** an `ANTHROPIC_API_KEY` plus einer Ausgabengrenze (und die Domaene muss

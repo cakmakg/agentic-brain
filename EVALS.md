@@ -347,6 +347,10 @@ Ausgeben greift, ist keine.
 > **Seit dem Nachtrag zu ADR-0024** sechs eigene Fälle mit Erwartung (`golden/schichtB.json`)
 > und je Fall: Verantwortliche wie erwartet, Namen belegt (vor und nach der Revision), leere
 > Verantwortliche.
+>
+> **Zweiter Lauf, 2026-11-17** (0,008 USD): 3.8 = 100 %, Verantwortliche wie erwartet **4/6**.
+> Die zwei Abweichungen: `"<UNKNOWN>"` statt `unbesetzt` — kein erfundener Mensch, aber ein
+> Platzhalter, den der Vertrag durchlässt. Befund im Prompt und im Vertrag (ADR-0024).
 
 ---
 

@@ -1,0 +1,293 @@
+{
+  "erzeugt": "2026-11-17T16:00:28.177Z",
+  "stand": "da28128",
+  "schicht": "B",
+  "domaene": "besprechung",
+  "modell": "claude-haiku-4-5",
+  "anfrage": {
+    "effort": "nicht gesetzt",
+    "thinking": "nicht gesetzt"
+  },
+  "faelle": 6,
+  "maxVersuche": 5,
+  "maxUsd": 0.5,
+  "kostenUsd": 0.008446,
+  "abgebrochen": null,
+  "metriken": {
+    "3.8": {
+      "name": "Vertragskonformität (erster Versuch)",
+      "zaehler": 6,
+      "nenner": 6,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "nachRevision": {
+      "name": "Konform nach der Revisionsschleife",
+      "zaehler": 6,
+      "nenner": 6,
+      "wert": 1,
+      "erfuellt": null
+    },
+    "versucheMedian": 1,
+    "verletzungen": [],
+    "leereListen": {
+      "zaehler": 2,
+      "nenner": 6
+    },
+    "verantwortlicheRichtig": {
+      "zaehler": 4,
+      "nenner": 6
+    },
+    "belegtErsterVersuch": {
+      "zaehler": 4,
+      "nenner": 6
+    },
+    "belegtAmEnde": {
+      "zaehler": 4,
+      "nenner": 6
+    },
+    "leereVerantwortliche": 0
+  },
+  "fehler": [],
+  "entwuerfe": [
+    {
+      "id": "b-klar",
+      "variante": "standard",
+      "text": {
+        "aktionspunkte": [
+          {
+            "text": "Release-Notes schreiben bis Freitag",
+            "verantwortlich": "Mia"
+          },
+          {
+            "text": "Migrationsskripte gegen die Staging-Datenbank prüfen am Montag",
+            "verantwortlich": "Tom"
+          }
+        ],
+        "notizId": "b-klar"
+      },
+      "textErsterVersuch": {
+        "aktionspunkte": [
+          {
+            "text": "Release-Notes schreiben bis Freitag",
+            "verantwortlich": "Mia"
+          },
+          {
+            "text": "Migrationsskripte gegen die Staging-Datenbank prüfen am Montag",
+            "verantwortlich": "Tom"
+          }
+        ],
+        "notizId": "b-klar"
+      },
+      "versuche": 1,
+      "konformImErstenVersuch": true,
+      "konformAmEnde": true,
+      "gruendeErsterVersuch": "Ausgabevertrag erfuellt.",
+      "fehler": null,
+      "bewertungErsterVersuch": {
+        "verantwortlicheRichtig": true,
+        "belegt": true,
+        "ungedeckt": [],
+        "leereVerantwortliche": 0
+      },
+      "bewertungAmEnde": {
+        "verantwortlicheRichtig": true,
+        "belegt": true,
+        "ungedeckt": [],
+        "leereVerantwortliche": 0
+      }
+    },
+    {
+      "id": "b-einer",
+      "variante": "standard",
+      "text": {
+        "aktionspunkte": [
+          {
+            "text": "Demo für Donnerstag vorbereiten",
+            "verantwortlich": "Lena"
+          }
+        ],
+        "notizId": "b-einer"
+      },
+      "textErsterVersuch": {
+        "aktionspunkte": [
+          {
+            "text": "Demo für Donnerstag vorbereiten",
+            "verantwortlich": "Lena"
+          }
+        ],
+        "notizId": "b-einer"
+      },
+      "versuche": 1,
+      "konformImErstenVersuch": true,
+      "konformAmEnde": true,
+      "gruendeErsterVersuch": "Ausgabevertrag erfuellt.",
+      "fehler": null,
+      "bewertungErsterVersuch": {
+        "verantwortlicheRichtig": true,
+        "belegt": true,
+        "ungedeckt": [],
+        "leereVerantwortliche": 0
+      },
+      "bewertungAmEnde": {
+        "verantwortlicheRichtig": true,
+        "belegt": true,
+        "ungedeckt": [],
+        "leereVerantwortliche": 0
+      }
+    },
+    {
+      "id": "b-niemand",
+      "variante": "standard",
+      "text": {
+        "aktionspunkte": [
+          {
+            "text": "Dokumentation der API-Fehlercodes überarbeiten",
+            "verantwortlich": "<UNKNOWN>"
+          }
+        ],
+        "notizId": "b-niemand"
+      },
+      "textErsterVersuch": {
+        "aktionspunkte": [
+          {
+            "text": "Dokumentation der API-Fehlercodes überarbeiten",
+            "verantwortlich": "<UNKNOWN>"
+          }
+        ],
+        "notizId": "b-niemand"
+      },
+      "versuche": 1,
+      "konformImErstenVersuch": true,
+      "konformAmEnde": true,
+      "gruendeErsterVersuch": "Ausgabevertrag erfuellt.",
+      "fehler": null,
+      "bewertungErsterVersuch": {
+        "verantwortlicheRichtig": false,
+        "belegt": false,
+        "ungedeckt": [
+          "<UNKNOWN>"
+        ],
+        "leereVerantwortliche": 0
+      },
+      "bewertungAmEnde": {
+        "verantwortlicheRichtig": false,
+        "belegt": false,
+        "ungedeckt": [
+          "<UNKNOWN>"
+        ],
+        "leereVerantwortliche": 0
+      }
+    },
+    {
+      "id": "b-erledigt",
+      "variante": "standard",
+      "text": {
+        "aktionspunkte": [],
+        "notizId": "b-erledigt"
+      },
+      "textErsterVersuch": {
+        "aktionspunkte": [],
+        "notizId": "b-erledigt"
+      },
+      "versuche": 1,
+      "konformImErstenVersuch": true,
+      "konformAmEnde": true,
+      "gruendeErsterVersuch": "Ausgabevertrag erfuellt.",
+      "fehler": null,
+      "bewertungErsterVersuch": {
+        "verantwortlicheRichtig": true,
+        "belegt": true,
+        "ungedeckt": [],
+        "leereVerantwortliche": 0
+      },
+      "bewertungAmEnde": {
+        "verantwortlicheRichtig": true,
+        "belegt": true,
+        "ungedeckt": [],
+        "leereVerantwortliche": 0
+      }
+    },
+    {
+      "id": "b-beschluss",
+      "variante": "standard",
+      "text": {
+        "aktionspunkte": [],
+        "notizId": "b-beschluss"
+      },
+      "textErsterVersuch": {
+        "aktionspunkte": [],
+        "notizId": "b-beschluss"
+      },
+      "versuche": 1,
+      "konformImErstenVersuch": true,
+      "konformAmEnde": true,
+      "gruendeErsterVersuch": "Ausgabevertrag erfuellt.",
+      "fehler": null,
+      "bewertungErsterVersuch": {
+        "verantwortlicheRichtig": true,
+        "belegt": true,
+        "ungedeckt": [],
+        "leereVerantwortliche": 0
+      },
+      "bewertungAmEnde": {
+        "verantwortlicheRichtig": true,
+        "belegt": true,
+        "ungedeckt": [],
+        "leereVerantwortliche": 0
+      }
+    },
+    {
+      "id": "b-gemischt",
+      "variante": "standard",
+      "text": {
+        "aktionspunkte": [
+          {
+            "text": "Lizenzkosten mit dem Einkauf klären",
+            "verantwortlich": "Ayse"
+          },
+          {
+            "text": "Onboarding-Handbuch bis Januar aktualisieren",
+            "verantwortlich": "<UNKNOWN>"
+          }
+        ],
+        "notizId": "b-gemischt"
+      },
+      "textErsterVersuch": {
+        "aktionspunkte": [
+          {
+            "text": "Lizenzkosten mit dem Einkauf klären",
+            "verantwortlich": "Ayse"
+          },
+          {
+            "text": "Onboarding-Handbuch bis Januar aktualisieren",
+            "verantwortlich": "<UNKNOWN>"
+          }
+        ],
+        "notizId": "b-gemischt"
+      },
+      "versuche": 1,
+      "konformImErstenVersuch": true,
+      "konformAmEnde": true,
+      "gruendeErsterVersuch": "Ausgabevertrag erfuellt.",
+      "fehler": null,
+      "bewertungErsterVersuch": {
+        "verantwortlicheRichtig": false,
+        "belegt": false,
+        "ungedeckt": [
+          "<UNKNOWN>"
+        ],
+        "leereVerantwortliche": 0
+      },
+      "bewertungAmEnde": {
+        "verantwortlicheRichtig": false,
+        "belegt": false,
+        "ungedeckt": [
+          "<UNKNOWN>"
+        ],
+        "leereVerantwortliche": 0
+      }
+    }
+  ]
+}

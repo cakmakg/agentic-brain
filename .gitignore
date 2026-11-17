@@ -69,6 +69,8 @@ evals/reports/*
 !evals/reports/2026-11-17-schicht-a-besprechung-memory-voyage-8e7bad1.json
 # Der erste Schicht-B-Lauf (ADR-0024): ein Rauchtest gegen ein echtes Modell.
 !evals/reports/2026-11-17-schicht-b-besprechung-claude-haiku-4-5-a54710a.json
+# Der zweite: sechs eigene Faelle mit Erwartung (ADR-0024, Nachtrag).
+!evals/reports/2026-11-17-schicht-b-besprechung-claude-haiku-4-5-da28128.json
 
 # Dauerhafter Zustand: Checkpoints, Artefakte, Aktionsqueue. Laufzeitdaten eines
 # konkreten Rechners — im Repo hätten sie nichts zu suchen. Der Ort ist über

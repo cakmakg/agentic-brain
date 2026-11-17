@@ -2521,3 +2521,16 @@ Bei `b-niemand` und `b-gemischt` ist die ehrliche Antwort also nicht konform, un
 Revisionsschleife fordert eine Person — die in der Notiz nicht steht. „Namen belegt (nach
 Revision)" misst, ob die Schleife das Modell zum Erfinden drängt. Prompt und Vertrag werden
 **nicht vorher** geändert: erst messen, dann aus dem Befund ändern.
+
+**Zweiter Lauf, 2026-11-17** (`da28128`, Bericht
+`2026-11-17-schicht-b-besprechung-claude-haiku-4-5-da28128.json`, 0,008446 USD): 3.8 = 100 %
+(6/6), Versuche-Median 1, leere Listen 2/6 (genau die zwei erwarteten), **Verantwortliche wie
+erwartet 4/6**. Die zwei Abweichungen sind dieselbe: bei `b-niemand` und `b-gemischt` schreibt
+das Modell **`"<UNKNOWN>"`** statt `unbesetzt`. Es erfindet keinen Menschen — „Namen belegt
+4/6" zählt den Platzhalter mit, weil er nicht in der Notiz steht; ein erfundener Name ist es
+nicht. **Der Befund liegt im System, nicht im Modell:** der Prompt nennt `unbesetzt` nicht, und
+der Vertrag lehnt nur dieses eine Wort ab — `"<UNKNOWN>"` besteht ihn wie `""`. Im Betrieb würde
+daraus ein Ticket mit dem Verantwortlichen `<UNKNOWN>`. Weil jeder Fall im ersten Versuch
+konform war, lief die Revisionsschleife nie; ob sie zum Erfinden drängt, ist weiter
+**ungemessen**. Offen und der Nutzerin/dem Nutzer vorgelegt: soll ein Punkt ohne
+Verantwortliche als unbesetztes Ticket durchgehen oder vor dem Menschen abgelehnt werden?
