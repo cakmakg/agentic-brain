@@ -7,8 +7,8 @@
 > **Was heute davon steht.** Stand 2026-09-13, nach Etappe 3d: **alle sechs Ebenen sind
 > belegt und gemessen.** Motor 1 (Kontext, Retrieval, Connectoren) war am 2026-09-09 noch
 > leer und ist es nicht mehr — Etappe 2 füllte ② und ③, Etappe 3b Ebene ①. Store und
-> Embedding sind seither je ein Port mit zwei Adaptern (3c, 3d). Offen: **der Voyage-Lauf
-> selbst** (kein Schlüssel) und echte Identitäten (4).
+> Embedding sind seither je ein Port mit zwei Adaptern (3c, 3d). Offen waren damals **der
+> Voyage-Lauf selbst** (kein Schlüssel; gefahren am 2026-11-17) und echte Identitäten (4).
 >
 > **Die Sofortmaßnahme (§5) ist am 2026-09-14 gefallen.** Der HTTP-Adapter wandelte
 > `"approved": "false"` in eine Genehmigung um; jetzt ist nur ein JSON-Boolean `true` eine
@@ -17,7 +17,8 @@
 > **Stand 2026-11-16.** Seither gefahren: 4b (ADR-0020), Etappe 5 (ADR-0021), 4d (ADR-0022) und
 > 4c (ADR-0023). 4a steht auf 🟡: seine Tore sind gegen Fixtures erfüllt, ein echter
 > Identitätsanbieter fehlt. Was jetzt noch offen ist, hängt an einem Schlüssel oder Zugang —
-> der Voyage-Lauf, die erste Schicht-B-Messung, die erste echte Quelle (Etappe 7).
+> die erste Schicht-B-Messung und die erste echte Quelle (Etappe 7). Der Voyage-Lauf ist am
+> 2026-11-17 gefahren: 3d steht auf 🟢.
 >
 > **Diese Fassung löst die vom 2026-09-08 ab und erweitert die vom 2026-09-10.** Die
 > Etappenreihenfolge hat sich damals sachlich geändert, nicht nur die Nummerierung. Am
@@ -438,8 +439,8 @@ Postgres wird ausdrücklich verlangt.
 > mit und täuschten die Regex. Erst ein echter Klammerzähler fing die Mutation. Ein Test,
 > der nie rot wird, misst nichts; das gilt auch für einen, der gerade erst geschrieben wurde.
 
-**3d — Echtes Embedding.** 🟡 Gebaut und gemessen, **eine Hälfte des Tors steht aus**. Zerfiel
-in zwei Schritte mit je eigenem Tor.
+**3d — Echtes Embedding.** 🟢 **Erledigt am 2026-11-17** — die zweite Hälfte des Tors, der
+Voyage-Lauf, ist gefahren (unten). Zerfiel in zwei Schritte mit je eigenem Tor.
 
 > **Die Etappe hat ihre eigene Überschrift widerlegt.** „Tauscht den Hash gegen einen
 > Modellaufruf" war der Plan; ein Tausch hätte Schicht A und K5 mitgenommen. Es wurde ein
@@ -470,12 +471,23 @@ in zwei Schritte mit je eigenem Tor.
 > - **Vier Mutationen, vier Mal rot, zurückgenommen.**
 > - `npm run demo` und `npm run demo:besprechung` Rückgabewert 0 · ESLint 15/0 unverändert.
 >
-> **🔴 Die offene Hälfte, ausdrücklich:** `EMBEDDING_ADAPTER=voyage npm run evals` ist **nie
-> gelaufen** — kein `VOYAGE_API_KEY` in dieser Umgebung. Der Adapter ist gegen ein Testdouble
-> geprüft, das die dokumentierte Antwortform nachbildet, aber **ob Voyage wirklich so
-> antwortet, weiß dieses Repo nicht.** Ein Testdouble beweist die eigene Logik, nicht die
-> fremde. Bis dieser Lauf durchläuft, ist „3.13 bewegt sich nicht" eine **Vorhersage** aus
-> ADR-0015 und kein Messwert.
+> **Die zweite Hälfte — gefahren am 2026-11-17.** Bis dahin war „3.13 bewegt sich nicht" eine
+> **Vorhersage** aus ADR-0015; ein Testdouble beweist die eigene Logik, nicht die fremde.
+> Jetzt ist es ein Messwert, gegen den echten Dienst (`voyage-4`, 1024 Dimensionen):
+>
+> - **`beispiel`** (Stand `5190506`): 3.13 = **0 % (0/10)**, jede Metrik identisch zum
+>   hash-Lauf, deterministisch.
+> - **`besprechung`** (Stand `8e7bad1`): 3.13 = **0 % (0/58)**, Vertragstreue 39/39, jede
+>   andere Metrik identisch, deterministisch.
+> - **Der Nenner wuchs, der Zähler nicht: 52 → 58.** `store/memory.js` nimmt nur Treffer mit
+>   positivem Wert; beim Hash ist der Kosinus oft negativ, bei Voyage nicht — unter k = 5
+>   kommen also sechs **erlaubte** Chunks mehr. Gemessen, nicht vermutet: ein hash-Lauf mit
+>   abgeschaltetem Filter liefert exakt 58. Genau die Vorhersage aus ADR-0015 — der Vektor
+>   entscheidet, wie viele erlaubte Treffer kommen, nie, ob ein verbotener kommt.
+> - **Zwei Stände, ehrlich benannt.** Zwischen `5190506` und `8e7bad1` liegt nur der
+>   Wiederholungspfad im Adapter (Netzfehler), nicht, was eingebettet wird. Der Lauf brauchte
+>   vier Anläufe: ein Konto ohne Zahlungsart hat 3 Anfragen je Minute bei 484 Anfragen je
+>   Lauf (`0c4d166`), und das Netz riss dreimal ab (`8e7bad1`).
 
 ### Sofortmaßnahme vor Etappe 4 — die Genehmigungslücke im HTTP-Adapter
 
@@ -535,9 +547,9 @@ zurechtbiegen.
 > `ARCHITECTURE.md` §4, `docs/security-model.md` und `README.md`. Keine neue Metrik — ein
 > Defekt, eine Änderung.
 
-**Der offene Rest aus 3d gehört ebenfalls vor Etappe 7:** Solange die Daten Fixtures sind,
-sagt ein Hash-Embedding nichts Falsches. Bei echten Dokumenten würden Nutzer jedoch
-Trefferlisten sehen, deren Reihenfolge nichts bedeutet.
+**Der Rest aus 3d stand ebenfalls vor Etappe 7** und ist seit 2026-11-17 eingelöst: Solange
+die Daten Fixtures sind, sagt ein Hash-Embedding nichts Falsches; bei echten Dokumenten hätten
+Nutzer Trefferlisten gesehen, deren Reihenfolge nichts bedeutet.
 
 ### Etappe 4 — Einsatzfähig werden: Identität, Handlungsbefugnis, Policy, Audit
 
@@ -738,7 +750,7 @@ Umgebungsvariable, wie Store und Embedding; `npm run evals` und `npm run demo` l
 gegen die Fixture-Quelle ohne Netz (K5). Dazu kommt die hybride Synchronisation (A13).
 
 **Voraussetzungen.** 4a, weil Drive-Gruppen ohne aufgelöste Identität nicht abbildbar sind, und
-der offene Voyage-Lauf aus 3d. **Offen vor der ersten Zeile:** SDK oder `fetch`. Eine neue
+der Voyage-Lauf aus 3d (gefahren am 2026-11-17). **Offen vor der ersten Zeile:** SDK oder `fetch`. Eine neue
 Abhängigkeit wird erst nach Rückfrage aufgenommen; Vorbild ist der Voyage-Adapter ohne Paket.
 
 Neudefinition in `EVALS.md`:

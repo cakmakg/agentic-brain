@@ -14,9 +14,9 @@ berechtigungstreu abgefragt und in menschlich genehmigte Aktionen überführt (A
 Stand: Alle sechs Ebenen sind belegt und gemessen. Die Vertikale steht seit dem 2026-09-10
 (ADR-0010): Besprechungsnotiz → Aktionspunkt → Ticket, Quelle ein geteiltes
 Notizenlaufwerk. **Chunk-Speicher und Embedding sind je ein Port mit zwei Adaptern**
-(`memory`/`postgres`, `hash`/`voyage`) und dieselbe Messung liefert dieselben Zahlen. Offen:
-der **Voyage-Lauf selbst** (kein Schlüssel — der Adapter ist gebaut, aber nie gegen den
-echten Dienst gelaufen) und echte Identitäten.
+(`memory`/`postgres`, `hash`/`voyage`) und dieselbe Messung liefert dieselben Zahlen — seit
+2026-11-17 auch gegen den echten Voyage-Dienst (3.13 = 0 %). Offen: echte Identitäten und die
+erste Schicht-B-Messung.
 
 > Die Autoritätskette und das Gedächtnisprotokoll stehen in `CLAUDE.md` — dort und nur dort.
 > Claude Code lädt jene Datei ohnehin bei jeder Sitzung; eine zweite Kopie hier würde

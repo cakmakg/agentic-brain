@@ -181,11 +181,10 @@ die Summe der Zeilen.
 
 ## 6. Entscheidungen, die noch offen sind
 
-| Frage                                                   | Blockiert heute | Fällt in                    |
-| ------------------------------------------------------- | --------------- | --------------------------- |
-| Bettet Voyage 3.13 anders? — ungemessen, kein Schlüssel | nichts          | sobald ein Schlüssel da ist |
-| Vollständige TypeScript-Migration                       | nichts          | offen                       |
-| Darf ein zweiter Kanal (MCP) `approve` anbieten?        | nichts          | Etappe 6, per ADR           |
+| Frage                                            | Blockiert heute | Fällt in          |
+| ------------------------------------------------ | --------------- | ----------------- |
+| Vollständige TypeScript-Migration                | nichts          | offen             |
+| Darf ein zweiter Kanal (MCP) `approve` anbieten? | nichts          | Etappe 6, per ADR |
 
 Vier Fragen sind gefallen und stehen deshalb nicht mehr hier: **die Vertikale** (ADR-0010),
 **K5 nach dem Postgres-Adapter** (ADR-0013, K5 bleibt grün), **echtes Embedding statt Hash**
@@ -197,9 +196,10 @@ Eine fünfte Frage hat sich ohne Entscheidung aufgelöst: **`express` 4 → 5** 
 der zwei `qs`-Befunde. Die schloss ein Patch innerhalb von 4.x (§4); ein Grund für den
 Major-Sprung bleibt damit nicht.
 
-Was von der Embedding-Frage übrig ist, steht oben und ist bewusst schmal formuliert: 3.13 wird
-sich nach ADR-0015 **nicht** bewegen, weil der ACL-Filter vor der Bewertung läuft — aber
-gemessen ist das nicht, solange kein Schlüssel da ist. Eine Vorhersage ist kein Lauf.
+Eine sechste ist durch Messung gefallen: **bettet Voyage 3.13 anders?** Nein. ADR-0015 sagte
+voraus, dass 3.13 sich nicht bewegt, weil der ACL-Filter vor der Bewertung läuft; der Lauf vom
+2026-11-16/17 gegen den echten Dienst bestätigt es — Zähler 0 in beiden Domänen. Nur der
+Nenner wuchs (52 → 58, mehr erlaubte Treffer; `EVALS.md` §8).
 
 Fällt eine dieser Fragen, wandert sie als ADR nach `DECISIONS.md` und wird hier auf einen
 Verweis gekürzt. Eine Frage, die an zwei Orten offen steht, wird zweimal beantwortet.

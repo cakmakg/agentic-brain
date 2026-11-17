@@ -186,7 +186,7 @@ sondern auch am Rand.
 **T1 ist eingelöst:** der Agent liest berechtigungstreu, und 3.13 misst das jetzt auch auf
 seinem Pfad. Als Nächstes **T2** — die Identität am Rand, aufgelöst statt geglaubt; bis dahin
 bleibt der Principal eine Behauptung des Aufrufers (`ARCHITECTURE.md` §4). Etappe 3d ist
-gebaut; offen ist nur der Voyage-Lauf, der vor der ersten echten Quelle fallen muss. Die
+gebaut und seit 2026-11-17 auch gegen Voyage gemessen (3.13 = 0 %). Die
 Etappen 7 bis 14 — echte Quelle, echte Wirkung, Genehmigung in Slack oder Teams, verdiente
 Autonomie — stehen samt Begründung in `docs/roadmap.md`. **Ziele, Nicht-Ziele und
 Erfolgskriterien in diesem Dokument ändern sich dadurch noch nicht**: jede Etappe zieht sie mit
@@ -304,5 +304,6 @@ Grund steht bei beiden.
 
 **Was danach kommt, steht hier absichtlich nicht.** Der nächste Schritt wird nach einem
 Kriterium gewählt und nicht aus einer Liste abgelesen: **welche Aussage dieses Repos ist heute
-noch eine Vorhersage.** Heute wären das der Voyage-Lauf, die erste Schicht-B-Messung und die
-erste echte Quelle — in dieser Reihenfolge zu prüfen, nicht zu planen.
+noch eine Vorhersage.** Heute wären das die erste Schicht-B-Messung und die erste echte
+Quelle — in dieser Reihenfolge zu prüfen, nicht zu planen. Der Voyage-Lauf stand davor; er ist
+am 2026-11-17 gefallen.

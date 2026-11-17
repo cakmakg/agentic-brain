@@ -62,6 +62,11 @@ evals/reports/*
 !evals/reports/2026-09-20-schicht-a-beispiel-postgres-hash.json
 !evals/reports/2026-09-20-schicht-a-besprechung-memory-hash.json
 !evals/reports/2026-09-20-schicht-a-besprechung-postgres-hash.json
+# Der Voyage-Lauf (Etappe 3d, zweite Hälfte): dieselbe Suite gegen den echten
+# Dienst. Zwei Stände, weil besprechung erst nach dem Netz-Wiederholungspfad
+# durchlief (EVALS.md §8).
+!evals/reports/2026-11-16-schicht-a-beispiel-memory-voyage-5190506.json
+!evals/reports/2026-11-17-schicht-a-besprechung-memory-voyage-8e7bad1.json
 
 # Dauerhafter Zustand: Checkpoints, Artefakte, Aktionsqueue. Laufzeitdaten eines
 # konkreten Rechners — im Repo hätten sie nichts zu suchen. Der Ort ist über

@@ -54,10 +54,11 @@ einer mit `voyage` weder noch, und die beiden dürfen im Bericht nicht gleich au
 > erlaubten Treffer, weil der ACL-Filter **vor** der Bewertung läuft. Ein Test, der sich auf
 > „das relevanteste Dokument steht oben" stützt, misst den Hash und nicht das System.
 >
-> **Der Voyage-Lauf hat bis heute (2026-09-11) nicht stattgefunden** — kein Schlüssel in
-> dieser Umgebung. Bis er läuft, ist „ein echtes Embedding bewegt 3.13 nicht" eine
-> **Vorhersage** aus ADR-0015, kein Messwert. Sie steht dort mit ihrer Begründung, damit sie
-> widerlegbar bleibt.
+> **Der Voyage-Lauf ist am 2026-11-16/17 gefahren** (§8). Bis dahin war „ein echtes
+> Embedding bewegt 3.13 nicht" eine **Vorhersage** aus ADR-0015; sie hat sich gehalten:
+> Zähler 0 in beiden Domänen. Bewegt hat sich nur der **Nenner** von `besprechung`
+> (52 → 58) — der Vektor entscheidet, wie viele erlaubte Treffer kommen, nie, ob ein
+> verbotener kommt.
 
 Die Unterscheidung gehört in **jede** Evaluationsdiskussion. Schicht A sagt nichts über die
 Textqualität, und Schicht B sagt nichts über die Einhaltung der Richtlinien. Wer beides
@@ -389,31 +390,42 @@ Guardrail-Blockierschwelle auf die Summe aller Gewichte setzen.
 > (§6). Die überschriebenen Zwischenstände vom 2026-09-10 und 2026-09-20 bleiben verloren;
 > rückwirkend heilt der neue Name nichts.
 
-| Datum      | Domäne        | Bericht                                               | 3.1   | 3.2 | 3.3   | 3.4   | 3.13       | 3.14          | 3.16       | 3.15        | Vertragstreue |
-| ---------- | ------------- | ----------------------------------------------------- | ----- | --- | ----- | ----- | ---------- | ------------- | ---------- | ----------- | ------------- |
-| 2026-09-08 | `beispiel`    | `2026-09-08-schicht-a-beispiel.json`                  | 100 % | 0 % | 100 % | 100 % | —          | —             | —          | —           | 20/20         |
-| 2026-09-09 | `beispiel`    | `2026-09-09-schicht-a-beispiel.json`                  | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | —             | —          | —           | 28/28         |
-| 2026-09-10 | `beispiel`    | `…-beispiel-memory-hash.json`                         | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | —          | —           | 28/28         |
-| 2026-09-10 | `besprechung` | `…-besprechung-memory-hash.json`                      | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | —          | —           | 32/32         |
-| 2026-09-10 | `besprechung` | **kein Bericht**                                      | —     | —   | —     | —     | —          | —             | —          | —           | —             |
-| 2026-09-11 | `beispiel`    | `…-beispiel-memory-hash.json`                         | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | —          | —           | 28/28         |
-| 2026-09-11 | `besprechung` | `…-besprechung-memory-hash.json`                      | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | —          | —           | 32/32         |
-| 2026-09-16 | `beispiel`    | `2026-09-16-schicht-a-beispiel-memory-hash.json`      | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | —          | —           | 28/28         |
-| 2026-09-16 | `beispiel`    | `2026-09-16-schicht-a-beispiel-postgres-hash.json`    | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | —          | —           | 28/28         |
-| 2026-09-16 | `besprechung` | `2026-09-16-schicht-a-besprechung-memory-hash.json`   | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | —          | —           | 32/32         |
-| 2026-09-16 | `besprechung` | `2026-09-16-schicht-a-besprechung-postgres-hash.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | —          | —           | 32/32         |
-| 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-memory-hash.json`      | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | ungemessen | —           | 28/28         |
-| 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-postgres-hash.json`    | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | ungemessen | —           | 28/28         |
-| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-memory-hash.json`   | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 0 % (0/2)  | —           | 38/38         |
-| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-postgres-hash.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 0 % (0/2)  | —           | 38/38         |
-| 2026-11-16 | `beispiel`    | `2026-11-16-schicht-a-beispiel-memory-hash.json`      | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | ungemessen | ungemessen  | 28/28         |
-| 2026-11-16 | `besprechung` | `2026-11-16-schicht-a-besprechung-memory-hash.json`   | 100 % | 0 % | 100 % | 100 % | 0 % (0/52) | 0 % (0/6)     | 0 % (0/2)  | 100 % (1/1) | 39/39         |
+| Datum      | Domäne        | Bericht                                                       | 3.1   | 3.2 | 3.3   | 3.4   | 3.13       | 3.14          | 3.16       | 3.15        | Vertragstreue |
+| ---------- | ------------- | ------------------------------------------------------------- | ----- | --- | ----- | ----- | ---------- | ------------- | ---------- | ----------- | ------------- |
+| 2026-09-08 | `beispiel`    | `2026-09-08-schicht-a-beispiel.json`                          | 100 % | 0 % | 100 % | 100 % | —          | —             | —          | —           | 20/20         |
+| 2026-09-09 | `beispiel`    | `2026-09-09-schicht-a-beispiel.json`                          | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | —             | —          | —           | 28/28         |
+| 2026-09-10 | `beispiel`    | `…-beispiel-memory-hash.json`                                 | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | —          | —           | 28/28         |
+| 2026-09-10 | `besprechung` | `…-besprechung-memory-hash.json`                              | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | —          | —           | 32/32         |
+| 2026-09-10 | `besprechung` | **kein Bericht**                                              | —     | —   | —     | —     | —          | —             | —          | —           | —             |
+| 2026-09-11 | `beispiel`    | `…-beispiel-memory-hash.json`                                 | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | —          | —           | 28/28         |
+| 2026-09-11 | `besprechung` | `…-besprechung-memory-hash.json`                              | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | —          | —           | 32/32         |
+| 2026-09-16 | `beispiel`    | `2026-09-16-schicht-a-beispiel-memory-hash.json`              | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | —          | —           | 28/28         |
+| 2026-09-16 | `beispiel`    | `2026-09-16-schicht-a-beispiel-postgres-hash.json`            | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | —          | —           | 28/28         |
+| 2026-09-16 | `besprechung` | `2026-09-16-schicht-a-besprechung-memory-hash.json`           | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | —          | —           | 32/32         |
+| 2026-09-16 | `besprechung` | `2026-09-16-schicht-a-besprechung-postgres-hash.json`         | 100 % | 0 % | 100 % | 100 % | 0 % (0/16) | 0 % (0/6)     | —          | —           | 32/32         |
+| 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-memory-hash.json`              | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | ungemessen | —           | 28/28         |
+| 2026-09-20 | `beispiel`    | `2026-09-20-schicht-a-beispiel-postgres-hash.json`            | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | ungemessen | —           | 28/28         |
+| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-memory-hash.json`           | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 0 % (0/2)  | —           | 38/38         |
+| 2026-09-20 | `besprechung` | `2026-09-20-schicht-a-besprechung-postgres-hash.json`         | 100 % | 0 % | 100 % | 100 % | 0 % (0/50) | 0 % (0/6)     | 0 % (0/2)  | —           | 38/38         |
+| 2026-11-16 | `beispiel`    | `2026-11-16-schicht-a-beispiel-memory-hash.json`              | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | ungemessen | ungemessen  | 28/28         |
+| 2026-11-16 | `besprechung` | `2026-11-16-schicht-a-besprechung-memory-hash.json`           | 100 % | 0 % | 100 % | 100 % | 0 % (0/52) | 0 % (0/6)     | 0 % (0/2)  | 100 % (1/1) | 39/39         |
+| 2026-11-16 | `beispiel`    | `2026-11-16-schicht-a-beispiel-memory-voyage-5190506.json`    | 100 % | 0 % | 100 % | 100 % | 0 % (0/10) | nicht messbar | ungemessen | ungemessen  | 28/28         |
+| 2026-11-17 | `besprechung` | `2026-11-17-schicht-a-besprechung-memory-voyage-8e7bad1.json` | 100 % | 0 % | 100 % | 100 % | 0 % (0/58) | 0 % (0/6)     | 0 % (0/2)  | 100 % (1/1) | 39/39         |
 
 > **Spalten nachgezogen am 2026-11-16.** Mit 3.15 kam eine Spalte dazu; ältere Zeilen tragen
 > dort „—", weil es die Metrik noch nicht gab. Die fünf Zeilen vom 2026-09-10 und 2026-09-11
 > hatten bis dahin **eine Zelle zu wenig**: die Vertragstreue stand in der Spalte 3.16, die
 > damals noch nicht existierte. Sie stehen jetzt in ihrer Spalte, 3.16 trägt „—". Keine Zahl
 > wurde geändert.
+
+> **Die zwei Voyage-Zeilen (2026-11-16/17).** Dieselbe Suite gegen den echten Dienst
+> (`voyage-4`, 1024 Dimensionen). Jede Metrik gleicht der hash-Zeile desselben Tages bis auf
+> den **Nenner von 3.13 bei `besprechung`: 58 statt 52**, Zähler weiter 0. Ursache gemessen,
+> nicht vermutet: `context/store/memory.js` nimmt nur Treffer mit positivem Wert, und der
+> Hash-Kosinus ist oft negativ, der von Voyage nicht — unter k = 5 kommen sechs **erlaubte**
+> Chunks mehr. Ein hash-Lauf mit abgeschaltetem Filter liefert exakt 58. Die beiden Berichte
+> tragen **zwei Stände** (`5190506`, `8e7bad1`): dazwischen liegt nur der Wiederholungspfad
+> des Adapters für Netzfehler, nicht, was eingebettet wird.
 
 Die Zeile vom 2026-09-10 für `beispiel` ist in **jeder** Metrik identisch mit der vom
 2026-09-09 — genau das verlangt `docs/roadmap.md` §6 von Etappe 3: 3.13 und 3.1–3.4 dürfen

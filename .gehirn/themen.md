@@ -31,21 +31,9 @@ fuenfte: `*/embedding/index.js ✗→ */embedding/*.js` — dieselbe Regel wie b
 Ebene weiter.
 Zur Zahl 15 siehe das eigene Thema zum Lint-Anstieg.
 
-### Thema: Der Voyage-Adapter ist gebaut und NICHT gemessen
-
-**Status:** 🔴 Neu am 2026-09-11. Kein `VOYAGE_API_KEY` — bis der Lauf durchlaeuft, ist die zentrale Aussage eine Vorhersage.
-`EMBEDDING_ADAPTER=voyage npm run evals -- besprechung` hat nie stattgefunden. Der Adapter ist
-gegen ein Testdouble geprueft, das die dokumentierte Antwortform nachbildet — aber ein
-Testdouble beweist die eigene Logik, nicht die fremde. ADR-0015 sagt vorher, dass **3.13 sich
-nicht bewegt**, weil der ACL-Filter vor der Bewertung laeuft; der **Nenner** darf sich sehr
-wohl aendern, ein dichtes Embedding gibt mehr Chunks einen Wert ueber null. `0/16` und `0/20`
-sind beide 0 %. Bewegt sich der **Zaehler**, hing eine Berechtigung an der Sortierung — das
-waere der Befund, nicht das Embedding. Bis dahin gilt „der Adapter ist austauschbar" nur
-gegenueber dem breiten Testadapter.
-
 ### Thema: Nach dem MVP — was ohne Schluessel messbar ist, und was nicht
 
-**Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). E0-B, der `qs`-Patch und die 4a-Messung (🟡, Tore gegen Fixtures erfuellt) am 2026-11-16. Ohne Schluessel ist nichts Grosses mehr offen. Voyage, Schicht B und echte Quelle haengen ALLE an einem Schluessel oder Zugang.
+**Status:** 🟡 Stand 2026-11-16. **4b, Etappe 5, 4d und 4c gefahren** (ADR-0020 bis ADR-0023). E0-B, der `qs`-Patch und die 4a-Messung (🟡, Tore gegen Fixtures erfuellt) am 2026-11-16. Ohne Schluessel ist nichts Grosses mehr offen. Voyage am 2026-11-17 gemessen (3d 🟢); Schicht B und echte Quelle haengen an `ANTHROPIC_API_KEY` bzw. Drive-Zugang.
 
 **Was blockiert ist und woran:** der **Voyage-Lauf** an `VOYAGE_API_KEY`; die **erste
 Schicht-B-Messung** an `ANTHROPIC_API_KEY` plus einer Ausgabengrenze (und die Domaene muss
@@ -86,6 +74,18 @@ konkreter Befund: `TICKET_ZUWEISEN` war scharf, von keinem Fall geuebt und konnt
 gelingen. **Eine erledigte Zusage lohnt sich nachzurechnen**, nicht nur abzuhaken.
 
 ## Abgeschlossene Themen
+
+### Thema: Der Voyage-Adapter ist gebaut und NICHT gemessen
+
+**Status:** 🟢 Abgeschlossen am 2026-11-17. Gemessen gegen den echten Dienst: 3.13 = 0 % (beispiel 0/10 auf `5190506`, besprechung 0/58 auf `8e7bad1`); Nenner 52 → 58 erklaert (positiver Wert in `memory.js`, Gegenprobe exakt 58). Vier Anlaeufe: 3 RPM ohne Zahlungsart (`0c4d166`), dreimal Netzabbruch (`8e7bad1`).
+`EMBEDDING_ADAPTER=voyage npm run evals -- besprechung` hat nie stattgefunden. Der Adapter ist
+gegen ein Testdouble geprueft, das die dokumentierte Antwortform nachbildet — aber ein
+Testdouble beweist die eigene Logik, nicht die fremde. ADR-0015 sagt vorher, dass **3.13 sich
+nicht bewegt**, weil der ACL-Filter vor der Bewertung laeuft; der **Nenner** darf sich sehr
+wohl aendern, ein dichtes Embedding gibt mehr Chunks einen Wert ueber null. `0/16` und `0/20`
+sind beide 0 %. Bewegt sich der **Zaehler**, hing eine Berechtigung an der Sortierung — das
+waere der Befund, nicht das Embedding. Bis dahin gilt „der Adapter ist austauschbar" nur
+gegenueber dem breiten Testadapter.
 
 ### Thema: Der Lint-Anstieg — drei Warnungen, die eine Entscheidung brauchen
 

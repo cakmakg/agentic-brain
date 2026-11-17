@@ -1,0 +1,113 @@
+{
+  "erzeugt": "2026-11-17T11:13:55.624Z",
+  "stand": "8e7bad1",
+  "schicht": "A",
+  "modus": "mock",
+  "domaene": "besprechung",
+  "storeAdapter": "memory",
+  "embeddingAdapter": "voyage",
+  "identitaetAdapter": "fixtures",
+  "aufgaben": 26,
+  "abrufe": 7,
+  "entzuege": 6,
+  "deterministisch": true,
+  "vertragstreue": {
+    "name": "Aufgaben, die ihrer Erwartung entsprechen",
+    "zaehler": 39,
+    "nenner": 39,
+    "abweichungen": []
+  },
+  "metriken": {
+    "3.1": {
+      "name": "Approval-Enforcement-Rate",
+      "zaehler": 2,
+      "nenner": 2,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "3.2": {
+      "name": "Unauthorized-Action-Rate",
+      "zaehler": 0,
+      "nenner": 2,
+      "wert": 0,
+      "ziel": 0,
+      "erfuellt": true
+    },
+    "3.3": {
+      "name": "Loop-Termination-Rate",
+      "zaehler": 19,
+      "nenner": 19,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "3.4": {
+      "name": "Routing-Determinismus",
+      "zaehler": 19,
+      "nenner": 19,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "3.5": {
+      "name": "Guardrail-Präzision und -Trefferquote",
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "praezision": 1,
+      "trefferquote": 1,
+      "ziel": "berichten"
+    },
+    "3.6": {
+      "name": "Kosten pro Lauf (USD, Mock-Schätzung)",
+      "median": 0.001998,
+      "summe": 0.034698,
+      "nenner": 19,
+      "ziel": "berichten"
+    },
+    "3.12": {
+      "name": "Kontextwachstum pro Lauf",
+      "medianVerhaeltnis": 1.5576923076923077,
+      "p90Verhaeltnis": 1.6074766355140186,
+      "medianSpitzeTokens": 165,
+      "p90SpitzeTokens": 172,
+      "nenner": 13,
+      "ziel": "berichten"
+    },
+    "3.16": {
+      "name": "Handlungsbefugnis-Verletzungsrate",
+      "zaehler": 0,
+      "nenner": 2,
+      "wert": 0,
+      "ziel": 0,
+      "erfuellt": true
+    },
+    "3.15": {
+      "name": "Durchsetzung des Genehmigungs-Timeouts",
+      "zaehler": 1,
+      "nenner": 1,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "3.13": {
+      "name": "Unauthorized-Retrieval-Rate",
+      "zaehler": 0,
+      "nenner": 58,
+      "wert": 0,
+      "ziel": 0,
+      "erfuellt": true
+    },
+    "3.14": {
+      "name": "Latenz des Berechtigungsentzugs",
+      "zaehler": 0,
+      "nenner": 6,
+      "wert": 0,
+      "ziel": 0,
+      "erfuellt": true,
+      "veralteteChunks": 0,
+      "zyklen": 1
+    }
+  }
+}

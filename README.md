@@ -13,9 +13,9 @@ Der Anspruch: nicht nur die Arbeit zählt als Beweis, sondern **wie sie gemessen
 > Die Vertikale ist entschieden (ADR-0010): **Besprechungsnotiz → Aktionspunkt → Ticket**.
 > Zwei Zahlen tragen die zentrale Zusage: **3.13 Unauthorized-Retrieval-Rate = 0 %** und
 > **3.14 Latenz des Berechtigungsentzugs = 0 %**, beide belegt durch Mutationsproben.
-> Offen: **der Voyage-Lauf selbst** — der Adapter ist gebaut und gegen ein Testdouble geprüft,
-> aber ohne Schlüssel nie gegen den echten Dienst gelaufen — und ein echter
-> Identitätsanbieter: aufgelöst wird gegen ein Verzeichnis aus Fixtures, nicht gegen SSO.
+> Seit 2026-11-17 auch gegen das echte Embedding gemessen (Voyage): 3.13 bleibt 0 %.
+> Offen: ein echter Identitätsanbieter — aufgelöst wird gegen ein Verzeichnis aus Fixtures,
+> nicht gegen SSO.
 > **Seit dem 2026-09-20 geschlossen:** die Naht zwischen „berechtigungstreu abgefragt" und
 > „in Aktionen überführt". Der Agent liest mit dem Principal des Fragenden; eine Notiz, die
 > dieser nicht sehen darf, erzeugt **keinen Entwurf und keinen Modellaufruf**. 3.13 trägt
@@ -67,10 +67,11 @@ Ein echtes Modell tritt daneben und wird ausdrücklich verlangt (ADR-0015):
 VOYAGE_API_KEY=… EMBEDDING_ADAPTER=voyage npm run evals -- besprechung
 ```
 
-**Dieser Lauf hat noch nicht stattgefunden.** Ohne Schlüssel ist der Voyage-Adapter gegen ein
-Testdouble geprüft, nicht gegen Voyage — ein Testdouble beweist die eigene Logik, nicht die
-fremde. Was der Befehl zeigen soll, wenn er läuft: **3.13 bleibt 0 %.** Bewegt er sie, hing
-eine Berechtigung an der Sortierung, und das wäre der Befund.
+**Gefahren am 2026-11-16/17: 3.13 bleibt 0 %** — `beispiel` 0/10, `besprechung` 0/58
+(`EVALS.md` §8). Hätte er sie bewegt, hinge eine Berechtigung an der Sortierung. Bewegt hat
+sich nur der Nenner: mit echten Vektoren kommen unter k = 5 mehr **erlaubte** Treffer.
+Ein Konto ohne Zahlungsart hat bei Voyage 3 Anfragen je Minute; der Lauf braucht rund 480 und
+dauert dann Stunden — der Adapter wartet bei 429 und bei abgerissenem Netz.
 
 Ein zweiter Synchronisationszyklus über unveränderte Dokumente kostet dabei **null**
 Einbettungen — die Momentaufnahme bleibt trotzdem vollständig, weil ein Vektor keine
