@@ -49,7 +49,7 @@ const wartezeitMs = (versuch, retryAfter) => {
 const schlafe = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── Vorübergehende Netzfehler: dieselbe Geduld wie bei 429 ──────────────
-// Der besprechung-Lauf brach zweimal nach über einer Stunde ab — einmal
+// Der erste echte Voyage-Lauf brach zweimal nach über einer Stunde ab — einmal
 // `UND_ERR_CONNECT_TIMEOUT`, einmal `ECONNRESET` (2026-11-16/17). Bei rund 480
 // Anfragen über Stunden ist ein abgerissenes Paket keine Ausnahme, sondern
 // zu erwarten. Wiederholt wird NUR, was nach Netz aussieht: ein unbekannter
