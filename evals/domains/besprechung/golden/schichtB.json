@@ -1,0 +1,41 @@
+{
+  "hinweis": "Schicht-B-Fälle (ADR-0024, Nachtrag). Getrennt von acl.json, damit 3.13 sich nicht bewegt. Die Notizen sind ausgedacht und von der Nutzerin/dem Nutzer am 2026-11-17 freigegeben; die Namen sind fiktiv. Jede Erwartung ist aus dem Text und den Regeln des Extrahierer-Prompts abgeleitet — eine Handlung und genau eine verantwortliche Person je Punkt, nichts erfinden — und aus `vertrag.js` (`unbesetzt` heißt: die Notiz nennt niemanden). NIE aus einem Lauf.",
+  "faelle": [
+    {
+      "id": "b-klar",
+      "text": "Rollout-Abstimmung, 12.11. Mia schreibt bis Freitag die Release-Notes. Tom prüft am Montag die Migrationsskripte gegen die Staging-Datenbank.",
+      "erwartet": { "verantwortliche": ["Mia", "Tom"] },
+      "herleitung": "Zwei offene Handlungen, jede mit einer genannten Person."
+    },
+    {
+      "id": "b-einer",
+      "text": "Kurzes Sync zum Kundentermin. Lena bereitet die Demo für Donnerstag vor. Sonst keine neuen Punkte.",
+      "erwartet": { "verantwortliche": ["Lena"] },
+      "herleitung": "Eine Handlung mit Person; „Sonst keine neuen Punkte“ schließt weitere aus."
+    },
+    {
+      "id": "b-niemand",
+      "text": "Retro Sprint 14. Die Dokumentation der API-Fehlercodes ist veraltet und muss überarbeitet werden. Wer das übernimmt, ist noch offen.",
+      "erwartet": { "verantwortliche": ["unbesetzt"] },
+      "herleitung": "Eine Handlung; die Notiz sagt ausdrücklich, dass niemand zuständig ist. Ein Name wäre erfunden. Der Vertrag lehnt `unbesetzt` ab — hier wird gemessen, ob die Revision das Modell zum Erfinden drängt."
+    },
+    {
+      "id": "b-erledigt",
+      "text": "Statusrunde. Jonas hat die Zertifikate erneuert, das ist erledigt. Das Monitoring läuft wieder stabil.",
+      "erwartet": { "verantwortliche": [] },
+      "herleitung": "Die einzige Handlung ist abgeschlossen, also kein offener Punkt."
+    },
+    {
+      "id": "b-beschluss",
+      "text": "Architekturrunde. Beschlossen: Wir bleiben bei PostgreSQL und führen keine zweite Datenbank ein. Keine weiteren Aufgaben.",
+      "erwartet": { "verantwortliche": [] },
+      "herleitung": "Ein Beschluss, keine Handlung; „Keine weiteren Aufgaben“."
+    },
+    {
+      "id": "b-gemischt",
+      "text": "Planung Q1. Ayse klärt mit dem Einkauf die Lizenzkosten. Das Onboarding-Handbuch muss bis Januar aktualisiert werden, Verantwortung noch offen. Tom hat das Budget bereits freigegeben.",
+      "erwartet": { "verantwortliche": ["Ayse", "unbesetzt"] },
+      "herleitung": "Zwei offene Handlungen: eine mit Person, eine ausdrücklich ohne. Toms Freigabe ist erledigt."
+    }
+  ]
+}

@@ -2503,3 +2503,21 @@ Antwort, nicht ein Ausfall: keine der fünf ACL-Notizen nennt eine Handlung oder
 Regel, nicht aus dem Lauf. **Über die Extraktion selbst sagt der Lauf deshalb nichts** — der
 Datensatz hat keinen positiven Fall. Der Zähler für leere Listen hat genau das sichtbar gemacht,
 wofür er gebaut wurde. Nächster Schritt: Notizen mit Handlungen und Personen.
+
+**Nachtrag 2026-11-17 — Fälle mit Handlungen.** Die fünf ACL-Notizen werden ersetzt durch sechs
+eigene Fälle in `evals/domains/besprechung/golden/schichtB.json`, getrennt von `acl.json`
+(3.13 bleibt unberührt). Ausgedacht, mit fiktiven Namen, **von der Nutzerin/dem Nutzer vor dem
+Schreiben freigegeben**. Je Fall eine Erwartung, abgeleitet aus Text und Prompt-Regeln, nie aus
+einem Lauf: zwei Fälle mit genannten Personen, einer ausdrücklich ohne (`unbesetzt`), einer
+gemischt, zwei ohne offenen Punkt (erledigt, Beschluss).
+
+Neben 3.8 misst der Runner jetzt je Fall: **Verantwortliche wie erwartet** (erster Versuch),
+**Namen belegt** — jeder genannte Name steht in der Notiz — im ersten Versuch und nach der
+Revision, und **leere Verantwortliche** (`""` besteht den Vertrag, der nur auf `unbesetzt`
+prüft). `messung.js` behält dafür den ersten Versuch (`textErsterVersuch`).
+
+Was dieser Lauf zeigen kann, und es ist absichtlich unbequem: der Vertrag lehnt `unbesetzt` ab.
+Bei `b-niemand` und `b-gemischt` ist die ehrliche Antwort also nicht konform, und die
+Revisionsschleife fordert eine Person — die in der Notiz nicht steht. „Namen belegt (nach
+Revision)" misst, ob die Schleife das Modell zum Erfinden drängt. Prompt und Vertrag werden
+**nicht vorher** geändert: erst messen, dann aus dem Befund ändern.

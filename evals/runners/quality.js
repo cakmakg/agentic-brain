@@ -87,6 +87,39 @@ const gemessen = entwuerfe.filter((e) => e.text);
 const leer = gemessen.filter((e) => messbar.istLeer(e.text));
 const fehler = entwuerfe.filter((e) => e.fehler);
 
+// ── Je Fall gegen seine Erwartung, falls die Domäne eine trägt ──────────
+// Der Vertrag kennt nur die Form. Ob die RICHTIGEN Punkte kamen und ob ein
+// Name erfunden ist, sagt erst die Erwartung des Falls. Gemessen am ersten
+// Versuch (die eigentliche Zahl) und an der letzten Fassung: wird ein Name
+// erst in der Revision erfunden, ist das ein Befund über die Schleife.
+const zaehle = (bewertungen, feld) => ({
+  zaehler: bewertungen.filter((b) => b[feld]).length,
+  nenner: bewertungen.length,
+});
+const nachFall = messbar.bewerte
+  ? (() => {
+      const fallVon = (e) =>
+        messbar.faelle.find((f) => f.id === e.id).gegenstand;
+      const erste = gemessen.map((e) =>
+        messbar.bewerte(e.textErsterVersuch, fallVon(e)),
+      );
+      const letzte = gemessen.map((e) => messbar.bewerte(e.text, fallVon(e)));
+      gemessen.forEach((e, i) => {
+        e.bewertungErsterVersuch = erste[i];
+        e.bewertungAmEnde = letzte[i];
+      });
+      return {
+        verantwortlicheRichtig: zaehle(erste, "verantwortlicheRichtig"),
+        belegtErsterVersuch: zaehle(erste, "belegt"),
+        belegtAmEnde: zaehle(letzte, "belegt"),
+        leereVerantwortliche: erste.reduce(
+          (s, b) => s + b.leereVerantwortliche,
+          0,
+        ),
+      };
+    })()
+  : null;
+
 const bericht = {
   erzeugt: new Date().toISOString(),
   stand: codeStand(),
@@ -104,6 +137,7 @@ const bericht = {
   metriken: {
     ...vertragskonformitaet(entwuerfe),
     leereListen: { zaehler: leer.length, nenner: gemessen.length },
+    ...(nachFall ?? {}),
   },
   fehler: fehler.map((e) => ({ id: e.id, fehler: e.fehler })),
   // Die Ausgaben selbst: wer eine Zahl anzweifelt, soll lesen können, was das
@@ -132,7 +166,15 @@ const anteil = (m) =>
 console.log(`
   Vertragskonformität (erster Versuch)   ${anteil(k[3.8])}
   Konform nach der Revisionsschleife     ${anteil(k.nachRevision)}
-  Leere Listen                           ${anteil(k.leereListen)}
+  Leere Listen                           ${anteil(k.leereListen)}${
+    nachFall
+      ? `
+  Verantwortliche wie erwartet           ${anteil(k.verantwortlicheRichtig)}
+  Namen belegt (erster Versuch)          ${anteil(k.belegtErsterVersuch)}
+  Namen belegt (nach Revision)           ${anteil(k.belegtAmEnde)}
+  Leere Verantwortliche ("")             ${k.leereVerantwortliche}`
+      : ""
+  }
   Versuche (Median)                      ${k.versucheMedian ?? "—"}
   Kosten                                 ${bericht.kostenUsd.toFixed(6)} USD
   Fehler                                 ${fehler.length}${abgebrochen ? `\n  ABGEBROCHEN: ${abgebrochen}` : ""}

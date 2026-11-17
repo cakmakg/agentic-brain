@@ -49,6 +49,10 @@ export async function messeEntwuerfe({
         id: fall.id,
         variante,
         text: null,
+        // Die Ausgabe des ersten Versuchs, getrennt von der letzten: was die
+        // Revision am Inhalt ändert (etwa einen erfundenen Namen), ist nur im
+        // Vergleich sichtbar.
+        textErsterVersuch: null,
         versuche: 0,
         konformImErstenVersuch: false,
         konformAmEnde: false,
@@ -60,7 +64,7 @@ export async function messeEntwuerfe({
         // ── Versuch 1: DAS ist die gemessene Zahl ────────────────────────
         let text = await schichtB.schreibe(fall.gegenstand, variante, "");
         eintrag.versuche = 1;
-        eintrag.text = text;
+        eintrag.text = eintrag.textErsterVersuch = text;
 
         let urteil = schichtB.pruefe(text, fall.gegenstand);
         eintrag.konformImErstenVersuch = urteil.konform;

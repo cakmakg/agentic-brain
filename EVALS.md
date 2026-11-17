@@ -343,6 +343,10 @@ Ausgeben greift, ist keine.
 > **Erster Lauf, 2026-11-17** (`claude-haiku-4-5`, 0,006 USD): 3.8 = 100 % (5/5) bei **5/5
 > leeren Listen** — richtig, denn keine der fünf Notizen nennt eine Handlung oder Person. Die
 > Extraktion selbst ist damit **nicht gemessen** (ADR-0024).
+>
+> **Seit dem Nachtrag zu ADR-0024** sechs eigene Fälle mit Erwartung (`golden/schichtB.json`)
+> und je Fall: Verantwortliche wie erwartet, Namen belegt (vor und nach der Revision), leere
+> Verantwortliche.
 
 ---
 

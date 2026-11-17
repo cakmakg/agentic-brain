@@ -12,10 +12,12 @@
 // Extrahierer nur sieht, was der Principal sehen darf, ist 3.13 — Schicht A,
 // ohne Modell. Hier zählt nur, was das Modell aus einem erlaubten Text macht.
 //
-// DIE FÄLLE SIND DIE FÜNF NOTIZEN AUS SCHICHT A. Sie sind kurz (48–91 Zeichen)
-// und für ACL-Fälle geschrieben, nicht für schwere Extraktion. Dieser Lauf ist
-// deshalb ein Rauchtest der Kette gegen ein echtes Modell, keine Aussage über
-// die Qualität bei echten Besprechungsnotizen (ADR-0024).
+// DIE FÄLLE STEHEN IN `golden/schichtB.json`, getrennt von `acl.json`. Bis zum
+// zweiten Lauf waren es die fünf ACL-Notizen aus Schicht A — keine nannte eine
+// Handlung, die richtige Antwort war fünfmal die leere Liste, und über die
+// Extraktion sagte der Lauf nichts (ADR-0024). Die neuen Fälle tragen je eine
+// aus Text und Regeln abgeleitete Erwartung: welche Verantwortlichen die
+// offenen Punkte haben, `unbesetzt` für „die Notiz nennt niemanden".
 
 import fs from "node:fs";
 import path from "node:path";
@@ -27,13 +29,53 @@ import {
   mockExtraktion,
 } from "../../../src/domains/besprechung/agents/extrahierer.js";
 import { prompts } from "../../../src/domains/besprechung/prompts.js";
-import { pruefeVertrag } from "../../../src/domains/besprechung/vertrag.js";
+import {
+  pruefeVertrag,
+  UNBESETZT,
+} from "../../../src/domains/besprechung/vertrag.js";
 import { MAX_REVISIONS } from "../../../src/domains/besprechung/domain.js";
 
 const hier = path.dirname(fileURLToPath(import.meta.url));
-const { quellsystem } = JSON.parse(
-  fs.readFileSync(path.join(hier, "golden", "acl.json"), "utf8"),
+const { faelle } = JSON.parse(
+  fs.readFileSync(path.join(hier, "golden", "schichtB.json"), "utf8"),
 );
+
+const normal = (s) =>
+  String(s ?? "")
+    .trim()
+    .toLowerCase();
+const sortiert = (xs) => [...xs].map(normal).sort();
+
+/**
+ * Hält eine Ausgabe gegen die Erwartung DIESES Falls — über den Vertrag
+ * hinaus, der nur die Form kennt.
+ *
+ * - `verantwortlicheRichtig`: dieselben Verantwortlichen wie erwartet, als
+ *   Multimenge; daraus folgt auch die Zahl der Punkte.
+ * - `belegt`: jeder genannte Name steht im Text der Notiz. Ein Name, der dort
+ *   nicht steht, ist erfunden — das prüft der Vertrag nicht.
+ * - `leereVerantwortliche`: `""` besteht den Vertrag (er prüft nur auf
+ *   `unbesetzt`) und ist doch kein Name. Gezählt statt verschwiegen.
+ */
+export function bewerte(ausgabe, gegenstand) {
+  const punkte = Array.isArray(ausgabe?.aktionspunkte)
+    ? ausgabe.aktionspunkte
+    : [];
+  const namen = punkte.map((p) => p?.verantwortlich);
+  const text = normal(gegenstand.text);
+  const ungedeckt = namen.filter(
+    (n) =>
+      normal(n) !== "" && normal(n) !== UNBESETZT && !text.includes(normal(n)),
+  );
+  return {
+    verantwortlicheRichtig:
+      JSON.stringify(sortiert(namen)) ===
+      JSON.stringify(sortiert(gegenstand.erwartet.verantwortliche)),
+    belegt: ungedeckt.length === 0,
+    ungedeckt,
+    leereVerantwortliche: namen.filter((n) => normal(n) === "").length,
+  };
+}
 
 /** Ein Text-Zustand, wie der Graph ihn dem Extrahierer gäbe. */
 const zustandFuer = (gegenstand, feedback) => ({
@@ -48,9 +90,9 @@ const zustandFuer = (gegenstand, feedback) => ({
 export function schichtB({ modell }) {
   return {
     name: "besprechung",
-    faelle: quellsystem.notizen.map((n) => ({
-      id: n.notizId,
-      gegenstand: { id: n.notizId, text: n.text },
+    faelle: faelle.map((f) => ({
+      id: f.id,
+      gegenstand: { id: f.id, text: f.text, erwartet: f.erwartet },
     })),
     varianten: ["standard"],
     maxVersuche: MAX_REVISIONS,
@@ -78,5 +120,7 @@ export function schichtB({ modell }) {
     istLeer: (ausgabe) =>
       Array.isArray(ausgabe?.aktionspunkte) &&
       ausgabe.aktionspunkte.length === 0,
+
+    bewerte,
   };
 }
