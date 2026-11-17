@@ -12,7 +12,11 @@ import assert from "node:assert/strict";
 import { z } from "zod";
 
 import { MOCK_LLM } from "../src/kernel/config/env.js";
-import { llmText, llmStructured } from "../src/kernel/llm/adapter.js";
+import {
+  llmText,
+  llmStructured,
+  strukturiertMitVerbrauch,
+} from "../src/kernel/llm/adapter.js";
 import { cost } from "../src/kernel/governance/costTracker.js";
 
 before(() => {
@@ -60,4 +64,44 @@ test("Die Kostenschätzung wächst mit der Eingabelänge", async () => {
   const gross = cost.spend();
 
   assert.ok(gross > klein);
+});
+
+// ── Der echte strukturierte Pfad zählt seine Kosten ──────────────────────
+// Bis zum 2026-11-17 verlor `llmStructured` außerhalb des Mock-Modus die
+// Token-Zahlen: der Budget-Kill-Switch sah 0 USD. Geprüft ohne Netz, mit einem
+// Runnable, das antwortet wie `withStructuredOutput(schema, { includeRaw: true })`.
+const runnable = (antwort) => ({ invoke: async () => antwort });
+
+test("Echter Pfad: die Token aus usage_metadata landen im Budget", async () => {
+  cost.reset();
+  const ergebnis = await strukturiertMitVerbrauch(
+    runnable({
+      raw: { usage_metadata: { input_tokens: 1_000, output_tokens: 200 } },
+      parsed: { aktionspunkte: [] },
+    }),
+    [],
+    "claude-haiku-4-5",
+  );
+  assert.deepEqual(ergebnis, { aktionspunkte: [] });
+  // Haiku 4.5: 1 USD / 5 USD je Mio. → 0,001 + 0,001
+  assert.ok(Math.abs(cost.spend() - 0.002) < 1e-12, `spend ${cost.spend()}`);
+});
+
+test("Echter Pfad: ein Parse-Fehler wirft — aber erst nach dem Zählen", async () => {
+  cost.reset();
+  const fehler = new Error("Schema verletzt");
+  await assert.rejects(
+    () =>
+      strukturiertMitVerbrauch(
+        runnable({
+          raw: { usage_metadata: { input_tokens: 500, output_tokens: 0 } },
+          parsed: null,
+          parsing_error: fehler,
+        }),
+        [],
+        "claude-haiku-4-5",
+      ),
+    /Schema verletzt/,
+  );
+  assert.ok(cost.spend() > 0, "bezahlt ist bezahlt");
 });

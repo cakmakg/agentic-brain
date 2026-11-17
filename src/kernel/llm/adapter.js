@@ -100,10 +100,46 @@ export async function llmStructured(
     return mockFactory();
   }
   const m = await getModel(model);
-  const structured = m.withStructuredOutput(schema);
-  const res = await structured.invoke([
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt },
-  ]);
-  return res;
+  return strukturiertMitVerbrauch(
+    m.withStructuredOutput(schema, { includeRaw: true }),
+    [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    model,
+  );
+}
+
+// ── Auch der strukturierte Aufruf zählt seine Kosten ────────────────────
+// Bis zum 2026-11-17 tat er es nicht: `withStructuredOutput` lieferte nur das
+// geparste Objekt, die Token-Zahlen gingen verloren. `llmText` zählte, dieser
+// Pfad nicht — und JEDER Agent dieses Repos läuft über diesen Pfad. Der
+// Budget-Kill-Switch sah im echten Betrieb also 0 USD und griff nie; im
+// Mock-Modus zählte er, deshalb fiel es keinem Test auf.
+//
+// `includeRaw` liefert die Modellnachricht mit `usage_metadata` neben dem
+// Ergebnis. Ein Parse-Fehler wird geworfen wie zuvor — aber erst NACHDEM die
+// Kosten gezählt sind: bezahlt ist bezahlt, auch wenn die Antwort unbrauchbar war.
+export async function strukturiertMitVerbrauch(runnable, nachrichten, model) {
+  const {
+    raw,
+    parsed,
+    parsing_error: parseFehler,
+  } = await runnable.invoke(nachrichten);
+  const u = raw?.usage_metadata || {};
+  const usd = trackUsage({
+    inputTokens: u.input_tokens,
+    outputTokens: u.output_tokens,
+    model,
+  });
+  melde({
+    usd,
+    inputTokens: u.input_tokens,
+    outputTokens: u.output_tokens,
+    art: "structured",
+    mock: false,
+    model,
+  });
+  if (parseFehler) throw parseFehler;
+  return parsed;
 }
