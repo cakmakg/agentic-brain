@@ -2417,3 +2417,81 @@ Vertragstreue 39/39 · `beispiel` in jeder Metrik identisch mit dem 2026-09-20, 
 beide Durchgänge identisch · `evals:postgres` **nicht gefahren** (kein `DATABASE_URL`) ·
 `npm run demo` und `npm run demo:besprechung` Rückgabewert 0 ohne Infrastruktur (K5) · der
 `grep` leer.
+
+---
+
+## ADR-0024 — Schicht B misst den echten Extrahierer: erst ein Rauchtest, mit Grenze und Zähler
+
+**Datum:** 2026-11-17
+**Status:** Angenommen
+
+Löst `EVALS.md` §5 für die Domäne `besprechung` ein. Erster Lauf der Schicht B gegen ein echtes
+Modell.
+
+### Prüfkriterium
+
+```bash
+npm test                              # ohne Schluessel: pruefe ohne LLM, leere Liste eigens gezaehlt,
+                                      # der Runner misst im Mock-Modus NICHT (Exit 1, kein Netz)
+npm run evals:b -- besprechung        # mit Schluessel: 5/5 Faelle gemessen, kein Fehler,
+                                      # Kosten <= --max-usd (Vorgabe 0,50 USD)
+grep -rn "beispiel\|besprechung" src/kernel/    # muss leer bleiben
+```
+
+**Kein Qualitätsziel im ersten Lauf.** Was er misst, ist die Baseline. Ein Ziel vor dem ersten
+Messwert wäre eine Zahl ohne Lauf.
+
+### Kontext
+
+Die Messschleife (`messung.js`) war seit 2026-09 gebaut und ohne Schlüssel geprüft; es fehlte,
+was nur die Domäne liefern kann, und es fehlte der Schlüssel. Beim Bauen fiel ein Defekt auf,
+der jede echte Messung entwertet hätte: `llmStructured` zählte außerhalb des Mock-Modus **keine
+Kosten**. Der Budget-Zähler sah 0 USD, die Ausgabengrenze hätte nie gegriffen. Behoben vor
+diesem ADR, als eigene Änderung.
+
+### Entscheidung
+
+1. **Gemessen wird der Extrahierer, wie er im Betrieb läuft.** Derselbe Prompt
+   (`prompts.extrahierer`), dasselbe Schema (`extrahiererSchema`), dieselbe Versuchsgrenze
+   (`MAX_REVISIONS` = 5). `pruefe` ist `pruefeVertrag` — ohne LLM (EVALS.md §5).
+2. **Das Modell wählt der Aufruf**, Vorgabe `claude-haiku-4-5`, nicht die `.env`. `MODEL` in
+   der Umgebung verschöbe die Mock-Kostenschätzung der Schicht A (3.6).
+3. **Effort und Thinking werden nicht gesetzt**, und der Bericht sagt das (`anfrage`). Haiku
+   4.5 kennt `effort` nicht; Thinking bleibt aus, wie im Betrieb.
+4. **Die leere Liste wird eigens gezählt** (`leereListen`). Der Vertrag nimmt sie an; ein
+   Modell, das immer leer antwortet, wäre sonst zu 100 % konform.
+5. **Rot heißt „nicht vollständig gemessen"**, nicht „schlecht": Exit 1 bei Fehler oder
+   erreichter Grenze, nicht bei niedriger Konformität.
+6. **Der Bericht trägt die Ausgaben selbst** (`entwuerfe`), damit jede Zahl nachlesbar ist.
+   Name: `<datum>-schicht-b-<domäne>-<modell>-<stand>.json`.
+
+### Grenzen, ausdrücklich
+
+- **Die fünf Fälle sind die ACL-Notizen aus Schicht A** — 48 bis 91 Zeichen. Der Lauf ist ein
+  Rauchtest der Kette gegen ein echtes Modell, **keine** Aussage über echte Besprechungsnotizen.
+  Ein Datensatz dafür ist ein eigener Schritt; seine Erwartungen kommen aus dem Vertrag, nie
+  aus einem Lauf.
+- **Der Leseweg ist nicht Teil der Messung.** Die Notiz wird direkt übergeben; was der
+  Extrahierer sehen darf, misst 3.13 in Schicht A.
+- **Ein echtes Modell streut.** Ein einzelner Lauf ist eine Stichprobe, keine Verteilung.
+
+### Alternativen
+
+**Ein eigener, „besserer" Prompt für die Messung.** Verworfen: gemessen wäre dann der Prompt
+der Messung, nicht der des Systems.
+
+**Ein LLM als Prüfer.** Verworfen (EVALS.md §5): zwei Unbekannte gegeneinander.
+
+**Sofort mit Sonnet oder Opus.** Verworfen für den ersten Lauf: Haiku ist das günstigste Modell
+und braucht keine Codeänderung (`temperature` wird angenommen, der Preis steht in
+`costTracker.js`). Ein Modellvergleich ist ein zweiter Lauf mit `--model=`.
+
+### Konsequenzen
+
+- `npm run evals:b -- besprechung` ist der Befehl; er bricht ohne Schlüssel ab.
+- Ein Schlüssel in der `.env` schaltet heute den ganzen Prozess aus dem Mock-Modus — `npm test`
+  und Schicht A verweigern dann (gewollt, kostenfrei). Lokal hilft
+  `ANTHROPIC_API_KEY= npm test` (Git Bash). Eine Trennung der Schalter ist als eigener Schritt
+  offen.
+
+**Noch nicht eingelöst** — der Lauf selbst steht aus.

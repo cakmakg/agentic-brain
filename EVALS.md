@@ -333,6 +333,13 @@ liefern kann:
 Die Ausgabengrenze wird **vor** jedem Aufruf geprüft. Eine Grenze, die erst nach dem
 Ausgeben greift, ist keine.
 
+> **Seit 2026-11-17 eingerichtet für `besprechung` (ADR-0024).**
+> `npm run evals:b -- besprechung [--model=claude-haiku-4-5] [--max-usd=0.50]`. Die Domäne
+> liefert `evals/domains/besprechung/schichtB.js` — derselbe Prompt, dasselbe Schema, dieselbe
+> Versuchsgrenze wie im Betrieb; `pruefe` ist `pruefeVertrag`. Der Bericht zählt neben 3.8 die
+> **leeren Listen** eigens, weil der Vertrag sie annimmt. Die fünf Fälle sind die kurzen
+> ACL-Notizen aus Schicht A: ein Rauchtest der Kette, keine Aussage über echte Notizen.
+
 ---
 
 ## 6. Berichte

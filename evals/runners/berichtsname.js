@@ -61,3 +61,18 @@ export function codeStand(git = gitAufruf) {
 export function berichtsName({ erzeugt, domaene, store, embedding, stand }) {
   return `${erzeugt.slice(0, 10)}-schicht-a-${domaene}-${store}-${embedding}-${stand}.json`;
 }
+
+/**
+ * Der Name eines Schicht-B-Berichts. Statt Store und Embedding steht hier das
+ * MODELL: es ist das, was in Schicht B die Zahlen bewegt.
+ *
+ * @param {object} o
+ * @param {string} o.erzeugt  ISO-Zeitstempel des Berichts
+ * @param {string} o.domaene
+ * @param {string} o.modell   Modell-ID, etwa `claude-haiku-4-5`
+ * @param {string} o.stand    Ergebnis von `codeStand()`
+ * @returns {string}
+ */
+export function berichtsNameB({ erzeugt, domaene, modell, stand }) {
+  return `${erzeugt.slice(0, 10)}-schicht-b-${domaene}-${modell}-${stand}.json`;
+}

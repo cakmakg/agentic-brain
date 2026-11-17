@@ -8,7 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-const { berichtsName, codeStand } =
+const { berichtsName, berichtsNameB, codeStand } =
   await import("../evals/runners/berichtsname.js");
 
 // Ein Git, das auf genau die zwei Fragen antwortet, die `codeStand` stellt.
@@ -62,4 +62,16 @@ test("zwei Laeufe am selben Tag gegen verschiedenen Code ergeben zwei Dateien", 
     stand: "922ecaf",
   });
   assert.notEqual(frueh, spaet, "der spaetere Lauf loeschte sonst den Beleg");
+});
+
+test("Schicht B: das Modell steht im Namen, wo bei Schicht A die Adapter stehen", () => {
+  assert.equal(
+    berichtsNameB({
+      erzeugt: "2026-11-17T12:00:00.000Z",
+      domaene: "besprechung",
+      modell: "claude-haiku-4-5",
+      stand: "abc1234",
+    }),
+    "2026-11-17-schicht-b-besprechung-claude-haiku-4-5-abc1234.json",
+  );
 });
