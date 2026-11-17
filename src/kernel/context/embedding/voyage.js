@@ -48,23 +48,53 @@ const wartezeitMs = (versuch, retryAfter) => {
 };
 const schlafe = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Fragt, und wartet bei 429 — höchstens MAX_VERSUCHE Mal. Liefert die letzte
-// Antwort, gleich welchen Status; die Auswertung bleibt bei `frage`.
+// ── Vorübergehende Netzfehler: dieselbe Geduld wie bei 429 ──────────────
+// Der besprechung-Lauf brach zweimal nach über einer Stunde ab — einmal
+// `UND_ERR_CONNECT_TIMEOUT`, einmal `ECONNRESET` (2026-11-16/17). Bei rund 480
+// Anfragen über Stunden ist ein abgerissenes Paket keine Ausnahme, sondern
+// zu erwarten. Wiederholt wird NUR, was nach Netz aussieht: ein unbekannter
+// Fehler (etwa ein Programmierfehler im `fetch`-Ersatz) fällt sofort.
+const VORUEBERGEHEND = new Set([
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "EAI_AGAIN",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_SOCKET",
+]);
+const netzCode = (fehler) => fehler?.cause?.code ?? fehler?.code;
+
+// Ein Versuch. Ein vorübergehender Netzfehler wird zum Ergebnis, jeder andere
+// fliegt weiter.
+async function versuche(hole, anfrage) {
+  try {
+    return { antwort: await hole(ENDPUNKT, anfrage) };
+  } catch (fehler) {
+    if (!VORUEBERGEHEND.has(netzCode(fehler))) throw fehler;
+    return { fehler };
+  }
+}
+
+// Fragt, und wartet bei 429 oder vorübergehendem Netzfehler — höchstens
+// MAX_VERSUCHE Mal. Liefert die letzte Antwort, gleich welchen Status; die
+// Auswertung bleibt bei `frage`. Bleibt der Netzfehler, fliegt er.
 async function holeMitGeduld({ hole, warte }, anfrage) {
-  let antwort = await hole(ENDPUNKT, anfrage);
+  let r = await versuche(hole, anfrage);
   for (
     let versuch = 1;
-    antwort.status === 429 && versuch < MAX_VERSUCHE;
+    (r.fehler || r.antwort.status === 429) && versuch < MAX_VERSUCHE;
     versuch++
   ) {
-    const ms = wartezeitMs(versuch, antwort.headers?.get?.("retry-after"));
+    const ms = wartezeitMs(versuch, r.antwort?.headers?.get?.("retry-after"));
+    const grund = r.fehler ? netzCode(r.fehler) : "429";
     console.error(
-      `[voyage] 429 — warte ${Math.round(ms / 1000)} s (Versuch ${versuch + 1}/${MAX_VERSUCHE})`,
+      `[voyage] ${grund} — warte ${Math.round(ms / 1000)} s (Versuch ${versuch + 1}/${MAX_VERSUCHE})`,
     );
     await warte(ms);
-    antwort = await hole(ENDPUNKT, anfrage);
+    r = await versuche(hole, anfrage);
   }
-  return antwort;
+  if (r.fehler) throw r.fehler;
+  return r.antwort;
 }
 
 // Eine Anfrage an Voyage. Ausserhalb der Fabrik, damit die Fabrik klein

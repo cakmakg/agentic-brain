@@ -184,12 +184,17 @@ test("Voyage: ein Fehlerstatus steht in der Meldung", async () => {
 
 // ── 429: warten statt abbrechen ──────────────────────────────────────────
 // Ein `fetch`, das der Reihe nach die genannten Status liefert; danach 200.
+// Ein String statt einer Zahl ist ein Netzfehler mit diesem Code — so, wie
+// Node ihn wirft: `TypeError("fetch failed")` mit dem Code in `cause`.
 function folgeFetch(statusFolge, { retryAfter } = {}) {
   const ok = fakeFetch();
   let n = 0;
   const impl = async (url, optionen) => {
     const status = statusFolge[n++];
     if (status === undefined) return ok(url, optionen);
+    if (typeof status === "string") {
+      throw new TypeError("fetch failed", { cause: { code: status } });
+    }
     return {
       ok: false,
       status,
@@ -243,6 +248,35 @@ test("Voyage: nach acht Versuchen faellt 429 laut, statt endlos zu warten", asyn
     gewartet.every((ms) => ms <= 60_000),
     "Obergrenze 60 s",
   );
+});
+
+test("Voyage: ein abgerissenes Paket wird abgewartet wie ein 429", async () => {
+  // Beide echten Abbrueche vom 2026-11-16/17, in einer Folge.
+  const { port, f, gewartet } = mitFolge([
+    "UND_ERR_CONNECT_TIMEOUT",
+    "ECONNRESET",
+  ]);
+  const v = await port.einbetteViele(["a"], "dokument");
+  assert.equal(v.length, 1);
+  assert.equal(f.anzahl(), 3);
+  assert.deepEqual(gewartet, [5_000, 10_000]);
+});
+
+test("Voyage: ein bleibender Netzfehler fliegt nach acht Versuchen — mit seinem Code", async () => {
+  const { port, f } = mitFolge(new Array(20).fill("ECONNRESET"));
+  await assert.rejects(
+    () => port.einbetteViele(["a"], "dokument"),
+    (fehler) => fehler.cause?.code === "ECONNRESET",
+  );
+  assert.equal(f.anzahl(), 8);
+});
+
+test("Voyage: ein unbekannter Fehler wird NICHT wiederholt", async () => {
+  // Kein Netzcode — etwa ein Programmierfehler. Warten machte ihn nur leiser.
+  const { port, f, gewartet } = mitFolge(["KEIN_NETZ_CODE"]);
+  await assert.rejects(() => port.einbetteViele(["a"], "dokument"));
+  assert.equal(f.anzahl(), 1);
+  assert.equal(gewartet.length, 0);
 });
 
 test("Voyage: 401 wird NICHT wiederholt — Warten macht einen Schluessel nicht richtig", async () => {
