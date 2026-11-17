@@ -2494,4 +2494,12 @@ und braucht keine Codeänderung (`temperature` wird angenommen, der Preis steht 
   `ANTHROPIC_API_KEY= npm test` (Git Bash). Eine Trennung der Schalter ist als eigener Schritt
   offen.
 
-**Noch nicht eingelöst** — der Lauf selbst steht aus.
+🟡 **Als Rauchtest eingelöst am 2026-11-17** (`a54710a`, Bericht
+`2026-11-17-schicht-b-besprechung-claude-haiku-4-5-a54710a.json`): 5/5 Fälle gemessen, kein
+Fehler, Exit 0, **0,005964 USD** — die Kostenzählung aus `e361c29` greift. 3.8 = 100 % (5/5),
+nach Revision 100 %, Versuche-Median 1 — **und leere Listen 5/5.** Das ist hier die richtige
+Antwort, nicht ein Ausfall: keine der fünf ACL-Notizen nennt eine Handlung oder eine Person
+(„Offene Punkte zum Rollout …"), und der Prompt sagt „Erfinde nichts". Abgeleitet aus Text und
+Regel, nicht aus dem Lauf. **Über die Extraktion selbst sagt der Lauf deshalb nichts** — der
+Datensatz hat keinen positiven Fall. Der Zähler für leere Listen hat genau das sichtbar gemacht,
+wofür er gebaut wurde. Nächster Schritt: Notizen mit Handlungen und Personen.

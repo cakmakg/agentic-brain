@@ -1,0 +1,107 @@
+{
+  "erzeugt": "2026-11-17T13:02:26.038Z",
+  "stand": "a54710a",
+  "schicht": "B",
+  "domaene": "besprechung",
+  "modell": "claude-haiku-4-5",
+  "anfrage": {
+    "effort": "nicht gesetzt",
+    "thinking": "nicht gesetzt"
+  },
+  "faelle": 5,
+  "maxVersuche": 5,
+  "maxUsd": 0.5,
+  "kostenUsd": 0.0059640000000000006,
+  "abgebrochen": null,
+  "metriken": {
+    "3.8": {
+      "name": "Vertragskonformität (erster Versuch)",
+      "zaehler": 5,
+      "nenner": 5,
+      "wert": 1,
+      "ziel": 1,
+      "erfuellt": true
+    },
+    "nachRevision": {
+      "name": "Konform nach der Revisionsschleife",
+      "zaehler": 5,
+      "nenner": 5,
+      "wert": 1,
+      "erfuellt": null
+    },
+    "versucheMedian": 1,
+    "verletzungen": [],
+    "leereListen": {
+      "zaehler": 5,
+      "nenner": 5
+    }
+  },
+  "fehler": [],
+  "entwuerfe": [
+    {
+      "id": "n-offen",
+      "variante": "standard",
+      "text": {
+        "aktionspunkte": [],
+        "notizId": "n-offen"
+      },
+      "versuche": 1,
+      "konformImErstenVersuch": true,
+      "konformAmEnde": true,
+      "gruendeErsterVersuch": "Ausgabevertrag erfuellt.",
+      "fehler": null
+    },
+    {
+      "id": "n-sprint",
+      "variante": "standard",
+      "text": {
+        "aktionspunkte": [],
+        "notizId": "n-sprint"
+      },
+      "versuche": 1,
+      "konformImErstenVersuch": true,
+      "konformAmEnde": true,
+      "gruendeErsterVersuch": "Ausgabevertrag erfuellt.",
+      "fehler": null
+    },
+    {
+      "id": "n-archiv",
+      "variante": "standard",
+      "text": {
+        "aktionspunkte": [],
+        "notizId": "n-archiv"
+      },
+      "versuche": 1,
+      "konformImErstenVersuch": true,
+      "konformAmEnde": true,
+      "gruendeErsterVersuch": "Ausgabevertrag erfuellt.",
+      "fehler": null
+    },
+    {
+      "id": "n-leitung",
+      "variante": "standard",
+      "text": {
+        "aktionspunkte": [],
+        "notizId": "n-leitung"
+      },
+      "versuche": 1,
+      "konformImErstenVersuch": true,
+      "konformAmEnde": true,
+      "gruendeErsterVersuch": "Ausgabevertrag erfuellt.",
+      "fehler": null
+    },
+    {
+      "id": "n-vertraulich",
+      "variante": "standard",
+      "text": {
+        "aktionspunkte": [],
+        "notizId": "n-vertraulich"
+      },
+      "versuche": 1,
+      "konformImErstenVersuch": true,
+      "konformAmEnde": true,
+      "gruendeErsterVersuch": "Ausgabevertrag erfuellt.",
+      "fehler": null
+    }
+  ]
+}

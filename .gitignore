@@ -67,6 +67,8 @@ evals/reports/*
 # durchlief (EVALS.md §8).
 !evals/reports/2026-11-16-schicht-a-beispiel-memory-voyage-5190506.json
 !evals/reports/2026-11-17-schicht-a-besprechung-memory-voyage-8e7bad1.json
+# Der erste Schicht-B-Lauf (ADR-0024): ein Rauchtest gegen ein echtes Modell.
+!evals/reports/2026-11-17-schicht-b-besprechung-claude-haiku-4-5-a54710a.json
 
 # Dauerhafter Zustand: Checkpoints, Artefakte, Aktionsqueue. Laufzeitdaten eines
 # konkreten Rechners — im Repo hätten sie nichts zu suchen. Der Ort ist über

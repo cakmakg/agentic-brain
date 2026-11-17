@@ -339,6 +339,10 @@ Ausgeben greift, ist keine.
 > Versuchsgrenze wie im Betrieb; `pruefe` ist `pruefeVertrag`. Der Bericht zählt neben 3.8 die
 > **leeren Listen** eigens, weil der Vertrag sie annimmt. Die fünf Fälle sind die kurzen
 > ACL-Notizen aus Schicht A: ein Rauchtest der Kette, keine Aussage über echte Notizen.
+>
+> **Erster Lauf, 2026-11-17** (`claude-haiku-4-5`, 0,006 USD): 3.8 = 100 % (5/5) bei **5/5
+> leeren Listen** — richtig, denn keine der fünf Notizen nennt eine Handlung oder Person. Die
+> Extraktion selbst ist damit **nicht gemessen** (ADR-0024).
 
 ---
 
